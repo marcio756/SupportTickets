@@ -7,7 +7,8 @@ import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { useBreakpoint } from 'vuestic-ui';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import ThemeButton from '@/Components/Layout/ThemeButton.vue';
+// CORREÇÃO AQUI: Importar do caminho correto onde o ficheiro se encontra
+import ThemeButton from '@/Components/navbar/ThemeButton.vue';
 
 const breakpoints = useBreakpoint();
 

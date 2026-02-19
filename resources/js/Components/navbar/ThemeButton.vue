@@ -31,9 +31,7 @@ const toggleTheme = () => {
         @click="toggleTheme"
         aria-label="Toggle Theme"
     >
-        <VaIcon size="large" class="material-symbols-outlined">
-            {{ isDark ? 'light_mode' : 'dark_mode' }}
-        </VaIcon>
+        <VaIcon size="large" :name="isDark ? 'light_mode' : 'dark_mode'" />
     </VaButton>
 </template>
 
