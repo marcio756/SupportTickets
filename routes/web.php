@@ -34,6 +34,9 @@ Route::middleware('auth')->group(function () {
     
     // Rota para o Suporte pegar no ticket
     Route::patch('/tickets/{ticket}/assign', [TicketController::class, 'assign'])->name('tickets.assign');
+
+    // Rota para mudar o estado do ticket
+    Route::patch('/tickets/{ticket}/status', [\App\Http\Controllers\TicketController::class, 'updateStatus'])->name('tickets.update-status');
     
     /**
      * Chat Messages Route

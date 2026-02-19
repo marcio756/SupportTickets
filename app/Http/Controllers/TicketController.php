@@ -101,6 +101,42 @@ class TicketController extends Controller
         return redirect()->back();
     }
 
+    /**
+     * Update the status of a specific ticket.
+     */
+    public function updateStatus(Request $request, Ticket $ticket): RedirectResponse
+    {
+        $user = $request->user();
+
+        // Segurança: O cliente só pode mexer no seu próprio ticket
+        if (! $user->isSupporter() && $ticket->customer_id !== $user->id) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', \Illuminate\Validation\Rule::enum(TicketStatusEnum::class)],
+        ]);
+
+        $newStatus = $validated['status'];
+
+        // Regra de Negócio: Cliente só pode marcar como RESOLVED
+        if (! $user->isSupporter() && $newStatus !== TicketStatusEnum::RESOLVED->value) {
+            abort(403, 'Customers can only mark tickets as resolved.');
+        }
+
+        $ticket->update([
+            'status' => $newStatus
+        ]);
+
+        // Opcional: Adicionar uma mensagem automática do sistema no chat a avisar da mudança
+        $ticket->messages()->create([
+            'user_id' => $user->id,
+            'message' => "🔄 O estado do ticket foi alterado para: " . strtoupper($newStatus),
+        ]);
+
+        return redirect()->back();
+    }
+
     public function tickTime(Request $request, Ticket $ticket): \Illuminate\Http\JsonResponse
     {
         if (! $request->user()->isSupporter()) {

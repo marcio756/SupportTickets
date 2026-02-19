@@ -36,6 +36,44 @@
                     </va-button>
 
                     <SupportTimeDisplay :seconds="currentRemainingSeconds" />
+
+                    <va-dropdown placement="bottom-end">
+                        <template #anchor>
+                            <va-button preset="secondary" icon="settings" size="small">
+                                Actions
+                            </va-button>
+                        </template>
+
+                        <va-dropdown-content class="p-0">
+                            <va-list>
+                                <va-list-item 
+                                    v-if="!isSupporter && ticket.status !== 'resolved' && ticket.status !== 'closed'"
+                                    @click="updateStatus('resolved')"
+                                    class="cursor-pointer hover:bg-gray-100"
+                                >
+                                    <va-list-item-section icon>
+                                        <va-icon name="check_circle" color="success" />
+                                    </va-list-item-section>
+                                    <va-list-item-section>Mark as Resolved</va-list-item-section>
+                                </va-list-item>
+
+                                <template v-if="isSupporter">
+                                    <va-list-item @click="updateStatus('open')" class="cursor-pointer hover:bg-gray-100">
+                                        <va-list-item-section>Re-Open Ticket</va-list-item-section>
+                                    </va-list-item>
+                                    <va-list-item @click="updateStatus('in_progress')" class="cursor-pointer hover:bg-gray-100">
+                                        <va-list-item-section>Set In Progress</va-list-item-section>
+                                    </va-list-item>
+                                    <va-list-item @click="updateStatus('resolved')" class="cursor-pointer hover:bg-gray-100">
+                                        <va-list-item-section class="text-blue-600">Mark Resolved</va-list-item-section>
+                                    </va-list-item>
+                                    <va-list-item @click="updateStatus('closed')" class="cursor-pointer hover:bg-gray-100">
+                                        <va-list-item-section class="text-red-600">Close Ticket</va-list-item-section>
+                                    </va-list-item>
+                                </template>
+                            </va-list>
+                        </va-dropdown-content>
+                    </va-dropdown>
                 </div>
             </div>
         </div>
@@ -94,7 +132,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import TicketStatusBadge from '@/Components/Tickets/TicketStatusBadge.vue';
 import TicketMessageBubble from '@/Components/Tickets/TicketMessageBubble.vue';
 import SupportTimeDisplay from '@/Components/Tickets/SupportTimeDisplay.vue';
-import { VaTextarea, VaButton, VaAlert } from 'vuestic-ui';
+import { VaTextarea, VaButton, VaAlert, VaDropdown, VaDropdownContent, VaList, VaListItem, VaListItemSection } from 'vuestic-ui';
 
 const props = defineProps({
     ticket: {
@@ -107,7 +145,6 @@ const page = usePage();
 const currentUser = page.props.auth.user;
 const isSupporter = currentUser.role === 'supporter' || currentUser.role === 'admin';
 
-// Variáveis reativas base
 const currentRemainingSeconds = ref(props.ticket.customer.daily_support_seconds);
 const localMessages = ref([...props.ticket.messages]);
 let heartbeatInterval = null;
@@ -128,9 +165,6 @@ const scrollToBottom = async () => {
     }
 };
 
-/**
- * Sync external Inertia prop updates with local state
- */
 watch(() => props.ticket.messages, (newMessages) => {
     localMessages.value = [...newMessages];
     scrollToBottom();
@@ -157,6 +191,17 @@ const assignToMe = () => {
     });
 };
 
+/**
+ * Lógica para alterar o estado do Ticket
+ */
+const updateStatus = (newStatus) => {
+    router.patch(route('tickets.update-status', props.ticket.id), {
+        status: newStatus
+    }, {
+        preserveScroll: true
+    });
+};
+
 onMounted(() => {
     scrollToBottom();
 
@@ -166,7 +211,6 @@ onMounted(() => {
                 currentRemainingSeconds.value = e.remainingSeconds;
             })
             .listen('TicketMessageCreated', (e) => {
-                // Impede que a mensagem seja duplicada se quem a enviou for o próprio utilizador atual
                 const exists = localMessages.value.find(m => m.id === e.message.id);
                 if (!exists) {
                     localMessages.value.push(e.message);
