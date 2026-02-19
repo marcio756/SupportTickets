@@ -1,198 +1,140 @@
 <script setup>
-import { ref } from 'vue';
+/**
+ * Main authenticated layout mimicking the vuestic-admin design.
+ * Integrates a top navbar, a responsive left sidebar, and a dark/light mode switcher.
+ */
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { Link, router } from '@inertiajs/vue3';
+import { useBreakpoint } from 'vuestic-ui';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
+import ThemeButton from '@/Components/Layout/ThemeButton.vue';
 
-const showingNavigationDropdown = ref(false);
+const breakpoints = useBreakpoint();
+
+const isSidebarMinimized = ref(false);
+
+/**
+ * Handles window resize to automatically collapse or expand the sidebar 
+ * based on device width to ensure a responsive design.
+ * @returns {void}
+ */
+const onResize = () => {
+    isSidebarMinimized.value = breakpoints.mdDown;
+};
+
+onMounted(() => {
+    window.addEventListener('resize', onResize);
+    onResize(); // Initial check on load
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', onResize);
+});
+
+/**
+ * Toggles the sidebar visibility state.
+ * @returns {void}
+ */
+const toggleSidebar = () => {
+    isSidebarMinimized.value = !isSidebarMinimized.value;
+};
+
+/**
+ * Helper function to navigate using Inertia router inside Vuestic click events.
+ * @param {string} url - The target route URL to visit.
+ * @returns {void}
+ */
+const navigateTo = (url) => {
+    router.visit(url);
+};
 </script>
 
 <template>
-    <div>
-        <div class="min-h-screen bg-gray-100">
-            <nav
-                class="border-b border-gray-100 bg-white"
-            >
-                <!-- Primary Navigation Menu -->
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div class="flex h-16 justify-between">
-                        <div class="flex">
-                            <!-- Logo -->
-                            <div class="flex shrink-0 items-center">
-                                <Link :href="route('dashboard')">
-                                    <ApplicationLogo
-                                        class="block h-9 w-auto fill-current text-gray-800"
-                                    />
+    <VaLayout
+        :top="{ fixed: true, order: 2 }"
+        :left="{ fixed: true, absolute: breakpoints.mdDown, order: 1, overlay: breakpoints.mdDown && !isSidebarMinimized }"
+        @leftOverlayClick="isSidebarMinimized = true"
+    >
+        <template #top>
+            <VaNavbar color="background-secondary" class="shadow-sm border-b border-gray-200 dark:border-gray-800 transition-colors duration-300">
+                <template #left>
+                    <VaButton
+                        preset="secondary"
+                        icon="menu"
+                        @click="toggleSidebar"
+                        class="mr-4 text-gray-800 dark:text-gray-200"
+                    />
+                    <Link :href="route('dashboard')" class="flex items-center">
+                        <ApplicationLogo class="block h-9 w-auto fill-current text-primary" />
+                    </Link>
+                </template>
+
+                <template #right>
+                    <div class="flex items-center gap-2 sm:gap-4">
+                        
+                        <ThemeButton />
+
+                        <VaDropdown placement="bottom-end">
+                            <template #anchor>
+                                <VaButton preset="secondary" class="font-medium text-gray-800 dark:text-gray-200">
+                                    {{ $page.props.auth.user.name }}
+                                    <VaIcon name="expand_more" class="ml-2" />
+                                </VaButton>
+                            </template>
+
+                            <VaDropdownContent class="py-2 w-48 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-lg rounded-md mt-1">
+                                <Link
+                                    :href="route('profile.edit')"
+                                    class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    Profile
                                 </Link>
-                            </div>
-
-                            <!-- Navigation Links -->
-                            <div
-                                class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
-                            >
-                                <NavLink
-                                    :href="route('dashboard')"
-                                    :active="route().current('dashboard')"
+                                <Link
+                                    :href="route('logout')"
+                                    method="post"
+                                    as="button"
+                                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                 >
-                                    Dashboard
-                                </NavLink>
-                            </div>
-                        </div>
-
-                        <div class="hidden sm:ms-6 sm:flex sm:items-center">
-                            <!-- Settings Dropdown -->
-                            <div class="relative ms-3">
-                                <Dropdown align="right" width="48">
-                                    <template #trigger>
-                                        <span class="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none"
-                                            >
-                                                {{ $page.props.auth.user.name }}
-
-                                                <svg
-                                                    class="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clip-rule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-
-                                    <template #content>
-                                        <DropdownLink
-                                            :href="route('profile.edit')"
-                                        >
-                                            Profile
-                                        </DropdownLink>
-                                        <DropdownLink
-                                            :href="route('logout')"
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </DropdownLink>
-                                    </template>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <!-- Hamburger -->
-                        <div class="-me-2 flex items-center sm:hidden">
-                            <button
-                                @click="
-                                    showingNavigationDropdown =
-                                        !showingNavigationDropdown
-                                "
-                                class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
-                            >
-                                <svg
-                                    class="h-6 w-6"
-                                    stroke="currentColor"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        :class="{
-                                            hidden: showingNavigationDropdown,
-                                            'inline-flex':
-                                                !showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        :class="{
-                                            hidden: !showingNavigationDropdown,
-                                            'inline-flex':
-                                                showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
+                                    Log Out
+                                </Link>
+                            </VaDropdownContent>
+                        </VaDropdown>
                     </div>
-                </div>
+                </template>
+            </VaNavbar>
+        </template>
 
-                <!-- Responsive Navigation Menu -->
-                <div
-                    :class="{
-                        block: showingNavigationDropdown,
-                        hidden: !showingNavigationDropdown,
-                    }"
-                    class="sm:hidden"
+        <template #left>
+            <VaSidebar :minimized="isSidebarMinimized" width="16rem" color="background-secondary" class="transition-colors duration-300">
+                <VaSidebarItem
+                    :active="route().current('dashboard')"
+                    @click="navigateTo(route('dashboard'))"
                 >
-                    <div class="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            :href="route('dashboard')"
-                            :active="route().current('dashboard')"
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-                    </div>
+                    <VaSidebarItemContent>
+                        <VaIcon name="dashboard" />
+                        <VaSidebarItemTitle>Dashboard</VaSidebarItemTitle>
+                    </VaSidebarItemContent>
+                </VaSidebarItem>
 
-                    <!-- Responsive Settings Options -->
-                    <div
-                        class="border-t border-gray-200 pb-1 pt-4"
-                    >
-                        <div class="px-4">
-                            <div
-                                class="text-base font-medium text-gray-800"
-                            >
-                                {{ $page.props.auth.user.name }}
-                            </div>
-                            <div class="text-sm font-medium text-gray-500">
-                                {{ $page.props.auth.user.email }}
-                            </div>
-                        </div>
+                <VaSidebarItem
+                    :active="route().current('tickets.*')"
+                    @click="navigateTo(route('tickets.index'))"
+                >
+                    <VaSidebarItemContent>
+                        <VaIcon name="confirmation_number" />
+                        <VaSidebarItemTitle>Tickets</VaSidebarItemTitle>
+                    </VaSidebarItemContent>
+                </VaSidebarItem>
+            </VaSidebar>
+        </template>
 
-                        <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')">
-                                Profile
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                :href="route('logout')"
-                                method="post"
-                                as="button"
-                            >
-                                Log Out
-                            </ResponsiveNavLink>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-
-            <!-- Page Heading -->
-            <header
-                class="bg-white shadow"
-                v-if="$slots.header"
-            >
-                <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <template #content>
+            <main class="min-h-screen p-4 sm:p-6 lg:p-8 bg-background-primary transition-colors duration-300">
+                <header v-if="$slots.header" class="mb-6">
                     <slot name="header" />
-                </div>
-            </header>
-
-            <!-- Page Content -->
-            <main>
+                </header>
                 <slot />
             </main>
-        </div>
-    </div>
+        </template>
+    </VaLayout>
 </template>
