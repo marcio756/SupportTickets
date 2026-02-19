@@ -11,16 +11,9 @@ use Inertia\Response;
 
 class TicketController extends Controller
 {
-    /**
-     * Display a listing of the tickets based on user role.
-     *
-     * @param Request $request
-     * @return Response
-     */
     public function index(Request $request): Response
     {
         $user = $request->user();
-        
         $query = Ticket::with(['customer', 'assignee']);
 
         if (! $user->isSupporter()) {
@@ -34,22 +27,11 @@ class TicketController extends Controller
         ]);
     }
 
-    /**
-     * Show the form for creating a new ticket.
-     *
-     * @return Response
-     */
     public function create(): Response
     {
         return Inertia::render('Tickets/Create');
     }
 
-    /**
-     * Store a newly created ticket and its initial message in storage.
-     *
-     * @param Request $request
-     * @return RedirectResponse
-     */
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -57,9 +39,6 @@ class TicketController extends Controller
             'message' => ['required', 'string'],
         ]);
 
-        /**
-         * Use a database transaction to ensure both ticket and message are created safely.
-         */
         $ticket = Ticket::create([
             'customer_id' => $request->user()->id,
             'title' => $validated['title'],
@@ -75,23 +54,12 @@ class TicketController extends Controller
             ->with('success', 'Ticket created successfully.');
     }
 
-    /**
-     * Display the specified ticket and load the chat interface.
-     *
-     * @param Request $request
-     * @param Ticket $ticket
-     * @return Response
-     */
     public function show(Request $request, Ticket $ticket): Response
     {
-        /**
-         * Authorization Check: Prevent customers from viewing tickets they don't own.
-         */
         if (! $request->user()->isSupporter() && $ticket->customer_id !== $request->user()->id) {
             abort(403, 'Unauthorized access to this ticket.');
         }
 
-        // Eager load related data to avoid N+1 issues in the chat loop
         $ticket->load(['customer', 'assignee', 'messages.sender']);
 
         return Inertia::render('Tickets/Show', [
@@ -99,13 +67,19 @@ class TicketController extends Controller
         ]);
     }
 
-    /**
-     * Store a new chat message inside a specific ticket.
-     *
-     * @param Request $request
-     * @param Ticket $ticket
-     * @return RedirectResponse
-     */
+    public function assign(Request $request, Ticket $ticket): RedirectResponse
+    {
+        if (! $request->user()->isSupporter()) {
+            abort(403, 'Only supporters can claim tickets.');
+        }
+
+        $ticket->update([
+            'assigned_to' => $request->user()->id,
+        ]);
+
+        return redirect()->back();
+    }
+
     public function storeMessage(Request $request, Ticket $ticket): RedirectResponse
     {
         if (! $request->user()->isSupporter() && $ticket->customer_id !== $request->user()->id) {
@@ -116,11 +90,42 @@ class TicketController extends Controller
             'message' => ['required', 'string'],
         ]);
 
-        $ticket->messages()->create([
+        $message = $ticket->messages()->create([
             'user_id' => $request->user()->id,
             'message' => $validated['message'],
         ]);
 
+        // Dispara o evento WebSockets para a rede
+        broadcast(new \App\Events\TicketMessageCreated($message));
+
         return redirect()->back();
+    }
+
+    public function tickTime(Request $request, Ticket $ticket): \Illuminate\Http\JsonResponse
+    {
+        if (! $request->user()->isSupporter()) {
+            abort(403, 'Only supporters can deduct time.');
+        }
+
+        if ($ticket->status->value !== 'open') {
+            return response()->json(['status' => 'not_open']);
+        }
+
+        $customer = $ticket->customer;
+
+        if ($customer->daily_support_seconds > 0) {
+            $newTime = max(0, $customer->daily_support_seconds - 5);
+            
+            $customer->update([
+                'daily_support_seconds' => $newTime
+            ]);
+
+            broadcast(new \App\Events\SupportTimeUpdated($ticket->id, $newTime));
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'remaining_seconds' => $customer->daily_support_seconds
+        ]);
     }
 }

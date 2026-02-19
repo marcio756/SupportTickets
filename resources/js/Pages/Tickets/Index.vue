@@ -61,7 +61,7 @@
                     </table>
                 </div>
                 
-                <div v-if="tickets.last_page > 1" class="mt-4 flex justify-center">
+                <div v-if="tickets.last_page > 1" class="mt-6 flex justify-center">
                     <va-pagination 
                         v-model="currentPage" 
                         :pages="tickets.last_page" 
@@ -74,8 +74,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TicketStatusBadge from '@/Components/Tickets/TicketStatusBadge.vue';
 import { VaCard, VaCardContent, VaButton, VaPagination } from 'vuestic-ui';
@@ -88,6 +88,21 @@ const props = defineProps({
 });
 
 const currentPage = ref(props.tickets.current_page);
+
+/**
+ * Watch for pagination changes and trigger an Inertia visit to fetch the new page data.
+ * preserveScroll ensures the page doesn't uncomfortably jump to the top.
+ */
+watch(currentPage, (newPage) => {
+    router.get(
+        route('tickets.index'), 
+        { page: newPage }, 
+        { 
+            preserveState: true, 
+            preserveScroll: true 
+        }
+    );
+});
 </script>
 
 <style scoped>

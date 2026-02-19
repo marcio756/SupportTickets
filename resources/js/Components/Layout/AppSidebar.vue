@@ -16,8 +16,8 @@
             </va-sidebar-item>
         </Link>
 
-        <Link href="#" class="sidebar-link">
-            <va-sidebar-item :active="false">
+        <Link :href="route('tickets.index')" class="sidebar-link">
+            <va-sidebar-item :active="route().current('tickets.*')">
                 <va-sidebar-item-content>
                     <va-icon name="confirmation_number" />
                     <va-sidebar-item-title v-if="!minimized">
@@ -29,10 +29,10 @@
         
         <Link 
             v-if="isSupporter" 
-            href="#" 
+            :href="route('users.index')" 
             class="sidebar-link"
         >
-            <va-sidebar-item :active="false">
+            <va-sidebar-item :active="route().current('users.*')">
                 <va-sidebar-item-content>
                     <va-icon name="group" />
                     <va-sidebar-item-title v-if="!minimized">
@@ -49,9 +49,6 @@ import { computed } from 'vue';
 import { usePage, Link } from '@inertiajs/vue3';
 import { VaSidebar, VaSidebarItem, VaSidebarItemContent, VaSidebarItemTitle, VaIcon } from 'vuestic-ui';
 
-/**
- * Defines the props for the sidebar state
- */
 defineProps({
     minimized: {
         type: Boolean,
@@ -59,9 +56,6 @@ defineProps({
     }
 });
 
-/**
- * Extracts the user role from Inertia shared props to handle permissions
- */
 const page = usePage();
 const isSupporter = computed(() => {
     const role = page.props.auth.user?.role;
