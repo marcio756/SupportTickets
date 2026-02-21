@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Enums\RoleEnum;
 use Illuminate\Console\Command;
 
 class ResetCustomerChatTime extends Command
@@ -13,26 +12,26 @@ class ResetCustomerChatTime extends Command
      *
      * @var string
      */
-    protected $signature = 'tickets:reset-time';
+    protected $signature = 'support:reset-time';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Resets the daily support chat time for all customers to 30 minutes.';
+    protected $description = 'Resets the daily support time (1800 seconds) for all customer accounts.';
 
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): void
     {
-        $this->info('Starting to reset customer support times...');
+        $this->info('Starting daily support time reset for customers...');
 
-        // 1800 seconds = 30 minutes
-        $updatedRows = User::where('role', RoleEnum::CUSTOMER->value)
+        // Bulk update to optimize database queries instead of iterating through each user model
+        $updatedRows = User::where('role', 'customer')
             ->update(['daily_support_seconds' => 1800]);
 
-        $this->info("Successfully reset time for {$updatedRows} customers.");
+        $this->info("Successfully reset support time for {$updatedRows} customers.");
     }
 }
