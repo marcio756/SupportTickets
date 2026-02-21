@@ -7,6 +7,7 @@ use App\Enums\TicketStatusEnum;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class SupportTimeTest extends TestCase
@@ -15,7 +16,6 @@ class SupportTimeTest extends TestCase
 
     /**
      * Verifies that supporters can decrement time.
-     * * @test
      */
     public function supporter_can_tick_customer_time_on_open_ticket(): void
     {
@@ -39,7 +39,6 @@ class SupportTimeTest extends TestCase
 
     /**
      * Verifies security layer for SRP and permissions.
-     * * @test
      */
     public function customer_cannot_tick_their_own_time(): void
     {
@@ -53,7 +52,6 @@ class SupportTimeTest extends TestCase
 
     /**
      * Verifies the daily reset command.
-     * * @test
      */
     public function console_command_resets_time_properly(): void
     {
@@ -62,7 +60,7 @@ class SupportTimeTest extends TestCase
             'daily_support_seconds' => 0,
         ]);
 
-        $this->artisan('tickets:reset-time')
+        $this->artisan('support:reset-time')
              ->expectsOutputToContain('Successfully reset time')
              ->assertSuccessful();
 

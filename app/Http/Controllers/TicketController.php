@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RoleEnum;
 use App\Enums\TicketStatusEnum;
 use App\Models\Ticket;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,6 +13,9 @@ use Inertia\Response;
 
 class TicketController extends Controller
 {
+    /**
+     * Display a listing of the tickets.
+     */
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -27,33 +32,70 @@ class TicketController extends Controller
         ]);
     }
 
-    public function create(): Response
+    /**
+     * Show the form for creating a new ticket.
+     * Passes the customer list if the authenticated user is a supporter.
+     */
+    public function create(Request $request): Response
     {
-        return Inertia::render('Tickets/Create');
+        $customers = [];
+
+        // If the user is a supporter, fetch all customers to populate the searchable dropdown
+        if ($request->user()->isSupporter()) {
+            $customers = User::where('role', 'customer') // Fallback to string if enum casting fails, adjust to RoleEnum::CUSTOMER if strictly needed
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+        }
+
+        return Inertia::render('Tickets/Create', [
+            'customers' => $customers,
+        ]);
     }
 
+    /**
+     * Store a newly created ticket and its initial message.
+     * Handles file uploads and logic for supporters creating tickets on behalf of customers.
+     */
     public function store(Request $request): RedirectResponse
     {
+        $isSupporter = $request->user()->isSupporter();
+
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'message' => ['required', 'string'],
+            'customer_id' => [$isSupporter ? 'required' : 'nullable', 'exists:users,id'],
+            'attachment' => ['nullable', 'file', 'max:10240'], // 10MB limit strictly enforced by Laravel
         ]);
 
+        $customerId = $isSupporter ? $validated['customer_id'] : $request->user()->id;
+
         $ticket = Ticket::create([
-            'customer_id' => $request->user()->id,
+            'customer_id' => $customerId,
             'title' => $validated['title'],
             'status' => TicketStatusEnum::OPEN,
+            // Automatically assign the ticket to the creator if they are a supporter
+            'assigned_to' => $isSupporter ? $request->user()->id : null,
         ]);
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store('attachments', 'public');
+        }
 
         $ticket->messages()->create([
             'user_id' => $request->user()->id,
             'message' => $validated['message'],
+            'attachment_path' => $attachmentPath,
         ]);
 
         return redirect()->route('tickets.show', $ticket)
             ->with('success', 'Ticket created successfully.');
     }
 
+    /**
+     * Display the specified ticket.
+     */
     public function show(Request $request, Ticket $ticket): Response
     {
         if (! $request->user()->isSupporter() && $ticket->customer_id !== $request->user()->id) {
@@ -67,6 +109,9 @@ class TicketController extends Controller
         ]);
     }
 
+    /**
+     * Assigns the ticket to the authenticated supporter.
+     */
     public function assign(Request $request, Ticket $ticket): RedirectResponse
     {
         if (! $request->user()->isSupporter()) {
@@ -80,6 +125,9 @@ class TicketController extends Controller
         return redirect()->back();
     }
 
+    /**
+     * Store a new reply message in the ticket.
+     */
     public function storeMessage(Request $request, Ticket $ticket): RedirectResponse
     {
         if (! $request->user()->isSupporter() && $ticket->customer_id !== $request->user()->id) {

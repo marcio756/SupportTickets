@@ -1,14 +1,18 @@
 import './bootstrap';
 import '../css/app.css';
-import 'vuestic-ui/css';
 
 import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { createVuestic } from 'vuestic-ui';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Tickets Support';
+// Import Vuestic UI and essential CSS
+import { createVuestic } from 'vuestic-ui';
+import 'vuestic-ui/css';
+// Import Material Icons (required for Vuestic default icons)
+import 'material-design-icons-iconfont/dist/material-design-icons.min.css';
+
+const appName = import.meta.env.VITE_APP_NAME || 'SupportTickets';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
@@ -21,6 +25,6 @@ createInertiaApp({
             .mount(el);
     },
     progress: {
-        color: '#154EC1', // Vuestic primary color
+        color: '#4B5563',
     },
 });

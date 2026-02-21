@@ -1,46 +1,45 @@
-import { ref, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
 
 /**
- * Composable to abstract dynamic data table filtering logic.
- * Manages reactive filter states and synchronizes them with the URL query string.
- *
- * @param {Object} initialFilters - Key-value pairs of default filter states.
- * @param {string} routeName - The target Inertia route name to reload data.
+ * Provides an encapsulated logic block for filtering collections of objects.
+ * Designed to be generic and reusable across different resource listings like Tickets or Users.
+ * * @param {Array} initialData - The raw array of objects to filter.
+ * @param {Array} searchFields - Keys in the objects to match the search query against.
+ * @returns {Object} State and computed properties for the filtering context.
  */
-export function useFilters(initialFilters = {}, routeName) {
-    const filters = ref({ ...initialFilters });
+export function useFilters(initialData = [], searchFields = ['title', 'name']) {
+    const query = ref('');
+    const selectedStatus = ref('');
+    const sourceData = ref(initialData);
 
-    let timeout = null;
-
-    /**
-     * Watches for deep changes in the filters object.
-     * Debounces the Inertia visit to prevent excessive network requests while the user is actively typing.
-     */
-    watch(filters, (newFilters) => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-            const queryParams = Object.fromEntries(
-                Object.entries(newFilters).filter(([_, value]) => value !== '' && value !== null)
-            );
-
-            router.get(route(routeName), queryParams, {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            });
-        }, 300);
-    }, { deep: true });
-
-    /**
-     * Resets all filters back to their initial default state.
-     */
-    const resetFilters = () => {
-        filters.value = { ...initialFilters };
+    const setSourceData = (data) => {
+        sourceData.value = data;
     };
 
+    // Computes the intersection of the search query and the status dropdown to yield the final dataset
+    const filteredResults = computed(() => {
+        let results = sourceData.value;
+
+        if (selectedStatus.value) {
+            results = results.filter(item => item.status === selectedStatus.value);
+        }
+
+        if (query.value) {
+            const lowerQuery = query.value.toLowerCase();
+            results = results.filter(item => {
+                return searchFields.some(field => {
+                    return item[field] && String(item[field]).toLowerCase().includes(lowerQuery);
+                });
+            });
+        }
+
+        return results;
+    });
+
     return {
-        filters,
-        resetFilters,
+        query,
+        selectedStatus,
+        filteredResults,
+        setSourceData
     };
 }

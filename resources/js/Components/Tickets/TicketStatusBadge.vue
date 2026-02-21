@@ -1,43 +1,33 @@
 <template>
-    <va-badge :text="formattedStatus" :color="badgeColor" class="text-xs uppercase" />
+  <va-badge
+    :text="formattedStatus"
+    :color="statusColor"
+    class="text-xs uppercase font-bold"
+  />
 </template>
 
 <script setup>
 import { computed } from 'vue';
-import { VaBadge } from 'vuestic-ui';
 
-/**
- * Props definition
- */
 const props = defineProps({
-    status: {
-        type: String,
-        required: true,
-    },
+  status: {
+    type: String,
+    required: true,
+  },
 });
 
-/**
- * Computes the color based on the strict ticket status enum values.
- */
-const badgeColor = computed(() => {
-    switch (props.status) {
-        case 'open':
-            return 'success';
-        case 'in_progress':
-            return 'warning';
-        case 'resolved':
-            return 'info';
-        case 'closed':
-            return 'danger';
-        default:
-            return 'primary';
-    }
+// Maps backend string states to human-readable strings and frontend color codes
+const statusColor = computed(() => {
+  const map = {
+    open: 'warning',
+    in_progress: 'info',
+    resolved: 'success',
+    closed: 'secondary',
+  };
+  return map[props.status] || 'primary';
 });
 
-/**
- * Formats the raw snake_case status into a readable format.
- */
 const formattedStatus = computed(() => {
-    return props.status.replace('_', ' ');
+  return props.status.replace('_', ' ');
 });
 </script>

@@ -26,6 +26,7 @@
         "vue": "^3.4.0"
     },
     "dependencies": {
+        "material-design-icons-iconfont": "^6.7.0",
         "vuestic-ui": "^1.10.3"
     }
 }
