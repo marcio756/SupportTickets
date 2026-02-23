@@ -130,8 +130,13 @@ class TicketController extends Controller
      */
     public function storeMessage(Request $request, Ticket $ticket): RedirectResponse
     {
-        if (! $request->user()->isSupporter() && $ticket->customer_id !== $request->user()->id) {
-            abort(403);
+        $user = $request->user();
+
+        // Ensure supporters can only reply if they are actively assigned to this ticket
+        if ($user->isSupporter() && $ticket->assigned_to !== $user->id) {
+            abort(403, 'You must claim this ticket before replying.');
+        } elseif (! $user->isSupporter() && $ticket->customer_id !== $user->id) {
+            abort(403, 'Unauthorized access.');
         }
 
         $validated = $request->validate([
@@ -139,7 +144,7 @@ class TicketController extends Controller
         ]);
 
         $message = $ticket->messages()->create([
-            'user_id' => $request->user()->id,
+            'user_id' => $user->id,
             'message' => $validated['message'],
         ]);
 
@@ -156,9 +161,11 @@ class TicketController extends Controller
     {
         $user = $request->user();
 
-        // Security check: Only the owner or a supporter can modify
-        if (! $user->isSupporter() && $ticket->customer_id !== $user->id) {
-            abort(403);
+        // Ensure only the assigned supporter or the owner customer can update the ticket status
+        if ($user->isSupporter() && $ticket->assigned_to !== $user->id) {
+            abort(403, 'You must be assigned to this ticket to change its status.');
+        } elseif (! $user->isSupporter() && $ticket->customer_id !== $user->id) {
+            abort(403, 'Unauthorized access.');
         }
 
         $validated = $request->validate([
@@ -191,8 +198,15 @@ class TicketController extends Controller
      */
     public function tickTime(Request $request, Ticket $ticket, \App\Services\SupportTimeManager $timeManager): \Illuminate\Http\JsonResponse
     {
-        if (! $request->user()->isSupporter()) {
+        $user = $request->user();
+
+        if (! $user->isSupporter()) {
             abort(403, 'Only supporters can deduct time.');
+        }
+
+        // Prevent non-assigned supporters from draining the customer's support time by just viewing the ticket
+        if ($ticket->assigned_to !== $user->id) {
+            return response()->json(['status' => 'not_assigned', 'message' => 'You must claim this ticket to deduct time.']);
         }
 
         if ($ticket->status->value !== 'open') {

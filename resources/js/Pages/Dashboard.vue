@@ -79,6 +79,13 @@ const props = defineProps({
     }
 });
 
+// Access Inertia shared data to retrieve the authenticated user
 const page = usePage();
+
+/**
+ * Determines if the current authenticated user has elevated privileges.
+ * This is used to toggle between the Customer and Supporter dashboard views.
+ * * @returns {Boolean} True if the user role is 'admin' or 'supporter'.
+ */
 const isSupporter = computed(() => ['admin', 'supporter'].includes(page.props.auth.user.role));
 </script>

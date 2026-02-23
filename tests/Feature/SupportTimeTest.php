@@ -37,6 +37,29 @@ class SupportTimeTest extends TestCase
         $this->assertEquals(95, $customer->fresh()->daily_support_seconds);
     }
 
+    public function test_unassigned_supporter_cannot_deduct_time_or_reply()
+    {
+        $customer = User::factory()->create(['role' => 'customer']);
+        $assignedSupporter = User::factory()->create(['role' => 'supporter']);
+        $noseySupporter = User::factory()->create(['role' => 'supporter']);
+
+        $ticket = Ticket::factory()->create([
+            'customer_id' => $customer->id,
+            'assigned_to' => $assignedSupporter->id,
+            'status' => 'open'
+        ]);
+
+        // Attempt to tick time
+        $response = $this->actingAs($noseySupporter)->postJson(route('tickets.tick-time', $ticket));
+        $response->assertJson(['status' => 'not_assigned']);
+
+        // Attempt to reply
+        $replyResponse = $this->actingAs($noseySupporter)->post(route('tickets.messages.store', $ticket), [
+            'message' => 'I am sneaking into this chat!'
+        ]);
+        $replyResponse->assertStatus(403);
+    }
+
     /**
      * Verifies security layer for SRP and permissions.
      */
