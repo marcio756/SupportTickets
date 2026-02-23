@@ -1,12 +1,8 @@
 <script setup>
-/**
- * AppLayout.vue
- * * Main layout component acting as the shell for the authenticated application.
- * Integrates Vuestic UI structure (Sidebar, Navbar) with Inertia.js navigation.
- * * @vue-prop {String} title - The page title for the document head.
- */
 import { ref, computed } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
+// AQUI ESTAVA A FALTAR ESTE IMPORT!
+import UserAvatar from '@/Components/Common/UserAvatar.vue';
 
 // Props
 defineProps({
@@ -20,9 +16,6 @@ const showSidebar = ref(true);
 // Get User from Inertia Shared Props
 const user = computed(() => usePage().props.auth.user);
 
-/**
- * Toggles the sidebar visibility or minimization state.
- */
 const toggleSidebar = () => {
     isSidebarMinimized.value = !isSidebarMinimized.value;
 };
@@ -57,9 +50,8 @@ const toggleSidebar = () => {
                              <VaDropdown placement="bottom-end">
                                 <template #anchor>
                                     <div class="flex items-center cursor-pointer gap-2 text-white">
-                                        <VaAvatar size="small" color="warning">
-                                            {{ user.name.charAt(0).toUpperCase() }}
-                                        </VaAvatar>
+                                        <UserAvatar :user="user" size="32px" />
+                                        
                                         <span class="hidden sm:block font-medium">{{ user.name }}</span>
                                         <VaIcon name="expand_more" />
                                     </div>
@@ -94,8 +86,6 @@ const toggleSidebar = () => {
                 >
                     <VaSidebarItem
                         :active="route().current('dashboard')"
-                        :to="route('dashboard')"
-                        is="a" 
                     >
                         <Link :href="route('dashboard')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
                             <VaSidebarItemContent>
@@ -114,13 +104,14 @@ const toggleSidebar = () => {
                             <VaSidebarItemContent>
                                 <VaIcon name="confirmation_number" />
                                 <VaSidebarItemTitle v-if="!isSidebarMinimized">
-                                    Meus Tickets
+                                    Tickets
                                 </VaSidebarItemTitle>
                             </VaSidebarItemContent>
                         </Link>
                     </VaSidebarItem>
                     
-                    <VaSidebarItem
+                     <VaSidebarItem
+                        v-if="user.role === 'admin' || user.role === 'supporter'"
                         :active="route().current('users.*')"
                     >
                         <Link :href="route('users.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
@@ -132,7 +123,6 @@ const toggleSidebar = () => {
                             </VaSidebarItemContent>
                         </Link>
                     </VaSidebarItem>
-
                 </VaSidebar>
             </template>
 
@@ -143,7 +133,6 @@ const toggleSidebar = () => {
                             <slot name="header" />
                         </h1>
                     </header>
-
                     <slot />
                 </main>
             </template>
@@ -152,7 +141,6 @@ const toggleSidebar = () => {
 </template>
 
 <style scoped>
-/* Pequenos ajustes para garantir que o layout ocupa a altura total */
 .app-layout {
     height: 100vh;
     display: flex;

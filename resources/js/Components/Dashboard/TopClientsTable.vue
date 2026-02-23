@@ -12,7 +12,12 @@
                 </thead>
                 <tbody>
                     <tr v-for="client in clients" :key="client.id" class="border-b border-gray-100 last:border-0 hover:bg-gray-50">
-                        <td class="py-3">{{ client.name }}</td>
+                        <td class="py-3">
+                            <div class="flex items-center gap-3">
+                                <UserAvatar :user="client" size="32px" />
+                                <span class="font-medium">{{ client.name }}</span>
+                            </div>
+                        </td>
                         <td class="py-3 text-gray-500">{{ client.email }}</td>
                         <td class="py-3 text-right font-bold text-blue-600">{{ client.tickets_count }}</td>
                     </tr>
@@ -27,6 +32,7 @@
 
 <script setup>
 import { VaCard, VaCardTitle, VaCardContent } from 'vuestic-ui';
+import UserAvatar from '@/Components/Common/UserAvatar.vue';
 
 /**
  * Display table for top clients structured by ticket activity.

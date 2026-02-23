@@ -1,5 +1,8 @@
 <template>
-    <div :class="['message-wrapper mb-4 flex', isMine ? 'justify-end' : 'justify-start']">
+    <div :class="['message-wrapper mb-4 flex items-start gap-3', isMine ? 'flex-row-reverse' : '']">
+        
+        <UserAvatar :user="message.sender" size="48px" />
+
         <div 
             :class="[
                 'message-bubble p-4 rounded-lg max-w-[70%]',
@@ -31,6 +34,7 @@
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { VaIcon } from 'vuestic-ui';
+import UserAvatar from '@/Components/Common/UserAvatar.vue';
 
 /**
  * Defines the strict props for the bubble.

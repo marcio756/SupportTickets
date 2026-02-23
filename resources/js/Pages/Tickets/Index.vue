@@ -48,15 +48,14 @@
 
           <template #cell(customer)="{ rowData }">
             <div class="flex items-center gap-2">
-              <va-avatar size="small" :color="getAvatarColor(rowData.customer.name)">
-                {{ rowData.customer.name.substring(0, 2).toUpperCase() }}
-              </va-avatar>
+              <UserAvatar :user="rowData.customer" size="36px" />
               <span>{{ rowData.customer.name }}</span>
             </div>
           </template>
 
           <template #cell(assignee)="{ rowData }">
-            <span v-if="rowData.assignee" class="text-sm text-gray-600">
+            <span v-if="rowData.assignee" class="text-sm text-gray-600 flex items-center gap-2">
+              <UserAvatar :user="rowData.assignee" size="24px" />
               {{ rowData.assignee.name }}
             </span>
             <span v-else class="text-sm font-bold text-red-500">Unassigned</span>
@@ -87,6 +86,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
 import TicketStatusBadge from '@/Components/Tickets/TicketStatusBadge.vue';
+import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import { useFilters } from '@/Composables/useFilters';
 
 const props = defineProps({
@@ -147,11 +147,5 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric'
   });
-};
-
-const getAvatarColor = (name) => {
-  const colors = ['primary', 'success', 'info', 'warning', 'danger'];
-  const charCode = name.charCodeAt(0);
-  return colors[charCode % colors.length];
 };
 </script>
