@@ -1,7 +1,7 @@
 <script setup>
 /**
- * Main application layout for authenticated users.
- * Persists sidebar state and handles global theme initialization.
+ * Global application layout.
+ * Fixes: Independent scrolling, Sidebar persistence, and Logo link.
  */
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
@@ -20,20 +20,20 @@ const showSidebar = ref(true);
 const user = computed(() => usePage().props.auth.user);
 
 /**
- * Persists sidebar toggle state in localStorage.
+ * Toggles the sidebar and persists the state.
  */
 const toggleSidebar = () => {
     isSidebarMinimized.value = !isSidebarMinimized.value;
-    localStorage.setItem('app-sidebar-minimized', isSidebarMinimized.value);
+    localStorage.setItem('sidebar-is-minimized', isSidebarMinimized.value);
 };
 
 onMounted(() => {
     initTheme();
     
-    // Restore sidebar state from persistence
-    const savedState = localStorage.getItem('app-sidebar-minimized');
-    if (savedState !== null) {
-        isSidebarMinimized.value = savedState === 'true';
+    // Load persisted sidebar state
+    const savedSidebar = localStorage.getItem('sidebar-is-minimized');
+    if (savedSidebar !== null) {
+        isSidebarMinimized.value = savedSidebar === 'true';
     }
 });
 </script>
@@ -75,15 +75,17 @@ onMounted(() => {
                                     </div>
                                 </template>
 
-                                <VaDropdownContent class="p-2 min-w-[200px] dark:bg-gray-800 border dark:border-gray-700">
+                                <VaDropdownContent class="p-2 min-w-[200px] dark:bg-gray-800 border dark:border-gray-700 shadow-xl">
                                     <div class="mb-1 border-b border-gray-100 dark:border-gray-700 pb-1 flex justify-center">
                                         <ThemeButton />
                                     </div>
+
                                     <Link :href="route('profile.edit')" class="block w-full">
                                         <VaButton preset="plain" color="textPrimary" class="w-full justify-start mb-1" icon="person">
                                             Profile
                                         </VaButton>
                                     </Link>
+                                    
                                     <Link :href="route('logout')" method="post" as="button" class="block w-full">
                                         <VaButton preset="plain" color="danger" class="w-full justify-start" icon="logout">
                                             Logout
@@ -103,11 +105,11 @@ onMounted(() => {
                     width="16rem"
                     minimized-width="4rem"
                     color="background-secondary"
-                    class="h-full border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-hidden"
+                    class="h-full border-r border-gray-200 dark:border-gray-800 flex flex-col"
                 >
                     <div class="flex-grow overflow-y-auto overflow-x-hidden">
                         <VaSidebarItem :active="route().current('dashboard')">
-                            <Link :href="route('dashboard')" class="w-full h-full flex items-center p-3 text-inherit decoration-none">
+                            <Link :href="route('dashboard')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
                                 <VaSidebarItemContent>
                                     <VaIcon name="dashboard" />
                                     <VaSidebarItemTitle v-if="!isSidebarMinimized">Dashboard</VaSidebarItemTitle>
@@ -116,7 +118,7 @@ onMounted(() => {
                         </VaSidebarItem>
 
                         <VaSidebarItem :active="route().current('tickets.*')">
-                            <Link :href="route('tickets.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-none">
+                            <Link :href="route('tickets.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
                                 <VaSidebarItemContent>
                                     <VaIcon name="confirmation_number" />
                                     <VaSidebarItemTitle v-if="!isSidebarMinimized">Tickets</VaSidebarItemTitle>
@@ -128,7 +130,7 @@ onMounted(() => {
                             v-if="user?.role === 'supporter' || user?.role === 'admin'"
                             :active="route().current('users.*')"
                         >
-                            <Link :href="route('users.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-none">
+                            <Link :href="route('users.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
                                 <VaSidebarItemContent>
                                     <VaIcon name="group" />
                                     <VaSidebarItemTitle v-if="!isSidebarMinimized">Users</VaSidebarItemTitle>
@@ -156,7 +158,13 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.app-layout { height: 100vh; }
-.decoration-none { text-decoration: none !important; }
-:deep(.va-sidebar__menu) { background-color: transparent !important; }
+.app-layout {
+    height: 100vh;
+}
+:deep(.va-layout__area--content) {
+    height: 100%;
+}
+:deep(.va-sidebar__menu) {
+    background-color: transparent !important;
+}
 </style>

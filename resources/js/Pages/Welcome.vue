@@ -1,6 +1,6 @@
 <script setup>
 /**
- * Custom Welcome/Landing page for the SupportTickets application.
+ * Professional Landing Page for SupportTickets.
  * Replaces the default Laravel welcome page.
  */
 import { Head, Link } from '@inertiajs/vue3';
@@ -18,52 +18,59 @@ defineProps({
     <Head title="Welcome to SupportTickets" />
 
     <GuestLayout>
-        <div class="text-center">
-            <div class="mb-8">
-                <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white sm:text-5xl">
-                    Smart Support <span class="text-indigo-600 dark:text-indigo-400">Simplified</span>
+        <div class="text-center py-4">
+            <div class="mb-10">
+                <h1 class="text-4xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
+                    Support<span class="text-yellow-500">Tickets</span>
                 </h1>
-                <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                    Manage your customer requests efficiently with our professional ticketing system. 
-                    Fast, reliable, and always synchronized.
+                <p class="mt-4 text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
+                    The centralized platform for all your technical support needs. 
+                    Manage tickets, track progress, and communicate with ease.
                 </p>
             </div>
 
-            <div class="grid grid-cols-1 gap-4 mb-8 text-left">
-                <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700">
-                    <h3 class="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                        <span class="text-indigo-500">✓</span> Real-time Communication
-                    </h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Chat with supporters instantly regarding your issues.</p>
+            <div class="space-y-4 mb-10 text-left px-2">
+                <div class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                    <div class="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-lg">
+                        <va-icon name="confirmation_number" color="primary" />
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-900 dark:text-gray-100">Smart Ticketing</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Organize and prioritize requests efficiently.</p>
+                    </div>
                 </div>
-                <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700">
-                    <h3 class="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                        <span class="text-indigo-500">✓</span> Track Everything
-                    </h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Monitor the status of your tickets from open to resolved.</p>
+                
+                <div class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                    <div class="bg-green-100 dark:bg-green-900/50 p-2 rounded-lg">
+                        <va-icon name="chat" color="success" />
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-900 dark:text-gray-100">Real-time Updates</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">Get notified the moment a supporter responds.</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row justify-center gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <template v-if="$page.props.auth.user">
-                    <Link :href="route('dashboard')" class="w-full sm:w-auto">
-                        <PrimaryButton class="w-full justify-center py-3 px-8 text-base">
-                            Go to Dashboard
+                    <Link :href="route('dashboard')" class="sm:col-span-2">
+                        <PrimaryButton class="w-full justify-center py-3 text-base">
+                            Access Dashboard
                         </PrimaryButton>
                     </Link>
                 </template>
 
                 <template v-else>
-                    <Link :href="route('login')" class="w-full sm:w-auto">
-                        <PrimaryButton class="w-full justify-center py-3 px-8 text-base">
-                            Log in
+                    <Link :href="route('login')">
+                        <PrimaryButton class="w-full justify-center py-3 text-base">
+                            Login
                         </PrimaryButton>
                     </Link>
                 </template>
             </div>
 
-            <p class="mt-8 text-xs text-gray-500 dark:text-gray-500 italic">
-                SupportTickets v1.0.0 &copy; 2026
+            <p class="mt-12 text-xs font-mono text-gray-400 dark:text-gray-600 uppercase tracking-widest">
+                SupportTickets System v1.0.0
             </p>
         </div>
     </GuestLayout>
