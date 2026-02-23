@@ -21,6 +21,9 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    /**
+     * Profile Management Routes
+     */
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -33,10 +36,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
     
-    // Rota para o Suporte pegar no ticket
+    /**
+     * Route for Support to assign the ticket to themselves
+     */
     Route::patch('/tickets/{ticket}/assign', [TicketController::class, 'assign'])->name('tickets.assign');
 
-    // Rota para mudar o estado do ticket
+    /**
+     * Route to change the ticket status
+     */
     Route::patch('/tickets/{ticket}/status', [\App\Http\Controllers\TicketController::class, 'updateStatus'])->name('tickets.update-status');
     
     /**
@@ -47,8 +54,9 @@ Route::middleware('auth')->group(function () {
 
     /**
      * User Management Routes
+     * Handles index, store, update, and destroy actions via resource.
      */
-    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
 });
 
 require __DIR__.'/auth.php';
