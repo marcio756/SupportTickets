@@ -1,13 +1,16 @@
 <script setup>
 /**
- * Global application layout.
- * Fixes: Independent scrolling, Sidebar persistence, and Logo link.
+ * Layout Global da Aplicação.
+ * Gere scroll independente, persistência de Sidebar e navegação principal.
+ * Integrado com o sistema de notificações em tempo real.
+ * * @author Arquiteto de Software Sénior
  */
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { useTheme } from '@/Composables/useTheme';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import ThemeButton from '@/Components/navbar/ThemeButton.vue';
+import NotificationDropdown from '@/Components/Layout/NotificationDropdown.vue';
 
 defineProps({
     title: String,
@@ -20,7 +23,7 @@ const showSidebar = ref(true);
 const user = computed(() => usePage().props.auth.user);
 
 /**
- * Toggles the sidebar and persists the state.
+ * Alterna o estado da sidebar e persiste no localStorage para manter entre refreshes.
  */
 const toggleSidebar = () => {
     isSidebarMinimized.value = !isSidebarMinimized.value;
@@ -30,7 +33,7 @@ const toggleSidebar = () => {
 onMounted(() => {
     initTheme();
     
-    // Load persisted sidebar state
+    // Recupera o estado anterior da sidebar
     const savedSidebar = localStorage.getItem('sidebar-is-minimized');
     if (savedSidebar !== null) {
         isSidebarMinimized.value = savedSidebar === 'true';
@@ -65,13 +68,16 @@ onMounted(() => {
                     </template>
 
                     <template #right>
-                        <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 sm:gap-4">
+                            
+                            <NotificationDropdown />
+
                              <VaDropdown placement="bottom-end">
                                 <template #anchor>
                                     <div class="flex items-center cursor-pointer gap-2 text-white px-2 py-1 rounded hover:bg-white/10 transition-colors">
                                         <UserAvatar :user="user" size="32px" />
-                                        <span class="hidden sm:block font-medium">{{ user.name }}</span>
-                                        <VaIcon name="expand_more" />
+                                        <span class="hidden sm:block font-medium text-white">{{ user.name }}</span>
+                                        <VaIcon name="expand_more" color="white" />
                                     </div>
                                 </template>
 
@@ -82,13 +88,13 @@ onMounted(() => {
 
                                     <Link :href="route('profile.edit')" class="block w-full">
                                         <VaButton preset="plain" color="textPrimary" class="w-full justify-start mb-1" icon="person">
-                                            Profile
+                                            Perfil
                                         </VaButton>
                                     </Link>
                                     
                                     <Link :href="route('logout')" method="post" as="button" class="block w-full">
                                         <VaButton preset="plain" color="danger" class="w-full justify-start" icon="logout">
-                                            Logout
+                                            Sair
                                         </VaButton>
                                     </Link>
                                 </VaDropdownContent>
@@ -133,7 +139,7 @@ onMounted(() => {
                             <Link :href="route('users.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
                                 <VaSidebarItemContent>
                                     <VaIcon name="group" />
-                                    <VaSidebarItemTitle v-if="!isSidebarMinimized">Users</VaSidebarItemTitle>
+                                    <VaSidebarItemTitle v-if="!isSidebarMinimized">Utilizadores</VaSidebarItemTitle>
                                 </VaSidebarItemContent>
                             </Link>
                         </VaSidebarItem>
