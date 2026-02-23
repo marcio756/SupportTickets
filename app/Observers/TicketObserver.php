@@ -8,12 +8,18 @@ use App\Notifications\TicketNotification;
 class TicketObserver
 {
     /**
-     * Notify users when the ticket status changes.
+     * Notify users conditionally when the ticket status changes.
+     * Ensures the actor who made the change does not receive a notification.
+     *
+     * @param Ticket $ticket
+     * @return void
      */
     public function updated(Ticket $ticket): void
     {
+        // Verifica se a propriedade status foi efetivamente alterada
         if ($ticket->wasChanged('status')) {
             $actorId = auth()->id();
+            
             $notificationData = [
                 'ticket_id' => $ticket->id,
                 'title'     => 'Status Alterado',
@@ -21,14 +27,22 @@ class TicketObserver
                 'type'      => 'status_change'
             ];
 
-            // Notify Customer if they didn't make the change
-            if ($ticket->user_id !== $actorId) {
-                $ticket->user->notify(new TicketNotification($notificationData));
+            // Notify Customer if they aren't the ones changing the state
+            // Alterado de $ticket->user_id para $ticket->customer_id
+            if ($ticket->customer_id !== $actorId) {
+                // Alterado de $ticket->user para $ticket->customer
+                if ($ticket->customer) {
+                    $ticket->customer->notify(new TicketNotification($notificationData));
+                }
             }
 
-            // Notify Support/Agent if they didn't make the change
-            if ($ticket->agent_id && $ticket->agent_id !== $actorId) {
-                $ticket->agent->notify(new TicketNotification($notificationData));
+            // Notify Support/Agent if they aren't the ones changing the state
+            // Alterado de $ticket->agent_id para $ticket->assigned_to
+            if ($ticket->assigned_to && $ticket->assigned_to !== $actorId) {
+                // Alterado de $ticket->agent para $ticket->assignee
+                if ($ticket->assignee) {
+                    $ticket->assignee->notify(new TicketNotification($notificationData));
+                }
             }
         }
     }

@@ -2,12 +2,11 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\ServiceProvider;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Observers\TicketObserver;
 use App\Observers\TicketMessageObserver;
-use Illuminate\Support\Facades\Vite;
-use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,13 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Vite::prefetch(concurrency: 3);
-
-        /**
-         * Register model observers for the notification system.
-         * These observers handle the logic for status changes and new messages.
-         */
+        // Observa alterações de status no Ticket
         Ticket::observe(TicketObserver::class);
+        
+        // Observa novas mensagens
         TicketMessage::observe(TicketMessageObserver::class);
     }
 }

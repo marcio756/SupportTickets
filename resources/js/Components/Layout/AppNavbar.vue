@@ -16,66 +16,7 @@
     <template #right>
       <div class="right-section">
         
-        <va-dropdown placement="bottom-end" :offset="[10, 10]" :close-on-content-click="false">
-          <template #anchor>
-            <va-button preset="plain" class="notification-btn">
-              <span class="mr-1" v-if="unreadCount > 0">({{ unreadCount }})</span>
-              <va-badge :text="unreadCount" :visible="unreadCount > 0" color="danger" overlap>
-                <va-icon name="notifications" color="#ffffff" />
-              </va-badge>
-            </va-button>
-          </template>
-
-          <va-dropdown-content class="notification-dropdown">
-            <div class="dropdown-header">
-              <span class="title">Notificações</span>
-              <va-button 
-                v-if="notifications.length > 0" 
-                preset="plain" 
-                size="small" 
-                color="danger" 
-                @click="clearAll"
-              >
-                Apagar todas
-              </va-button>
-            </div>
-
-            <va-divider class="m-0" />
-
-            <div class="notification-list">
-              <template v-if="groupedNotifications.length > 0">
-                <div 
-                  v-for="item in groupedNotifications" 
-                  :key="item.id" 
-                  class="notification-item"
-                  @click="handleNotificationClick(item)"
-                >
-                  <div class="content">
-                    <p class="message">
-                      {{ item.data.message }}
-                      <va-badge 
-                        v-if="item.count > 1" 
-                        :text="`x${item.count}`" 
-                        color="info" 
-                        class="ml-1" 
-                      />
-                    </p>
-                  </div>
-                  <va-button 
-                    preset="plain" 
-                    icon="close" 
-                    size="small" 
-                    color="secondary" 
-                    @click.stop="deleteIndividual(item.id)" 
-                  />
-                </div>
-              </template>
-              <div v-else class="empty-state">
-                Sem notificações novas
-              </div>
-            </div>
-          </va-dropdown-content>
-        </va-dropdown>
+        <NotificationDropdown />
         
         <va-dropdown placement="bottom-end">
           <template #anchor>
@@ -99,101 +40,59 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { Link, usePage, router } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
 import { useColors } from 'vuestic-ui';
-import axios from 'axios';
+import NotificationDropdown from './NotificationDropdown.vue';
 
 defineEmits(['toggle-sidebar']);
 
 const { currentPresetName, applyPreset } = useColors();
-const notifications = ref([]);
 
 const isDark = computed(() => currentPresetName.value === 'dark');
-const unreadCount = computed(() => notifications.value.length);
 
 /**
- * Lógica de agrupamento conforme o teu pedido inicial (ex: x5)
+ * Toggle the application theme between light and dark modes.
  */
-const groupedNotifications = computed(() => {
-    const groups = [];
-    const messageGroups = {};
-
-    notifications.value.forEach(n => {
-        if (n.data.type === 'new_message') {
-            if (!messageGroups[n.data.ticket_id]) {
-                messageGroups[n.data.ticket_id] = { ...n, count: 1 };
-            } else {
-                messageGroups[n.data.ticket_id].count++;
-            }
-        } else {
-            groups.push({ ...n, count: 1 });
-        }
-    });
-
-    return [...groups, ...Object.values(messageGroups)];
-});
-
-const fetchNotifications = async () => {
-    try {
-        const response = await axios.get(route('notifications.index'));
-        notifications.value = response.data;
-    } catch (e) {
-        console.error("Erro ao carregar notificações. Verifica se a rota existe no web.php e o Controller está no sítio certo.", e);
-    }
-};
-
-const handleNotificationClick = async (item) => {
-    const response = await axios.post(route('notifications.read', item.id));
-    notifications.value = notifications.value.filter(n => 
-        item.data.type === 'new_message' ? n.data.ticket_id !== item.data.ticket_id : n.id !== item.id
-    );
-    router.get(route('tickets.show', response.data.ticket_id));
-};
-
-const deleteIndividual = async (id) => {
-    await axios.delete(route('notifications.destroy', id));
-    notifications.value = notifications.value.filter(n => n.id !== id);
-};
-
-const clearAll = async () => {
-    await axios.post(route('notifications.clear'));
-    notifications.value = [];
-};
-
 const toggleTheme = () => applyPreset(isDark.value ? 'light' : 'dark');
 
+/**
+ * Calculate user initials to display in the generic avatar placeholder.
+ * * @returns {String}
+ */
 const userInitials = computed(() => {
   const user = usePage().props.auth.user;
   return user?.name ? user.name.substring(0, 2).toUpperCase() : 'U';
 });
-
-onMounted(() => {
-    fetchNotifications();
-    
-    // Listener de tempo real
-    if (window.Echo) {
-        window.Echo.private(`App.Models.User.${usePage().props.auth.user.id}`)
-            .notification((n) => {
-                notifications.value.unshift(n);
-            });
-    }
-});
 </script>
 
 <style scoped>
-.app-navbar { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
-.left-section, .right-section { display: flex; align-items: center; gap: 1rem; }
-.notification-dropdown { width: 320px; padding: 0; }
-.dropdown-header { display: flex; justify-content: space-between; padding: 0.75rem 1rem; align-items: center; }
-.notification-item { 
-    display: flex; justify-content: space-between; padding: 0.75rem 1rem; 
-    border-bottom: 1px solid var(--va-background-border); cursor: pointer; 
+.app-navbar { 
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); 
 }
-.notification-item:hover { background: var(--va-background-element); }
-.message { font-size: 0.85rem; margin: 0; }
-.empty-state { padding: 1.5rem; text-align: center; color: var(--va-secondary); }
-.dropdown-item { padding: 0.75rem 1rem; cursor: pointer; display: flex; align-items: center; }
-.mr-2 { margin-right: 0.5rem; }
-.text-danger { color: var(--va-danger); }
+.left-section, .right-section { 
+    display: flex; 
+    align-items: center; 
+    gap: 1rem; 
+}
+.dropdown-item { 
+    padding: 0.75rem 1rem; 
+    cursor: pointer; 
+    display: flex; 
+    align-items: center; 
+}
+.mr-2 { 
+    margin-right: 0.5rem; 
+}
+.text-danger { 
+    color: var(--va-danger); 
+}
+.menu-toggle {
+    cursor: pointer;
+}
+.logo-link {
+    text-decoration: none;
+    color: inherit;
+    font-weight: bold;
+}
 </style>

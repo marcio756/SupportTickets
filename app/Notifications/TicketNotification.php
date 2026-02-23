@@ -22,11 +22,21 @@ class TicketNotification extends Notification implements ShouldQueue
         $this->data = $data;
     }
 
+    /**
+     * Determine the delivery channels for the notification.
+     * * @param object $notifiable
+     * @return array
+     */
     public function via(object $notifiable): array
     {
         return ['database', 'broadcast'];
     }
 
+    /**
+     * Format the notification data for the database channel.
+     * * @param object $notifiable
+     * @return array
+     */
     public function toArray(object $notifiable): array
     {
         return [
@@ -37,6 +47,11 @@ class TicketNotification extends Notification implements ShouldQueue
         ];
     }
 
+    /**
+     * Format the notification data for real-time broadcasting via Laravel Echo.
+     * * @param object $notifiable
+     * @return BroadcastMessage
+     */
     public function toBroadcast(object $notifiable): BroadcastMessage
     {
         return new BroadcastMessage([

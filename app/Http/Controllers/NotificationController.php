@@ -17,8 +17,7 @@ class NotificationController extends Controller
     }
 
     /**
-     * Mark a notification as read and return the ticket ID.
-     * The requirement states it should "disappear" upon click.
+     * Mark a single notification as read (delete it) and return the associated ticket ID.
      * * @param string $id
      * @return \Illuminate\Http\JsonResponse
      */
@@ -27,14 +26,41 @@ class NotificationController extends Controller
         $notification = Auth::user()->notifications()->findOrFail($id);
         $ticketId = $notification->data['ticket_id'];
         
-        // Deleting instead of marking as read to make it "disappear"
         $notification->delete();
 
         return response()->json(['ticket_id' => $ticketId]);
     }
 
     /**
-     * Delete all notifications for the user.
+     * Mark multiple grouped notifications as read (delete them) and return the ticket ID.
+     * Useful when handling bundled notifications from the same ticket.
+     * * @param Request $request Expects an array of notification 'ids'.
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function markBulkAsRead(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return response()->json(['status' => 'error', 'message' => 'No IDs provided'], 400);
+        }
+
+        $notifications = Auth::user()->notifications()->whereIn('id', $ids)->get();
+        
+        if ($notifications->isEmpty()) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        // We assume all grouped IDs belong to the same ticket, so retrieving the first is safe.
+        $ticketId = $notifications->first()->data['ticket_id'];
+        
+        Auth::user()->notifications()->whereIn('id', $ids)->delete();
+
+        return response()->json(['ticket_id' => $ticketId]);
+    }
+
+    /**
+     * Delete all notifications for the currently authenticated user.
      * * @return \Illuminate\Http\JsonResponse
      */
     public function destroyAll()

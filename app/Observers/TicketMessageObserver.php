@@ -8,15 +8,19 @@ use App\Notifications\TicketNotification;
 class TicketMessageObserver
 {
     /**
-     * Notify the other participant when a new message is sent.
+     * Notify the alternate participant when a new ticket message is dispatched.
+     *
+     * @param TicketMessage $message
+     * @return void
      */
     public function created(TicketMessage $message): void
     {
         $ticket = $message->ticket;
         $senderId = $message->user_id;
         
-        // Recipient is the person who is NOT the sender
-        $recipient = ($ticket->user_id === $senderId) ? $ticket->agent : $ticket->user;
+        // Resolve the intended recipient by excluding the message sender
+        // Alterado para corresponder aos nomes das colunas e relações do teu Modelo Ticket
+        $recipient = ($ticket->customer_id === $senderId) ? $ticket->assignee : $ticket->customer;
 
         if ($recipient) {
             $recipient->notify(new TicketNotification([

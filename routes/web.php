@@ -48,10 +48,11 @@ Route::middleware('auth')->group(function () {
 
     /**
      * Notification Management Routes
-     * Handles indexing, marking as read (delete on click), and clearing.
+     * Handles indexing, marking as read (delete on click), clearing, and bulk removals.
      */
     Route::get('/api/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/api/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/api/notifications/read-bulk', [NotificationController::class, 'markBulkAsRead'])->name('notifications.read-bulk');
     Route::post('/api/notifications/clear', [NotificationController::class, 'destroyAll'])->name('notifications.clear');
     Route::delete('/api/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
