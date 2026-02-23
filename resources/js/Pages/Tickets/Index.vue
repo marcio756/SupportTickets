@@ -3,91 +3,76 @@
     <Head title="Tickets" />
 
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-      <h1 class="text-2xl font-bold text-[var(--va-dark)]">Support Tickets</h1>
-      <Link :href="route('tickets.create')">
-        <va-button color="primary" icon="add">Open New Ticket</va-button>
-      </Link>
+      <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">Support Tickets</h1>
+      <va-button color="primary" icon="add" @click="openCreateModal">
+        Open New Ticket
+      </va-button>
     </div>
 
-    <va-card class="mb-6">
-      <va-card-content>
-        <ResourceFilter
-          v-model:query="query"
-          v-model:status="selectedStatus"
-          v-model:customers="selectedCustomers"
-          v-model:assignees="selectedAssignees"
-          :status-options="statusOptions"
-          :customer-options="customersList"
-          :assignee-options="assigneeOptions"
-          :is-supporter="isSupporter"
-        />
-      </va-card-content>
-    </va-card>
+    <ResourceFilter
+      v-model:query="query"
+      v-model:status="selectedStatus"
+      v-model:customers="selectedCustomers"
+      v-model:assignees="selectedAssignees"
+      :status-options="statusOptions"
+      :customer-options="customersList"
+      :assignee-options="assigneeOptions"
+      :is-supporter="isSupporter"
+    />
 
-    <va-card>
-      <va-card-content>
-        <va-data-table
-          :items="tickets.data"
-          :columns="columns"
-          :loading="false"
-          striped
-          hoverable
-          clickable
-          @row:click="navigateToTicket"
-        >
-          <template #cell(id)="{ rowData }">
-            <span class="font-bold text-[var(--va-primary)]">#{{ rowData.id }}</span>
-          </template>
+    <ResourceTable
+      :resource-data="tickets"
+      :columns="columns"
+      empty-message="No tickets found matching your filters."
+      :clickable="true"
+      @row:click="navigateToTicket"
+      @page-change="changePage"
+    >
+      <template #cell(id)="{ rowData }">
+        <span class="font-bold" style="color: var(--va-primary)">#{{ rowData.id }}</span>
+      </template>
 
-          <template #cell(status)="{ rowData }">
-            <TicketStatusBadge :status="rowData.status" />
-          </template>
+      <template #cell(status)="{ rowData }">
+        <TicketStatusBadge :status="rowData.status" />
+      </template>
 
-          <template #cell(created_at)="{ rowData }">
-            {{ formatDate(rowData.created_at) }}
-          </template>
+      <template #cell(created_at)="{ rowData }">
+        {{ formatDate(rowData.created_at) }}
+      </template>
 
-          <template #cell(customer)="{ rowData }">
-            <div class="flex items-center gap-2">
-              <UserAvatar :user="rowData.customer" size="36px" />
-              <span>{{ rowData.customer.name }}</span>
-            </div>
-          </template>
-
-          <template #cell(assignee)="{ rowData }">
-            <span v-if="rowData.assignee" class="text-sm text-gray-600 flex items-center gap-2">
-              <UserAvatar :user="rowData.assignee" size="24px" />
-              {{ rowData.assignee.name }}
-            </span>
-            <span v-else class="text-sm font-bold text-red-500">Unassigned</span>
-          </template>
-        </va-data-table>
-        
-        <div v-if="tickets.data.length === 0" class="text-center py-8 text-gray-500">
-          No tickets found matching your filters.
+      <template #cell(customer)="{ rowData }">
+        <div class="flex items-center gap-2">
+          <UserAvatar :user="rowData.customer" size="36px" />
+          <span style="color: var(--va-text-primary)">{{ rowData.customer.name }}</span>
         </div>
+      </template>
 
-        <div v-if="tickets.last_page > 1" class="flex justify-center mt-6">
-          <va-pagination
-            v-model="page"
-            :pages="tickets.last_page"
-            :visible-pages="5"
-            color="primary"
-            @update:modelValue="changePage"
-          />
-        </div>
-      </va-card-content>
-    </va-card>
+      <template #cell(assignee)="{ rowData }">
+        <span v-if="rowData.assignee" class="text-sm flex items-center gap-2" style="color: var(--va-secondary)">
+          <UserAvatar :user="rowData.assignee" size="24px" />
+          {{ rowData.assignee.name }}
+        </span>
+        <span v-else class="text-sm font-bold text-red-500">Unassigned</span>
+      </template>
+    </ResourceTable>
+
+    <TicketFormModal
+      :show="isCreateModalOpen"
+      :customers="customersList"
+      @close="isCreateModalOpen = false"
+    />
   </AppLayout>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
+import ResourceTable from '@/Components/Common/ResourceTable.vue';
 import TicketStatusBadge from '@/Components/Tickets/TicketStatusBadge.vue';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
+import TicketFormModal from './Partials/TicketFormModal.vue';
 import { useFilters } from '@/Composables/useFilters';
 
 const props = defineProps({
@@ -105,16 +90,18 @@ const props = defineProps({
   }
 });
 
-const isSupporter = usePage().props.auth.user.role !== 'customer';
+const page = usePage();
+const isSupporter = page.props.auth.user.role !== 'customer';
+
+const isCreateModalOpen = ref(false);
 
 // Consume the Server-Side filtering composable
-const { query, selectedStatus, selectedCustomers, selectedAssignees, page, changePage } = useFilters(
+const { query, selectedStatus, selectedCustomers, selectedAssignees, changePage } = useFilters(
   props.filters, 
   'tickets.index', 
   props.tickets.current_page
 );
 
-// Dynamic dropdown options for the status filter (Empty option removed for cleaner UI interaction)
 const statusOptions = [
   { text: 'Open', value: 'open' },
   { text: 'In Progress', value: 'in_progress' },
@@ -122,13 +109,11 @@ const statusOptions = [
   { text: 'Closed', value: 'closed' },
 ];
 
-// Configuration for Assignee dynamic options
 const assigneeOptions = [
   { text: 'Unassigned', value: 'unassigned' },
   { text: 'Assigned to Me', value: 'me' }
 ];
 
-// Configuration for Vuestic Data Table columns
 const columns = computed(() => {
   const baseColumns = [
     { key: 'id', label: 'ID', sortable: false },
@@ -144,6 +129,10 @@ const columns = computed(() => {
 
   return baseColumns;
 });
+
+const openCreateModal = () => {
+  isCreateModalOpen.value = true;
+};
 
 const navigateToTicket = (event) => {
   router.get(route('tickets.show', event.item.id));

@@ -14,6 +14,7 @@ class UserController extends Controller
 {
     /**
      * Display a listing of the users.
+     * Includes filtering by search (name/email) and role.
      *
      * @param Request $request
      * @return \Inertia\Response
@@ -22,8 +23,13 @@ class UserController extends Controller
     {
         $users = User::query()
             ->when($request->input('search'), function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->input('role'), function ($query, $role) {
+                $query->where('role', $role);
             })
             ->orderBy('id', 'desc')
             ->paginate(10)
@@ -31,7 +37,7 @@ class UserController extends Controller
 
         return Inertia::render('Users/Index', [
             'users' => $users,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'role']),
             'roles' => collect(RoleEnum::cases())->map(fn($role) => $role->value),
         ]);
     }

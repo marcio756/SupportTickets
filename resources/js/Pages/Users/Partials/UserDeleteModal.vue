@@ -49,7 +49,6 @@ const closeModal = () => {
         :modelValue="show"
         @update:modelValue="handleModalUpdate"
         hide-default-actions
-        no-outside-dismiss
         size="small"
     >
         <h3 class="va-h5 mb-3" style="color: var(--va-text-primary)">

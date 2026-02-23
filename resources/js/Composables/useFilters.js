@@ -1,6 +1,6 @@
 /**
  * resources/js/Composables/useFilters.js
- * * Provides an encapsulated logic block for handling server-side filtering via Inertia.js.
+ * Provides an encapsulated logic block for handling server-side filtering via Inertia.js.
  */
 import { ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
@@ -9,25 +9,27 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1) {
     const query = ref(initialFilters.search || '');
     const selectedStatus = ref(initialFilters.status || '');
     const selectedCustomers = ref(initialFilters.customers || []);
-    
-    // Arrays para suportar opções múltiplas
     const selectedAssignees = ref(initialFilters.assignees || []);
+    const selectedRole = ref(initialFilters.role || ''); // Adicionado para suportar Users
     
     const page = ref(currentPage);
-
     let debounceTimeout = null;
 
     const fetchResults = (replace = true) => {
         if (debounceTimeout) clearTimeout(debounceTimeout);
         
         debounceTimeout = setTimeout(() => {
-            router.get(route(routeName), {
+            // Filter empty arrays and null values to keep URL clean
+            const params = {
                 search: query.value,
-                status: selectedStatus.value,
-                customers: selectedCustomers.value,
-                assignees: selectedAssignees.value,
                 page: page.value
-            }, {
+            };
+            if (selectedStatus.value) params.status = selectedStatus.value;
+            if (selectedCustomers.value?.length) params.customers = selectedCustomers.value;
+            if (selectedAssignees.value?.length) params.assignees = selectedAssignees.value;
+            if (selectedRole.value) params.role = selectedRole.value;
+
+            router.get(route(routeName), params, {
                 preserveState: true,
                 replace: replace,
                 preserveScroll: true
@@ -35,8 +37,7 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1) {
         }, 300);
     };
 
-    // Observar todas as propriedades de filtros para emitir a chamada
-    watch([query, selectedStatus, selectedCustomers, selectedAssignees], () => {
+    watch([query, selectedStatus, selectedCustomers, selectedAssignees, selectedRole], () => {
         page.value = 1; 
         fetchResults(true);
     }, { deep: true });
@@ -51,6 +52,7 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1) {
         selectedStatus,
         selectedCustomers,
         selectedAssignees,
+        selectedRole,
         page,
         changePage
     };
