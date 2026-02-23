@@ -61,22 +61,6 @@
               />
             </div>
 
-            <div class="mb-6">
-              <div class="va-title mb-2 text-sm font-bold" style="color: var(--va-dark);">Attachment (Optional)</div>
-              <va-file-upload
-                v-model="form.attachment"
-                dropzone
-                type="single"
-                file-types=".pdf,.jpg,.jpeg,.png,.zip"
-                :error="!!form.errors.attachment"
-                :error-messages="form.errors.attachment"
-                class="w-full"
-                uploadButtonText="Select File"
-                dropzoneText="Drag and drop a file here, or click to browse"
-              />
-              <p class="text-xs text-gray-500 mt-1">Maximum file size: 10MB. Allowed types: PDF, JPG, PNG, ZIP.</p>
-            </div>
-
             <div class="flex justify-end gap-3 mt-6">
               <va-button preset="secondary" @click="cancel">Cancel</va-button>
               <va-button type="submit" color="primary" :loading="form.processing">
@@ -109,10 +93,11 @@ const form = useForm({
   title: '',
   message: '',
   customer_id: '',
-  attachment: [], 
 });
 
-// Adapts the raw backend data structure into the specific format required by the Vuestic dropdown component
+/**
+ * Adapts raw backend data for Vuestic select
+ */
 const customerOptions = computed(() => {
   return props.customers.map(customer => ({
     value: customer.id,
@@ -121,39 +106,15 @@ const customerOptions = computed(() => {
 });
 
 /**
- * Validates file constraints on the client side before dispatching the payload to the server.
- * This prevents unnecessary network load and handles cases where reverse proxies might drop requests over 10MB.
+ * Submits the ticket without attachment logic
  */
 const submit = () => {
-  form.clearErrors('attachment');
-
-  let fileToUpload = null;
-
-  // Safely extract the file from Vuestic wrapper
-  if (form.attachment && form.attachment.length > 0) {
-    fileToUpload = form.attachment[0];
-    if (fileToUpload && fileToUpload.file instanceof File) {
-        fileToUpload = fileToUpload.file;
-    }
-  }
-
-  if (fileToUpload) {
-    const maxSizeInBytes = 10 * 1024 * 1024; 
-    
-    if (fileToUpload.size > maxSizeInBytes) {
-      form.setError('attachment', 'The selected file is too large. Maximum allowed size is 10MB.');
-      return;
-    }
-  }
-
   form.transform((data) => {
     return {
       ...data,
       customer_id: data.customer_id?.value || data.customer_id,
-      attachment: fileToUpload,
     };
   }).post(route('tickets.store'), {
-    forceFormData: true, // Forces multipart/form-data for file uploads
     preserveScroll: true,
   });
 };

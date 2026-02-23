@@ -22,7 +22,6 @@ const form = useForm({
     title: '',
     message: '',
     customer_id: '',
-    attachment: [],
 });
 
 /**
@@ -46,41 +45,17 @@ const customerOptions = computed(() => {
 });
 
 /**
- * Submits the form handling client-side file limits and payload transformation
+ * Submits the form via modal
  */
 const submit = () => {
-    form.clearErrors('attachment');
-
-    let fileToUpload = null;
-
-    // Safely extract the file from Vuestic wrapper
-    if (form.attachment && form.attachment.length > 0) {
-        fileToUpload = form.attachment[0];
-        if (fileToUpload && fileToUpload.file instanceof File) {
-            fileToUpload = fileToUpload.file;
-        }
-    }
-
-    // Validate 10MB limit on the client side
-    if (fileToUpload) {
-        const maxSizeInBytes = 10 * 1024 * 1024;
-
-        if (fileToUpload.size > maxSizeInBytes) {
-            form.setError('attachment', 'The selected file is too large. Maximum allowed size is 10MB.');
-            return;
-        }
-    }
-
     form.transform((data) => {
         return {
             ...data,
             customer_id: data.customer_id?.value || data.customer_id,
-            attachment: fileToUpload,
         };
     }).post(route('tickets.store'), {
-        forceFormData: true, // Forces multipart/form-data for file uploads
         preserveScroll: true,
-        onSuccess: () => closeModal(), // Se falhar, o modal mantém-se aberto com os erros
+        onSuccess: () => closeModal(),
     });
 };
 
@@ -151,24 +126,6 @@ const closeModal = () => {
                     required
                     class="w-full"
                 />
-            </div>
-
-            <div>
-                <div class="mb-2 text-sm font-bold" style="color: var(--va-text-primary);">Attachment (Optional)</div>
-                <va-file-upload
-                    v-model="form.attachment"
-                    dropzone
-                    type="single"
-                    file-types=".pdf,.jpg,.jpeg,.png,.zip"
-                    :error="!!form.errors.attachment"
-                    :error-messages="form.errors.attachment"
-                    uploadButtonText="Select File"
-                    dropzoneText="Drag and drop a file here, or click to browse"
-                    class="w-full"
-                />
-                <p class="text-xs mt-2" style="color: var(--va-secondary)">
-                    Maximum file size: 10MB. Allowed types: PDF, JPG, PNG, ZIP.
-                </p>
             </div>
 
             <div class="flex justify-end gap-3 mt-2">
