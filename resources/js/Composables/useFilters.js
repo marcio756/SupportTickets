@@ -1,45 +1,68 @@
-import { ref, computed } from 'vue';
-
 /**
- * Provides an encapsulated logic block for filtering collections of objects.
- * Designed to be generic and reusable across different resource listings like Tickets or Users.
- * * @param {Array} initialData - The raw array of objects to filter.
- * @param {Array} searchFields - Keys in the objects to match the search query against.
- * @returns {Object} State and computed properties for the filtering context.
+ * resources/js/Composables/useFilters.js
+ * * Provides an encapsulated logic block for handling server-side filtering via Inertia.js.
+ * * @param {Object} initialFilters - The current filters passed from the backend.
+ * @param {String} routeName - The named route to fetch the filtered data from.
+ * @param {Number} currentPage - The current pagination page.
+ * @returns {Object} Reactive filter states and actions.
  */
-export function useFilters(initialData = [], searchFields = ['title', 'name']) {
-    const query = ref('');
-    const selectedStatus = ref('');
-    const sourceData = ref(initialData);
+import { ref, watch } from 'vue';
+import { router } from '@inertiajs/vue3';
 
-    const setSourceData = (data) => {
-        sourceData.value = data;
+export function useFilters(initialFilters = {}, routeName, currentPage = 1) {
+    const query = ref(initialFilters.search || '');
+    const selectedStatus = ref(initialFilters.status || '');
+    const selectedCustomers = ref(initialFilters.customers || []);
+    
+    // Parse boolean value from URL safely
+    const showUnassigned = ref(
+        initialFilters.unassigned === 'true' || initialFilters.unassigned === true
+    );
+    
+    const page = ref(currentPage);
+
+    let debounceTimeout = null;
+
+    /**
+     * Dispatches the Inertia request to fetch new filtered or paginated data.
+     * @param {Boolean} replace - Determines if the browser history should be replaced.
+     */
+    const fetchResults = (replace = true) => {
+        if (debounceTimeout) clearTimeout(debounceTimeout);
+        
+        debounceTimeout = setTimeout(() => {
+            router.get(route(routeName), {
+                search: query.value,
+                status: selectedStatus.value,
+                customers: selectedCustomers.value,
+                unassigned: showUnassigned.value,
+                page: page.value
+            }, {
+                preserveState: true,
+                replace: replace,
+                preserveScroll: true
+            });
+        }, 300);
     };
 
-    // Computes the intersection of the search query and the status dropdown to yield the final dataset
-    const filteredResults = computed(() => {
-        let results = sourceData.value;
+    // Watch for text, status dropdown, customer selection, or unassigned toggle changes
+    watch([query, selectedStatus, selectedCustomers, showUnassigned], () => {
+        page.value = 1; // Always return to first page on new search
+        fetchResults(true);
+    }, { deep: true });
 
-        if (selectedStatus.value) {
-            results = results.filter(item => item.status === selectedStatus.value);
-        }
-
-        if (query.value) {
-            const lowerQuery = query.value.toLowerCase();
-            results = results.filter(item => {
-                return searchFields.some(field => {
-                    return item[field] && String(item[field]).toLowerCase().includes(lowerQuery);
-                });
-            });
-        }
-
-        return results;
-    });
+    // Manually trigger a page change without losing current filters
+    const changePage = (newPage) => {
+        page.value = newPage;
+        fetchResults(false);
+    };
 
     return {
         query,
         selectedStatus,
-        filteredResults,
-        setSourceData
+        selectedCustomers,
+        showUnassigned,
+        page,
+        changePage
     };
 }

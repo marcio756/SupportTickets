@@ -14,7 +14,11 @@
         <ResourceFilter
           v-model:query="query"
           v-model:status="selectedStatus"
+          v-model:customers="selectedCustomers"
+          v-model:unassigned="showUnassigned"
           :status-options="statusOptions"
+          :customer-options="customersList"
+          :is-supporter="isSupporter"
         />
       </va-card-content>
     </va-card>
@@ -22,7 +26,7 @@
     <va-card>
       <va-card-content>
         <va-data-table
-          :items="filteredResults"
+          :items="tickets.data"
           :columns="columns"
           :loading="false"
           striped
@@ -55,12 +59,22 @@
             <span v-if="rowData.assignee" class="text-sm text-gray-600">
               {{ rowData.assignee.name }}
             </span>
-            <span v-else class="text-sm italic text-gray-400">Unassigned</span>
+            <span v-else class="text-sm font-bold text-red-500">Unassigned</span>
           </template>
         </va-data-table>
         
         <div v-if="tickets.data.length === 0" class="text-center py-8 text-gray-500">
-          No tickets found.
+          No tickets found matching your filters.
+        </div>
+
+        <div v-if="tickets.last_page > 1" class="flex justify-center mt-6">
+          <va-pagination
+            v-model="page"
+            :pages="tickets.last_page"
+            :visible-pages="5"
+            color="primary"
+            @update:modelValue="changePage"
+          />
         </div>
       </va-card-content>
     </va-card>
@@ -68,7 +82,7 @@
 </template>
 
 <script setup>
-import { computed, watch, ref } from 'vue';
+import { computed } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
@@ -80,13 +94,24 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  filters: {
+    type: Object,
+    default: () => ({}),
+  },
+  customersList: {
+    type: Array,
+    default: () => [],
+  }
 });
 
 const isSupporter = usePage().props.auth.user.role !== 'customer';
 
-// Initializes the reusable filtering logic
-const searchFields = isSupporter ? ['title', 'customer.name'] : ['title'];
-const { query, selectedStatus, filteredResults, setSourceData } = useFilters(props.tickets.data, searchFields);
+// Consume the Server-Side filtering composable
+const { query, selectedStatus, selectedCustomers, showUnassigned, page, changePage } = useFilters(
+  props.filters, 
+  'tickets.index', 
+  props.tickets.current_page
+);
 
 // Dynamic dropdown options for the filter
 const statusOptions = [
@@ -100,10 +125,10 @@ const statusOptions = [
 // Configuration for Vuestic Data Table columns
 const columns = computed(() => {
   const baseColumns = [
-    { key: 'id', label: 'ID', sortable: true },
-    { key: 'title', label: 'Subject', sortable: true },
-    { key: 'status', label: 'Status', sortable: true },
-    { key: 'created_at', label: 'Created On', sortable: true },
+    { key: 'id', label: 'ID', sortable: false },
+    { key: 'title', label: 'Subject', sortable: false },
+    { key: 'status', label: 'Status', sortable: false },
+    { key: 'created_at', label: 'Created On', sortable: false },
   ];
 
   if (isSupporter) {
@@ -112,11 +137,6 @@ const columns = computed(() => {
   }
 
   return baseColumns;
-});
-
-// Reactively update filter data if Inertia passes new props
-watch(() => props.tickets.data, (newData) => {
-  setSourceData(newData);
 });
 
 const navigateToTicket = (event) => {
