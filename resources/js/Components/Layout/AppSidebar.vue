@@ -26,22 +26,34 @@ defineProps({
   },
 });
 
-// Defines the sidebar structure dynamically based on the user's role to keep presentation and logic decoupled
+/**
+ * Dynamically determines the sidebar menu items based on the user's role.
+ * Uses computed to maintain reactivity during route changes or state updates.
+ * @returns {Array} List of navigation objects.
+ */
 const navigationItems = computed(() => {
-  const role = usePage().props.auth.user?.role;
+  // Accessing role via computed ensures it updates if the auth object changes
+  const user = usePage().props.auth.user;
+  const role = user?.role;
+
   const items = [
     { title: 'Dashboard', icon: 'dashboard', route: 'dashboard' },
     { title: 'Tickets', icon: 'confirmation_number', route: 'tickets.index' },
   ];
 
-  if (role === 'supporter' || role === 'admin') {
+  // Supporters and Admins have access to the User management
+  if (role === 'supporter') {
     items.push({ title: 'Users', icon: 'group', route: 'users.index' });
   }
 
   return items;
 });
 
-// Evaluates if the current Inertia URL matches the navigation item to highlight the active state
+/**
+ * Checks if the navigation item route is the current active route.
+ * @param {string} routeName - The name of the route to check.
+ * @returns {boolean}
+ */
 const isCurrentRoute = (routeName) => {
   return route().current(routeName);
 };
@@ -49,7 +61,7 @@ const isCurrentRoute = (routeName) => {
 
 <style scoped>
 .app-sidebar {
-  height: calc(100vh - 64px); /* Subtracts the approximate height of the navbar */
+  height: calc(100vh - 64px);
 }
 .sidebar-link {
   text-decoration: none;

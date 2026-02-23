@@ -24,6 +24,17 @@
             </va-avatar>
           </template>
           <va-dropdown-content class="user-dropdown">
+            <div class="dropdown-item theme-item" @click="toggleTheme">
+              <va-icon 
+                :name="isDark ? 'light_mode' : 'dark_mode'" 
+                size="small" 
+                class="mr-2" 
+              />
+              <span>{{ isDark ? 'Modo Claro' : 'Modo Escuro' }}</span>
+            </div>
+
+            <va-divider class="m-0" />
+
             <Link href="/profile" class="dropdown-item">Profile</Link>
             <Link href="/logout" method="post" as="button" class="dropdown-item text-danger">Logout</Link>
           </va-dropdown-content>
@@ -36,10 +47,28 @@
 <script setup>
 import { computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import { useColors } from 'vuestic-ui';
 
 defineEmits(['toggle-sidebar']);
 
-// Computes the user initials for the avatar placeholder to avoid complex image handling temporarily
+const { currentPresetName, applyPreset } = useColors();
+
+/**
+ * Reactively tracks the current theme status.
+ */
+const isDark = computed(() => currentPresetName.value === 'dark');
+
+/**
+ * Switches the global application theme.
+ */
+const toggleTheme = () => {
+    applyPreset(isDark.value ? 'light' : 'dark');
+};
+
+/**
+ * Computes initials for the user avatar based on authenticated data.
+ * @returns {string} User initials or 'U' fallback.
+ */
 const userInitials = computed(() => {
   const user = usePage().props.auth.user;
   if (!user || !user.name) return 'U';
@@ -80,7 +109,8 @@ const userInitials = computed(() => {
 .user-dropdown {
   display: flex;
   flex-direction: column;
-  min-width: 150px;
+  min-width: 170px;
+  padding: 0;
 }
 .dropdown-item {
   padding: 0.75rem 1rem;
@@ -91,11 +121,24 @@ const userInitials = computed(() => {
   border: none;
   text-align: left;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
 }
 .dropdown-item:hover {
   background-color: var(--va-background-element);
 }
+.theme-item {
+  color: var(--va-primary);
+  font-weight: 500;
+}
 .text-danger {
   color: var(--va-danger);
+}
+.mr-2 {
+  margin-right: 0.75rem;
+}
+.m-0 {
+  margin: 0;
 }
 </style>

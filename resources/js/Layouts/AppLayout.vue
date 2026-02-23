@@ -1,24 +1,30 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue'; // Added onMounted
 import { Head, Link, usePage } from '@inertiajs/vue3';
-// AQUI ESTAVA A FALTAR ESTE IMPORT!
+import { useColors } from 'vuestic-ui'; // Import useColors to apply theme on load
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
+import ThemeButton from '@/Components/navbar/ThemeButton.vue';
 
-// Props
-defineProps({
-    title: String,
-});
+defineProps({ title: String });
 
-// State for Sidebar
+const { applyPreset, currentPresetName } = useColors();
 const isSidebarMinimized = ref(false);
 const showSidebar = ref(true);
-
-// Get User from Inertia Shared Props
 const user = computed(() => usePage().props.auth.user);
 
 const toggleSidebar = () => {
     isSidebarMinimized.value = !isSidebarMinimized.value;
 };
+
+/**
+ * Ensures the user's theme preference is applied as soon as the application loads.
+ */
+onMounted(() => {
+    const savedTheme = localStorage.getItem('app-theme');
+    if (savedTheme && savedTheme !== currentPresetName.value) {
+        applyPreset(savedTheme);
+    }
+});
 </script>
 
 <template>
@@ -31,7 +37,7 @@ const toggleSidebar = () => {
             class="h-screen"
         >
             <template #top>
-                <VaNavbar color="primary" class="py-2 app-navbar">
+                <VaNavbar color="primary" class="py-2 app-navbar shadow-md">
                     <template #left>
                         <VaButton
                             preset="secondary"
@@ -49,15 +55,18 @@ const toggleSidebar = () => {
                         <div class="flex items-center gap-4">
                              <VaDropdown placement="bottom-end">
                                 <template #anchor>
-                                    <div class="flex items-center cursor-pointer gap-2 text-white">
+                                    <div class="flex items-center cursor-pointer gap-2 text-white px-2 py-1 rounded hover:bg-white/10 transition-colors">
                                         <UserAvatar :user="user" size="32px" />
-                                        
                                         <span class="hidden sm:block font-medium">{{ user.name }}</span>
                                         <VaIcon name="expand_more" />
                                     </div>
                                 </template>
 
                                 <VaDropdownContent class="p-2 min-w-[200px]">
+                                    <div class="mb-1 border-b border-gray-100 dark:border-gray-700 pb-1">
+                                        <ThemeButton />
+                                    </div>
+
                                     <Link :href="route('profile.edit')" class="block w-full">
                                         <VaButton preset="plain" color="textPrimary" class="w-full justify-start mb-1" icon="person">
                                             Perfil
@@ -82,11 +91,9 @@ const toggleSidebar = () => {
                     :minimized="isSidebarMinimized"
                     width="16rem"
                     minimized-width="4rem"
-                    class="border-r border-gray-200"
+                    class="border-r border-gray-200 dark:border-gray-800"
                 >
-                    <VaSidebarItem
-                        :active="route().current('dashboard')"
-                    >
+                    <VaSidebarItem :active="route().current('dashboard')">
                         <Link :href="route('dashboard')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
                             <VaSidebarItemContent>
                                 <VaIcon name="dashboard" />
@@ -97,9 +104,7 @@ const toggleSidebar = () => {
                         </Link>
                     </VaSidebarItem>
 
-                    <VaSidebarItem
-                        :active="route().current('tickets.*')"
-                    >
+                    <VaSidebarItem :active="route().current('tickets.*')">
                         <Link :href="route('tickets.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
                             <VaSidebarItemContent>
                                 <VaIcon name="confirmation_number" />
@@ -110,8 +115,8 @@ const toggleSidebar = () => {
                         </Link>
                     </VaSidebarItem>
                     
-                     <VaSidebarItem
-                        v-if="user.role === 'admin' || user.role === 'supporter'"
+                    <VaSidebarItem
+                        v-if="user?.role === 'supporter' || user?.role === 'admin'"
                         :active="route().current('users.*')"
                     >
                         <Link :href="route('users.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
@@ -127,9 +132,9 @@ const toggleSidebar = () => {
             </template>
 
             <template #content>
-                <main class="p-6 bg-gray-50 min-h-full">
+                <main class="p-6 bg-gray-50 dark:bg-gray-900 min-h-full transition-colors duration-300">
                     <header v-if="$slots.header" class="mb-6">
-                        <h1 class="text-2xl font-bold text-gray-800">
+                        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
                             <slot name="header" />
                         </h1>
                     </header>

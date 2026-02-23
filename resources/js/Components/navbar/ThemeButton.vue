@@ -1,47 +1,40 @@
 <script setup>
 /**
- * Component responsible for toggling the application's global color theme 
- * between 'light' and 'dark' using Vuestic UI composables.
+ * Component responsible for toggling the application's global color theme.
+ * Uses the icon prop for consistency with other menu buttons.
  */
 import { computed } from 'vue';
 import { useColors } from 'vuestic-ui';
 
 const { currentPresetName, applyPreset } = useColors();
 
-/**
- * Evaluates the currently active theme preset.
- * @returns {boolean} Returns true if the current theme is 'dark', false otherwise.
- */
 const isDark = computed(() => currentPresetName.value === 'dark');
 
 /**
- * Toggles the UI theme preset based on the current state.
- * @returns {void}
+ * Toggles the theme and persists the choice.
  */
 const toggleTheme = () => {
-    applyPreset(isDark.value ? 'light' : 'dark');
+    const newTheme = isDark.value ? 'light' : 'dark';
+    applyPreset(newTheme);
+    localStorage.setItem('app-theme', newTheme);
 };
 </script>
 
 <template>
     <VaButton
-        preset="secondary"
+        preset="plain"
         color="textPrimary"
-        class="theme-button flex-shrink-0"
+        class="w-full justify-start"
+        :icon="isDark ? 'light_mode' : 'dark_mode'"
         @click="toggleTheme"
-        aria-label="Toggle Theme"
     >
-        <VaIcon size="large" :name="isDark ? 'light_mode' : 'dark_mode'" />
+        {{ isDark ? 'Modo Claro' : 'Modo Escuro' }}
     </VaButton>
 </template>
 
 <style scoped>
-/* Component-specific styles for smooth hover transitions */
-.theme-button {
-    cursor: pointer;
-    transition: opacity 0.2s ease-in-out;
-}
-.theme-button:hover {
-    opacity: 0.8;
+/* Standardizing font size with the rest of the dropdown items */
+.va-button {
+    font-weight: 400;
 }
 </style>
