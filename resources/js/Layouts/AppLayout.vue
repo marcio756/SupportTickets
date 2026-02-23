@@ -1,8 +1,7 @@
 <script setup>
 /**
  * Main application layout for authenticated users.
- * Fixed sidebar with independent scroll and content area scrolling fix.
- * Language: English.
+ * Persists sidebar state and handles global theme initialization.
  */
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
@@ -21,17 +20,21 @@ const showSidebar = ref(true);
 const user = computed(() => usePage().props.auth.user);
 
 /**
- * Toggles the sidebar minimized state.
+ * Persists sidebar toggle state in localStorage.
  */
 const toggleSidebar = () => {
     isSidebarMinimized.value = !isSidebarMinimized.value;
+    localStorage.setItem('app-sidebar-minimized', isSidebarMinimized.value);
 };
 
-/**
- * Ensures theme is correctly applied on boot.
- */
 onMounted(() => {
     initTheme();
+    
+    // Restore sidebar state from persistence
+    const savedState = localStorage.getItem('app-sidebar-minimized');
+    if (savedState !== null) {
+        isSidebarMinimized.value = savedState === 'true';
+    }
 });
 </script>
 
@@ -54,9 +57,11 @@ onMounted(() => {
                             color="textPrimary" 
                             class="mr-3"
                         />
-                        <span class="text-xl font-bold text-white uppercase tracking-wider">
-                            Support<span class="text-yellow-400">Tickets</span>
-                        </span>
+                        <Link href="/" class="flex items-center hover:opacity-90 transition-opacity">
+                            <span class="text-xl font-bold text-white uppercase tracking-wider select-none">
+                                Support<span class="text-yellow-400">Tickets</span>
+                            </span>
+                        </Link>
                     </template>
 
                     <template #right>
@@ -70,17 +75,15 @@ onMounted(() => {
                                     </div>
                                 </template>
 
-                                <VaDropdownContent class="p-2 min-w-[200px] dark:bg-gray-800 border dark:border-gray-700 shadow-xl">
+                                <VaDropdownContent class="p-2 min-w-[200px] dark:bg-gray-800 border dark:border-gray-700">
                                     <div class="mb-1 border-b border-gray-100 dark:border-gray-700 pb-1 flex justify-center">
                                         <ThemeButton />
                                     </div>
-
                                     <Link :href="route('profile.edit')" class="block w-full">
                                         <VaButton preset="plain" color="textPrimary" class="w-full justify-start mb-1" icon="person">
                                             Profile
                                         </VaButton>
                                     </Link>
-                                    
                                     <Link :href="route('logout')" method="post" as="button" class="block w-full">
                                         <VaButton preset="plain" color="danger" class="w-full justify-start" icon="logout">
                                             Logout
@@ -100,11 +103,11 @@ onMounted(() => {
                     width="16rem"
                     minimized-width="4rem"
                     color="background-secondary"
-                    class="h-full border-r border-gray-200 dark:border-gray-800 flex flex-col"
+                    class="h-full border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-hidden"
                 >
                     <div class="flex-grow overflow-y-auto overflow-x-hidden">
                         <VaSidebarItem :active="route().current('dashboard')">
-                            <Link :href="route('dashboard')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
+                            <Link :href="route('dashboard')" class="w-full h-full flex items-center p-3 text-inherit decoration-none">
                                 <VaSidebarItemContent>
                                     <VaIcon name="dashboard" />
                                     <VaSidebarItemTitle v-if="!isSidebarMinimized">Dashboard</VaSidebarItemTitle>
@@ -113,7 +116,7 @@ onMounted(() => {
                         </VaSidebarItem>
 
                         <VaSidebarItem :active="route().current('tickets.*')">
-                            <Link :href="route('tickets.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
+                            <Link :href="route('tickets.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-none">
                                 <VaSidebarItemContent>
                                     <VaIcon name="confirmation_number" />
                                     <VaSidebarItemTitle v-if="!isSidebarMinimized">Tickets</VaSidebarItemTitle>
@@ -125,7 +128,7 @@ onMounted(() => {
                             v-if="user?.role === 'supporter' || user?.role === 'admin'"
                             :active="route().current('users.*')"
                         >
-                            <Link :href="route('users.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
+                            <Link :href="route('users.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-none">
                                 <VaSidebarItemContent>
                                     <VaIcon name="group" />
                                     <VaSidebarItemTitle v-if="!isSidebarMinimized">Users</VaSidebarItemTitle>
@@ -153,16 +156,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.app-layout {
-    height: 100vh;
-}
-
-/* Ensure the Vuestic internal containers respect our overflow rules */
-:deep(.va-layout__area--content) {
-    height: 100%;
-}
-
-:deep(.va-sidebar__menu) {
-    background-color: transparent !important;
-}
+.app-layout { height: 100vh; }
+.decoration-none { text-decoration: none !important; }
+:deep(.va-sidebar__menu) { background-color: transparent !important; }
 </style>

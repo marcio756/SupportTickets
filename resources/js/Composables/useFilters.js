@@ -1,59 +1,58 @@
 /**
- * resources/js/Composables/useFilters.js
- * Provides an encapsulated logic block for handling server-side filtering via Inertia.js.
+ * Composable to manage resource filtering with localStorage persistence.
+ * Follows SRP by isolating filter logic from the components.
  */
-import { ref, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, watch, onMounted } from 'vue';
 
-export function useFilters(initialFilters = {}, routeName, currentPage = 1) {
-    const query = ref(initialFilters.search || '');
-    const selectedStatus = ref(initialFilters.status || '');
-    const selectedCustomers = ref(initialFilters.customers || []);
-    const selectedAssignees = ref(initialFilters.assignees || []);
-    const selectedRole = ref(initialFilters.role || ''); // Adicionado para suportar Users
-    
-    const page = ref(currentPage);
-    let debounceTimeout = null;
+/**
+ * @param {Object} initialValues - The default filter values.
+ * @param {string} storageKey - Unique key to persist filters in localStorage.
+ */
+export function useFilters(initialValues, storageKey) {
+    const filters = ref({ ...initialValues });
 
-    const fetchResults = (replace = true) => {
-        if (debounceTimeout) clearTimeout(debounceTimeout);
+    /**
+     * Loads saved filters from localStorage if they exist.
+     */
+    const initFilters = () => {
+        if (!storageKey) return;
         
-        debounceTimeout = setTimeout(() => {
-            // Filter empty arrays and null values to keep URL clean
-            const params = {
-                search: query.value,
-                page: page.value
-            };
-            if (selectedStatus.value) params.status = selectedStatus.value;
-            if (selectedCustomers.value?.length) params.customers = selectedCustomers.value;
-            if (selectedAssignees.value?.length) params.assignees = selectedAssignees.value;
-            if (selectedRole.value) params.role = selectedRole.value;
-
-            router.get(route(routeName), params, {
-                preserveState: true,
-                replace: replace,
-                preserveScroll: true
-            });
-        }, 300);
+        const saved = localStorage.getItem(`filters-${storageKey}`);
+        if (saved) {
+            try {
+                filters.value = { ...initialValues, ...JSON.parse(saved) };
+            } catch (e) {
+                console.error('Error parsing persisted filters', e);
+            }
+        }
     };
 
-    watch([query, selectedStatus, selectedCustomers, selectedAssignees, selectedRole], () => {
-        page.value = 1; 
-        fetchResults(true);
-    }, { deep: true });
-
-    const changePage = (newPage) => {
-        page.value = newPage;
-        fetchResults(false);
+    /**
+     * Resets filters to their initial state and clears storage.
+     */
+    const resetFilters = () => {
+        filters.value = { ...initialValues };
+        if (storageKey) {
+            localStorage.removeItem(`filters-${storageKey}`);
+        }
     };
+
+    // Initialize on call
+    initFilters();
+
+    // Watch for changes and persist
+    watch(
+        filters,
+        (newFilters) => {
+            if (storageKey) {
+                localStorage.setItem(`filters-${storageKey}`, JSON.stringify(newFilters));
+            }
+        },
+        { deep: true }
+    );
 
     return {
-        query,
-        selectedStatus,
-        selectedCustomers,
-        selectedAssignees,
-        selectedRole,
-        page,
-        changePage
+        filters,
+        resetFilters,
     };
 }
