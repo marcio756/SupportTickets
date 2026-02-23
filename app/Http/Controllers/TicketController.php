@@ -15,7 +15,6 @@ class TicketController extends Controller
 {
     /**
      * Display a listing of the tickets.
-     * Integrates server-side filtering, pagination, and unassigned ticket isolation.
      */
     public function index(Request $request): Response
     {
@@ -49,14 +48,23 @@ class TicketController extends Controller
 
         // Apply multiple customers filter
         if ($request->filled('customers') && $user->isSupporter()) {
-            // Guarantee it's an array to feed the whereIn clause correctly
             $customerIds = is_array($request->customers) ? $request->customers : explode(',', $request->customers);
             $query->whereIn('customer_id', $customerIds);
         }
 
-        // Apply unassigned tickets filter (Supporters only)
-        if (filter_var($request->unassigned, FILTER_VALIDATE_BOOLEAN) && $user->isSupporter()) {
-            $query->whereNull('assigned_to');
+        // Apply multi-select assignment filter (Supporters only)
+        if ($request->filled('assignees') && $user->isSupporter()) {
+            $assignees = is_array($request->assignees) ? $request->assignees : explode(',', $request->assignees);
+            
+            // Usar uma subquery lógica para agrupar as opções "OU"
+            $query->where(function ($q) use ($assignees, $user) {
+                if (in_array('unassigned', $assignees)) {
+                    $q->orWhereNull('assigned_to');
+                }
+                if (in_array('me', $assignees)) {
+                    $q->orWhere('assigned_to', $user->id);
+                }
+            });
         }
 
         // Execute query with pagination and preserve query strings
@@ -73,14 +81,13 @@ class TicketController extends Controller
 
         return Inertia::render('Tickets/Index', [
             'tickets' => $tickets,
-            'filters' => $request->only(['search', 'status', 'customers', 'unassigned']),
+            'filters' => $request->only(['search', 'status', 'customers', 'assignees']),
             'customersList' => $customersList,
         ]);
     }
 
     /**
      * Show the form for creating a new ticket.
-     * Passes the customer list if the authenticated user is a supporter.
      */
     public function create(Request $request): Response
     {

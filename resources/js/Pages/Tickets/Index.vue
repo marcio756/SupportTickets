@@ -15,9 +15,10 @@
           v-model:query="query"
           v-model:status="selectedStatus"
           v-model:customers="selectedCustomers"
-          v-model:unassigned="showUnassigned"
+          v-model:assignees="selectedAssignees"
           :status-options="statusOptions"
           :customer-options="customersList"
+          :assignee-options="assigneeOptions"
           :is-supporter="isSupporter"
         />
       </va-card-content>
@@ -107,19 +108,24 @@ const props = defineProps({
 const isSupporter = usePage().props.auth.user.role !== 'customer';
 
 // Consume the Server-Side filtering composable
-const { query, selectedStatus, selectedCustomers, showUnassigned, page, changePage } = useFilters(
+const { query, selectedStatus, selectedCustomers, selectedAssignees, page, changePage } = useFilters(
   props.filters, 
   'tickets.index', 
   props.tickets.current_page
 );
 
-// Dynamic dropdown options for the filter
+// Dynamic dropdown options for the status filter (Empty option removed for cleaner UI interaction)
 const statusOptions = [
-  { text: 'All Statuses', value: '' },
   { text: 'Open', value: 'open' },
   { text: 'In Progress', value: 'in_progress' },
   { text: 'Resolved', value: 'resolved' },
   { text: 'Closed', value: 'closed' },
+];
+
+// Configuration for Assignee dynamic options
+const assigneeOptions = [
+  { text: 'Unassigned', value: 'unassigned' },
+  { text: 'Assigned to Me', value: 'me' }
 ];
 
 // Configuration for Vuestic Data Table columns

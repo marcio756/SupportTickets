@@ -18,12 +18,17 @@
       v-model="internalStatus"
       :options="statusOptions"
       value-by="value"
-      placeholder="Filter by Status"
+      placeholder="All Statuses"
       clearable
       preset="bordered"
       class="status-select"
       @update:modelValue="emitFilters"
-    />
+    >
+        <template #content="{ valueArray }">
+            <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
+            <span v-else class="text-gray-400">All Statuses</span>
+        </template>
+    </va-select>
 
     <va-select
       v-if="isSupporter && customerOptions && customerOptions.length > 0"
@@ -48,19 +53,42 @@
         </template>
     </va-select>
 
-    <va-checkbox
-      v-if="isSupporter"
-      v-model="internalUnassigned"
-      label="Unassigned Only"
-      class="unassigned-checkbox"
+    <va-select
+      v-if="isSupporter && assigneeOptions && assigneeOptions.length > 0"
+      v-model="internalAssignees"
+      :options="assigneeOptions"
+      multiple
+      value-by="value"
+      placeholder="Filter by Assignment"
+      clearable
+      preset="bordered"
+      class="assignment-select"
       @update:modelValue="emitFilters"
-    />
+    >
+        <template #content="{ valueArray }">
+            <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
+            <span v-else-if="valueArray.length > 1" class="font-bold text-sm">
+                {{ valueArray.length }} selected
+            </span>
+            <span v-else class="text-gray-400">Filter by Assignment</span>
+        </template>
+    </va-select>
+
+    <va-button
+      v-if="activeFiltersCount > 1"
+      preset="plain"
+      color="danger"
+      icon="delete_sweep"
+      @click="clearAllFilters"
+      class="clear-all-btn ml-auto"
+    >
+      Clear All
+    </va-button>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
-import { VaCheckbox } from 'vuestic-ui';
+import { ref, watch, computed } from 'vue';
 
 const props = defineProps({
   query: {
@@ -75,9 +103,9 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-  unassigned: {
-    type: Boolean,
-    default: false,
+  assignees: {
+    type: Array,
+    default: () => [],
   },
   statusOptions: {
     type: Array,
@@ -87,26 +115,53 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  assigneeOptions: {
+    type: Array,
+    default: () => [],
+  },
   isSupporter: {
     type: Boolean,
     default: false,
   },
 });
 
-const emit = defineEmits(['update:query', 'update:status', 'update:customers', 'update:unassigned']);
+const emit = defineEmits(['update:query', 'update:status', 'update:customers', 'update:assignees']);
 
 const internalQuery = ref(props.query);
 const internalStatus = ref(props.status);
 const internalCustomers = ref(props.customers);
-const internalUnassigned = ref(props.unassigned);
+const internalAssignees = ref(props.assignees);
 
 // Synchronizes the local component state with the parent state whenever external changes occur
 watch(() => props.query, (newVal) => { internalQuery.value = newVal; });
 watch(() => props.status, (newVal) => { internalStatus.value = newVal; });
 watch(() => props.customers, (newVal) => { internalCustomers.value = newVal; });
-watch(() => props.unassigned, (newVal) => { internalUnassigned.value = newVal; });
+watch(() => props.assignees, (newVal) => { internalAssignees.value = newVal; });
 
-// Emits the updated values back to the parent component where the composable resides
+/**
+ * Computes how many individual filter categories are currently active.
+ * @returns {Number} The count of active filters.
+ */
+const activeFiltersCount = computed(() => {
+    let count = 0;
+    if (internalQuery.value && internalQuery.value.trim() !== '') count++;
+    if (internalStatus.value && internalStatus.value !== '') count++;
+    if (internalCustomers.value && internalCustomers.value.length > 0) count++;
+    if (internalAssignees.value && internalAssignees.value.length > 0) count++;
+    return count;
+});
+
+/**
+ * Resets all internal filter states to their default empty values and emits the update.
+ */
+const clearAllFilters = () => {
+    internalQuery.value = '';
+    internalStatus.value = '';
+    internalCustomers.value = [];
+    internalAssignees.value = [];
+    emitFilters();
+};
+
 const emitFilters = () => {
   const statusValue = typeof internalStatus.value === 'object' && internalStatus.value !== null 
       ? internalStatus.value.value 
@@ -115,7 +170,7 @@ const emitFilters = () => {
   emit('update:query', internalQuery.value);
   emit('update:status', statusValue || '');
   emit('update:customers', internalCustomers.value || []);
-  emit('update:unassigned', internalUnassigned.value);
+  emit('update:assignees', internalAssignees.value || []);
 };
 </script>
 
@@ -137,7 +192,11 @@ const emitFilters = () => {
 .customer-select {
   width: 250px;
 }
-.unassigned-checkbox {
+.assignment-select {
+  width: 220px;
+}
+.clear-all-btn {
+  /* Ensure the button stays aligned nicely on larger screens */
   margin-left: auto;
 }
 </style>
