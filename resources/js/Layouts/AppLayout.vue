@@ -1,15 +1,22 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'; // Added onMounted
+/**
+ * Main application layout for authenticated users.
+ * Handles sidebar logic, theme initialization, and shared navigation.
+ */
+import { ref, computed, onMounted } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { useColors } from 'vuestic-ui'; // Import useColors to apply theme on load
+import { useColors } from 'vuestic-ui';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import ThemeButton from '@/Components/navbar/ThemeButton.vue';
 
-defineProps({ title: String });
+defineProps({
+    title: String,
+});
 
 const { applyPreset, currentPresetName } = useColors();
 const isSidebarMinimized = ref(false);
 const showSidebar = ref(true);
+
 const user = computed(() => usePage().props.auth.user);
 
 const toggleSidebar = () => {
@@ -17,12 +24,18 @@ const toggleSidebar = () => {
 };
 
 /**
- * Ensures the user's theme preference is applied as soon as the application loads.
+ * Loads the user's theme preference on mount to avoid style flickering.
  */
 onMounted(() => {
     const savedTheme = localStorage.getItem('app-theme');
-    if (savedTheme && savedTheme !== currentPresetName.value) {
+    if (savedTheme) {
         applyPreset(savedTheme);
+        // Ensure Tailwind dark class is in sync
+        if (savedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
     }
 });
 </script>
@@ -97,9 +110,7 @@ onMounted(() => {
                         <Link :href="route('dashboard')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
                             <VaSidebarItemContent>
                                 <VaIcon name="dashboard" />
-                                <VaSidebarItemTitle v-if="!isSidebarMinimized">
-                                    Dashboard
-                                </VaSidebarItemTitle>
+                                <VaSidebarItemTitle v-if="!isSidebarMinimized">Dashboard</VaSidebarItemTitle>
                             </VaSidebarItemContent>
                         </Link>
                     </VaSidebarItem>
@@ -108,9 +119,7 @@ onMounted(() => {
                         <Link :href="route('tickets.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
                             <VaSidebarItemContent>
                                 <VaIcon name="confirmation_number" />
-                                <VaSidebarItemTitle v-if="!isSidebarMinimized">
-                                    Tickets
-                                </VaSidebarItemTitle>
+                                <VaSidebarItemTitle v-if="!isSidebarMinimized">Tickets</VaSidebarItemTitle>
                             </VaSidebarItemContent>
                         </Link>
                     </VaSidebarItem>
@@ -122,9 +131,7 @@ onMounted(() => {
                         <Link :href="route('users.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
                             <VaSidebarItemContent>
                                 <VaIcon name="group" />
-                                <VaSidebarItemTitle v-if="!isSidebarMinimized">
-                                    Utilizadores
-                                </VaSidebarItemTitle>
+                                <VaSidebarItemTitle v-if="!isSidebarMinimized">Utilizadores</VaSidebarItemTitle>
                             </VaSidebarItemContent>
                         </Link>
                     </VaSidebarItem>
