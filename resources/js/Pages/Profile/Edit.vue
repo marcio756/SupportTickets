@@ -1,6 +1,7 @@
 <script setup>
 /**
- * Profile Edit Page updated to use the unified AppLayout.
+ * Profile Edit Page.
+ * Uses the unified AppLayout with fixed scrolling and English labels.
  */
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
@@ -19,16 +20,16 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Perfil" />
+    <Head title="Profile" />
 
     <AppLayout>
         <template #header>
-            Configurações de Perfil
+            Profile Settings
         </template>
 
         <div class="py-6">
             <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                <div class="bg-white dark:bg-gray-800 p-4 shadow sm:rounded-lg sm:p-8 transition-colors">
+                <div class="bg-white dark:bg-gray-800 p-4 shadow sm:rounded-lg sm:p-8 transition-colors border border-gray-200 dark:border-gray-700">
                     <UpdateProfileInformationForm
                         :must-verify-email="mustVerifyEmail"
                         :status="status"
@@ -36,11 +37,11 @@ defineProps({
                     />
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 p-4 shadow sm:rounded-lg sm:p-8 transition-colors">
+                <div class="bg-white dark:bg-gray-800 p-4 shadow sm:rounded-lg sm:p-8 transition-colors border border-gray-200 dark:border-gray-700">
                     <UpdatePasswordForm class="max-w-xl" />
                 </div>
 
-                <div class="bg-white dark:bg-gray-800 p-4 shadow sm:rounded-lg sm:p-8 transition-colors">
+                <div class="bg-white dark:bg-gray-800 p-4 shadow sm:rounded-lg sm:p-8 transition-colors border border-gray-200 dark:border-gray-700">
                     <DeleteUserForm class="max-w-xl" />
                 </div>
             </div>
