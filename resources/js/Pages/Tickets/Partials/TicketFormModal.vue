@@ -51,12 +51,21 @@ const customerOptions = computed(() => {
 const submit = () => {
     form.clearErrors('attachment');
 
-    // Validar limite de 10MB do lado do cliente
+    let fileToUpload = null;
+
+    // Safely extract the file from Vuestic wrapper
     if (form.attachment && form.attachment.length > 0) {
-        const file = form.attachment[0];
+        fileToUpload = form.attachment[0];
+        if (fileToUpload && fileToUpload.file instanceof File) {
+            fileToUpload = fileToUpload.file;
+        }
+    }
+
+    // Validate 10MB limit on the client side
+    if (fileToUpload) {
         const maxSizeInBytes = 10 * 1024 * 1024;
 
-        if (file.size > maxSizeInBytes) {
+        if (fileToUpload.size > maxSizeInBytes) {
             form.setError('attachment', 'The selected file is too large. Maximum allowed size is 10MB.');
             return;
         }
@@ -66,9 +75,10 @@ const submit = () => {
         return {
             ...data,
             customer_id: data.customer_id?.value || data.customer_id,
-            attachment: data.attachment && data.attachment.length > 0 ? data.attachment[0] : null,
+            attachment: fileToUpload,
         };
     }).post(route('tickets.store'), {
+        forceFormData: true, // Forces multipart/form-data for file uploads
         preserveScroll: true,
         onSuccess: () => closeModal(), // Se falhar, o modal mantém-se aberto com os erros
     });

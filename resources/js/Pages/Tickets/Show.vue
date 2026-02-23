@@ -127,28 +127,45 @@
                 </div>
 
                 <div class="bg-white border-t border-gray-200 p-4">
-                    <form @submit.prevent="submitReply" class="flex gap-3 items-end">
-                        <div class="flex-1">
-                            <va-textarea
-                                v-model="replyForm.message"
-                                placeholder="Type your reply here..."
-                                class="w-full chat-input"
-                                :min-rows="2"
-                                autosize
-                                :error="!!replyForm.errors.message"
-                                :disabled="isInputDisabled"
-                            />
+                    <form @submit.prevent="submitReply" class="flex flex-col gap-3">
+                        <div class="flex gap-3 items-end">
+                            <div class="flex-1">
+                                <va-textarea
+                                    v-model="replyForm.message"
+                                    placeholder="Type your reply here..."
+                                    class="w-full chat-input"
+                                    :min-rows="2"
+                                    autosize
+                                    :error="!!replyForm.errors.message"
+                                    :disabled="isInputDisabled"
+                                />
+                            </div>
+                            
+                            <va-button 
+                                type="submit" 
+                                color="primary" 
+                                icon="send"
+                                :loading="replyForm.processing"
+                                :disabled="isSubmitDisabled"
+                            >
+                                Send
+                            </va-button>
                         </div>
                         
-                        <va-button 
-                            type="submit" 
-                            color="primary" 
-                            icon="send"
-                            :loading="replyForm.processing"
-                            :disabled="isInputDisabled || !replyForm.message.trim()"
-                        >
-                            Send
-                        </va-button>
+                        <div class="flex items-center gap-2">
+                            <va-file-upload
+                                v-model="replyForm.attachment"
+                                type="single"
+                                file-types=".pdf,.jpg,.jpeg,.png,.zip"
+                                :disabled="isInputDisabled"
+                                class="w-full max-w-sm"
+                                uploadButtonText="Attach File"
+                                dropzoneText="Drop a file here"
+                            />
+                            <div class="text-red-500 text-xs mt-1" v-if="replyForm.errors.attachment">
+                                {{ replyForm.errors.attachment }}
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -162,12 +179,13 @@
  * * Presentation layer for the Ticket Chat. 
  * All business logic is abstracted into useTicketSupport.
  */
+import { toRef } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TicketStatusBadge from '@/Components/Tickets/TicketStatusBadge.vue';
 import TicketMessageBubble from '@/Components/Tickets/TicketMessageBubble.vue';
 import SupportTimeDisplay from '@/Components/Tickets/SupportTimeDisplay.vue';
-import { VaTextarea, VaButton, VaAlert, VaDropdown, VaDropdownContent, VaList, VaListItem, VaListItemSection, VaCard, VaCardContent, VaIcon } from 'vuestic-ui';
+import { VaTextarea, VaButton, VaAlert, VaDropdown, VaDropdownContent, VaList, VaListItem, VaListItemSection, VaCard, VaCardContent, VaIcon, VaFileUpload } from 'vuestic-ui';
 
 // Import the business logic composable
 import { useTicketSupport } from '@/Composables/useTicketSupport';
@@ -178,6 +196,10 @@ const props = defineProps({
         required: true,
     }
 });
+
+// Passar a prop como uma referência reativa garante que o Inertia
+// propaga corretamente as alterações sem necessitar de refresh manual.
+const ticketRef = toRef(props, 'ticket');
 
 // Destructure all required reactive state and methods from the composable
 const {
@@ -191,10 +213,11 @@ const {
     isAssignedSupporter,
     showClaimOverlay,
     isInputDisabled,
+    isSubmitDisabled,
     submitReply,
     assignToMe,
     updateStatus
-} = useTicketSupport(props.ticket);
+} = useTicketSupport(ticketRef);
 </script>
 
 <style scoped>

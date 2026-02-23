@@ -15,13 +15,17 @@ export function useTicketSupport(ticket) {
     const isSupporter = currentUser.role === 'supporter' || currentUser.role === 'admin';
 
     // Reactive State
-    const currentRemainingSeconds = ref(ticket.customer.daily_support_seconds);
-    const localMessages = ref([...ticket.messages]);
+    // As injeções reativas baseiam-se em ticket.value para acompanhar o estado do Inertia
+    const currentRemainingSeconds = ref(ticket.value.customer.daily_support_seconds);
+    const localMessages = ref([...ticket.value.messages]);
     const messagesContainer = ref(null);
     const isAssigning = ref(false);
     
     // Forms
-    const replyForm = useForm({ message: '' });
+    const replyForm = useForm({ 
+        message: '',
+        attachment: []
+    });
 
     // Internal Timers
     let heartbeatInterval = null;
@@ -34,7 +38,7 @@ export function useTicketSupport(ticket) {
      * @returns {Boolean}
      */
     const isAssignedSupporter = computed(() => {
-        return isSupporter && ticket.assignee && ticket.assignee.id === currentUser.id;
+        return isSupporter && ticket.value.assignee && ticket.value.assignee.id === currentUser.id;
     });
 
     /**
@@ -42,7 +46,7 @@ export function useTicketSupport(ticket) {
      * @returns {Boolean}
      */
     const showClaimOverlay = computed(() => {
-        if (ticket.status === 'closed' || ticket.status === 'resolved') {
+        if (ticket.value.status === 'closed' || ticket.value.status === 'resolved') {
             return false;
         }
         return isSupporter && !isAssignedSupporter.value;
@@ -53,7 +57,7 @@ export function useTicketSupport(ticket) {
      * @returns {Boolean}
      */
     const isInputDisabled = computed(() => {
-        if (isTimeUp.value || ticket.status === 'closed' || ticket.status === 'resolved') {
+        if (isTimeUp.value || ticket.value.status === 'closed' || ticket.value.status === 'resolved') {
             return true;
         }
         if (isSupporter && !isAssignedSupporter.value) {
@@ -63,11 +67,32 @@ export function useTicketSupport(ticket) {
     });
 
     /**
+     * Computes whether the submit button should be disabled based on input and file presence.
+     * @returns {Boolean}
+     */
+    const isSubmitDisabled = computed(() => {
+        if (isInputDisabled.value) return true;
+        
+        const hasMessage = replyForm.message && replyForm.message.trim().length > 0;
+        
+        let hasFile = false;
+        if (Array.isArray(replyForm.attachment) && replyForm.attachment.length > 0) {
+            hasFile = true;
+        } else if (replyForm.attachment instanceof File) {
+            hasFile = true;
+        } else if (replyForm.attachment && replyForm.attachment.file) {
+            hasFile = true;
+        }
+
+        return !hasMessage && !hasFile;
+    });
+
+    /**
      * Computes whether the conditions are met for the heartbeat (time deduction) to be running.
      * @returns {Boolean}
      */
     const shouldRunHeartbeat = computed(() => {
-        return isAssignedSupporter.value && ticket.status === 'open' && !isTimeUp.value;
+        return isAssignedSupporter.value && ticket.value.status === 'open' && !isTimeUp.value;
     });
 
     // Methods
@@ -79,19 +104,51 @@ export function useTicketSupport(ticket) {
     };
 
     const submitReply = () => {
-        if (isInputDisabled.value) return;
+        if (isSubmitDisabled.value) return;
 
-        replyForm.post(route('tickets.messages.store', ticket.id), {
+        replyForm.clearErrors('attachment');
+
+        let fileToUpload = null;
+
+        // Extrair em segurança o ficheiro do Vuestic
+        if (Array.isArray(replyForm.attachment) && replyForm.attachment.length > 0) {
+            fileToUpload = replyForm.attachment[0];
+        } else if (replyForm.attachment && !Array.isArray(replyForm.attachment)) {
+            fileToUpload = replyForm.attachment;
+        }
+
+        // Se o Vuestic o embrulhou num objeto personalizado, extraímos o File nativo
+        if (fileToUpload && fileToUpload.file instanceof File) {
+            fileToUpload = fileToUpload.file;
+        }
+
+        // Validar limite de 10MB do lado do cliente
+        if (fileToUpload) {
+            const maxSizeInBytes = 10 * 1024 * 1024;
+            if (fileToUpload.size > maxSizeInBytes) {
+                replyForm.setError('attachment', 'The selected file is too large. Maximum allowed size is 10MB.');
+                return;
+            }
+        }
+
+        replyForm.transform((data) => {
+            return {
+                message: data.message || '',
+                attachment: fileToUpload,
+            };
+        }).post(route('tickets.messages.store', ticket.value.id), {
+            forceFormData: true, // Obriga o envio em multipart/form-data para o Laravel reconhecer o ficheiro
             preserveScroll: true,
             onSuccess: () => {
-                replyForm.reset('message');
+                replyForm.reset('message', 'attachment');
+                replyForm.attachment = []; // Limpar visualmente o va-file-upload
             }
         });
     };
 
     const assignToMe = () => {
         isAssigning.value = true;
-        router.patch(route('tickets.assign', ticket.id), {}, {
+        router.patch(route('tickets.assign', ticket.value.id), {}, {
             preserveScroll: true,
             onFinish: () => {
                 isAssigning.value = false;
@@ -100,7 +157,7 @@ export function useTicketSupport(ticket) {
     };
 
     const updateStatus = (newStatus) => {
-        router.patch(route('tickets.update-status', ticket.id), {
+        router.patch(route('tickets.update-status', ticket.value.id), {
             status: newStatus
         }, {
             preserveScroll: true
@@ -115,7 +172,7 @@ export function useTicketSupport(ticket) {
         
         heartbeatInterval = setInterval(() => {
             if (document.visibilityState === 'visible') {
-                axios.post(route('tickets.tick-time', ticket.id))
+                axios.post(route('tickets.tick-time', ticket.value.id))
                     .then(response => {
                         if (response.data.remaining_seconds !== undefined) {
                             currentRemainingSeconds.value = response.data.remaining_seconds;
@@ -136,7 +193,7 @@ export function useTicketSupport(ticket) {
     };
 
     // Watchers
-    watch(() => ticket.messages, (newMessages) => {
+    watch(() => ticket.value.messages, (newMessages) => {
         localMessages.value = [...newMessages];
         scrollToBottom();
     }, { deep: true });
@@ -154,7 +211,7 @@ export function useTicketSupport(ticket) {
         scrollToBottom();
 
         if (window.Echo) {
-            window.Echo.private(`ticket.${ticket.id}`)
+            window.Echo.private(`ticket.${ticket.value.id}`)
                 .listen('SupportTimeUpdated', (e) => {
                     currentRemainingSeconds.value = e.remainingSeconds;
                 })
@@ -174,7 +231,7 @@ export function useTicketSupport(ticket) {
 
     onUnmounted(() => {
         stopHeartbeat();
-        if (window.Echo) window.Echo.leave(`ticket.${ticket.id}`);
+        if (window.Echo) window.Echo.leave(`ticket.${ticket.value.id}`);
     });
 
     // Expose data and methods to the component
@@ -189,6 +246,7 @@ export function useTicketSupport(ticket) {
         isAssignedSupporter,
         showClaimOverlay,
         isInputDisabled,
+        isSubmitDisabled,
         submitReply,
         assignToMe,
         updateStatus

@@ -189,14 +189,23 @@ class TicketController extends Controller
         }
 
         $validated = $request->validate([
-            'message' => ['required', 'string'],
+            'message' => ['required_without:attachment', 'nullable', 'string'],
+            'attachment' => ['nullable', 'file', 'max:10240'], // 10MB limit
         ]);
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $attachmentPath = $request->file('attachment')->store('attachments', 'public');
+        }
 
         $message = $ticket->messages()->create([
             'user_id' => $user->id,
-            'message' => $validated['message'],
+            'message' => $validated['message'] ?? '',
+            'attachment_path' => $attachmentPath,
         ]);
 
+        // Ensure the sender data is loaded before broadcasting to prevent frontend issues
+        $message->load('sender');
         broadcast(new \App\Events\TicketMessageCreated($message));
 
         return redirect()->back();
@@ -229,10 +238,13 @@ class TicketController extends Controller
             'status' => $newStatus
         ]);
 
-        $ticket->messages()->create([
+        $message = $ticket->messages()->create([
             'user_id' => $user->id,
             'message' => "🔄 O estado do ticket foi alterado para: " . strtoupper($newStatus),
         ]);
+
+        $message->load('sender');
+        broadcast(new \App\Events\TicketMessageCreated($message));
 
         return redirect()->back();
     }

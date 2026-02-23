@@ -18,11 +18,11 @@
                 </span>
             </div>
             
-            <p class="text-sm whitespace-pre-wrap leading-relaxed">{{ message.message }}</p>
+            <p v-if="message.message" class="text-sm whitespace-pre-wrap leading-relaxed">{{ message.message }}</p>
             
-            <div v-if="message.attachment_path" class="mt-2 pt-2 border-t border-opacity-20 flex items-center gap-2">
+            <div v-if="message.attachment_path" class="mt-2 pt-2 flex items-center gap-2" :class="[message.message ? 'border-t border-opacity-20' : '']">
                 <va-icon name="attach_file" size="small" />
-                <a :href="message.attachment_path" target="_blank" class="text-sm underline hover:opacity-80">
+                <a :href="attachmentUrl" target="_blank" class="text-sm underline hover:opacity-80">
                     View Attachment
                 </a>
             </div>
@@ -53,6 +53,16 @@ const props = defineProps({
 const page = usePage();
 const isMine = computed(() => {
     return props.message.user_id === page.props.auth.user.id;
+});
+
+/**
+ * Computes the correct URL for the attachment.
+ */
+const attachmentUrl = computed(() => {
+    if (!props.message.attachment_path) return null;
+    return props.message.attachment_path.startsWith('http') 
+        ? props.message.attachment_path 
+        : `/storage/${props.message.attachment_path}`;
 });
 
 /**
