@@ -35,6 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+    Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])->name('tickets.destroy');
     
     /**
      * Route for Support to assign the ticket to themselves

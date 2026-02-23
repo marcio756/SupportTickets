@@ -77,6 +77,6 @@ class User extends Authenticatable
      */
     public function isSupporter(): bool
     {
-        return $this->role === RoleEnum::SUPPORTER || $this->role === RoleEnum::ADMIN;
+        return $this->role === RoleEnum::SUPPORTER;
     }
 }

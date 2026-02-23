@@ -182,6 +182,11 @@ class TicketController extends Controller
     {
         $user = $request->user();
 
+        // Restriction: Ticket must be In Progress to allow messages
+        if ($ticket->status !== TicketStatusEnum::IN_PROGRESS) {
+            abort(403, 'The ticket must be "In Progress" to send messages.');
+        }
+
         if ($user->isSupporter() && $ticket->assigned_to !== $user->id) {
             abort(403, 'You must claim this ticket before replying.');
         } elseif (! $user->isSupporter() && $ticket->customer_id !== $user->id) {
@@ -190,7 +195,7 @@ class TicketController extends Controller
 
         $validated = $request->validate([
             'message' => ['required_without:attachment', 'nullable', 'string'],
-            'attachment' => ['nullable', 'file', 'max:10240'], // 10MB limit
+            'attachment' => ['nullable', 'file', 'max:10240'], 
         ]);
 
         $attachmentPath = null;
@@ -204,7 +209,6 @@ class TicketController extends Controller
             'attachment_path' => $attachmentPath,
         ]);
 
-        // Ensure the sender data is loaded before broadcasting to prevent frontend issues
         $message->load('sender');
         broadcast(new \App\Events\TicketMessageCreated($message));
 
@@ -264,8 +268,9 @@ class TicketController extends Controller
             return response()->json(['status' => 'not_assigned', 'message' => 'You must claim this ticket to deduct time.']);
         }
 
-        if ($ticket->status->value !== 'open') {
-            return response()->json(['status' => 'not_open']);
+        // Restriction: Only deduct time if In Progress
+        if ($ticket->status !== TicketStatusEnum::IN_PROGRESS) {
+            return response()->json(['status' => 'not_in_progress']);
         }
 
         $remainingSeconds = $timeManager->deductTime($ticket, 5);
@@ -274,5 +279,23 @@ class TicketController extends Controller
             'status' => 'success',
             'remaining_seconds' => $remainingSeconds
         ]);
+    }
+
+    /**
+     * Delete the ticket after password verification.
+     */
+    public function destroy(Request $request, Ticket $ticket): RedirectResponse
+    {
+        if (!$request->user()->isSupporter()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'password' => ['required', 'current_password'],
+        ]);
+
+        $ticket->delete();
+
+        return redirect()->route('tickets.index')->with('success', 'Ticket deleted successfully.');
     }
 }
