@@ -1,11 +1,11 @@
 <script setup>
 /**
  * Main application layout for authenticated users.
- * Handles sidebar logic, theme initialization, and shared navigation.
+ * Refactored to use central theme management.
  */
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { useColors } from 'vuestic-ui';
+import { useTheme } from '@/Composables/useTheme';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import ThemeButton from '@/Components/navbar/ThemeButton.vue';
 
@@ -13,7 +13,7 @@ defineProps({
     title: String,
 });
 
-const { applyPreset, currentPresetName } = useColors();
+const { initTheme } = useTheme();
 const isSidebarMinimized = ref(false);
 const showSidebar = ref(true);
 
@@ -24,24 +24,15 @@ const toggleSidebar = () => {
 };
 
 /**
- * Loads the user's theme preference on mount to avoid style flickering.
+ * Ensures theme is correctly applied on boot.
  */
 onMounted(() => {
-    const savedTheme = localStorage.getItem('app-theme');
-    if (savedTheme) {
-        applyPreset(savedTheme);
-        // Ensure Tailwind dark class is in sync
-        if (savedTheme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    }
+    initTheme();
 });
 </script>
 
 <template>
-    <div class="app-layout va-bg-background">
+    <div class="app-layout va-bg-background min-h-screen">
         <Head :title="title" />
 
         <VaLayout
@@ -76,7 +67,7 @@ onMounted(() => {
                                 </template>
 
                                 <VaDropdownContent class="p-2 min-w-[200px]">
-                                    <div class="mb-1 border-b border-gray-100 dark:border-gray-700 pb-1">
+                                    <div class="mb-1 border-b border-gray-100 dark:border-gray-700 pb-1 flex justify-center">
                                         <ThemeButton />
                                     </div>
 
@@ -139,7 +130,7 @@ onMounted(() => {
             </template>
 
             <template #content>
-                <main class="p-6 bg-gray-50 dark:bg-gray-900 min-h-full transition-colors duration-300">
+                <main class="p-6 bg-gray-50 dark:bg-gray-900 min-h-full transition-colors duration-300 overflow-y-auto">
                     <header v-if="$slots.header" class="mb-6">
                         <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
                             <slot name="header" />
@@ -155,7 +146,5 @@ onMounted(() => {
 <style scoped>
 .app-layout {
     height: 100vh;
-    display: flex;
-    flex-direction: column;
 }
 </style>

@@ -1,23 +1,22 @@
 <script setup>
 /**
- * Component responsible for toggling between light and dark themes 
- * using the vuestic-ui useColors composable.
+ * Component responsible for toggling between light and dark themes.
+ * Updated to use the useTheme composable for system-wide sync.
  */
 import { computed } from 'vue';
-import { useColors } from 'vuestic-ui';
+import { useTheme } from '@/Composables/useTheme';
 
-const { applyPreset, currentPresetName } = useColors();
+const { currentPresetName, setTheme } = useTheme();
 
 /**
- * Computed property to get and set the current active theme.
- * @type {import('vue').WritableComputedRef<string>}
+ * Proxy for the theme state to allow clean binding with VaButtonToggle.
  */
-const theme = computed({
+const themeProxy = computed({
     get() {
         return currentPresetName.value;
     },
     set(value) {
-        applyPreset(value);
+        setTheme(value);
     }
 });
 
@@ -29,7 +28,7 @@ const options = [
 
 <template>
     <VaButtonToggle
-        v-model="theme"
+        v-model="themeProxy"
         color="background-element"
         border-color="background-element"
         :options="options"

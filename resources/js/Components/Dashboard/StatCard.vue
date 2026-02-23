@@ -2,8 +2,8 @@
     <va-card>
         <va-card-content class="flex flex-col items-center justify-center p-4">
             <va-icon :name="icon" size="large" :color="color" class="mb-2" />
-            <h3 class="text-xl font-bold text-gray-800">{{ value }}</h3>
-            <p class="text-sm text-gray-500 text-center">{{ title }}</p>
+            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100">{{ value }}</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 text-center">{{ title }}</p>
         </va-card-content>
     </va-card>
 </template>

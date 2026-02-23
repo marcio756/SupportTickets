@@ -1,25 +1,18 @@
 <script setup>
 /**
  * Layout for non-authenticated pages (Login, Register).
- * Includes global theme persistence and a toggle button.
+ * Includes global theme persistence.
  */
 import { onMounted } from 'vue';
-import { useColors } from 'vuestic-ui';
+import { useTheme } from '@/Composables/useTheme';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { Link } from '@inertiajs/vue3';
 import ThemeButton from '@/Components/navbar/ThemeButton.vue';
 
-const { applyPreset, currentPresetName } = useColors();
+const { initTheme } = useTheme();
 
-/**
- * Initializes the theme from localStorage to maintain consistency 
- * during the authentication process.
- */
 onMounted(() => {
-    const savedTheme = localStorage.getItem('app-theme');
-    if (savedTheme && savedTheme !== currentPresetName.value) {
-        applyPreset(savedTheme);
-    }
+    initTheme();
 });
 </script>
 
@@ -35,7 +28,7 @@ onMounted(() => {
             </Link>
         </div>
 
-        <div class="mt-6 w-full overflow-hidden bg-white dark:bg-gray-800 px-6 py-4 shadow-md sm:max-w-md sm:rounded-lg transition-colors">
+        <div class="mt-6 w-full overflow-hidden bg-white dark:bg-gray-800 px-6 py-4 shadow-md sm:max-w-md sm:rounded-lg transition-colors border border-gray-200 dark:border-gray-700">
             <slot />
         </div>
     </div>
