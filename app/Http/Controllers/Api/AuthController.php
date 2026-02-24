@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Traits\ApiResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -14,6 +15,8 @@ use Illuminate\Validation\ValidationException;
  */
 class AuthController extends Controller
 {
+    use ApiResponser;
+
     /**
      * Authenticate user and return an API token
      *
@@ -40,15 +43,15 @@ class AuthController extends Controller
         // Generate a new token for the specific device
         $token = $user->createToken($request->device_name)->plainTextToken;
 
-        return response()->json([
+        return $this->successResponse([
             'token' => $token,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
-            ],
-        ]);
+            ]
+        ], 'Autenticação realizada com sucesso.');
     }
 
     /**
@@ -62,6 +65,6 @@ class AuthController extends Controller
         // Revoke the token that was used to authenticate the current request
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Token revogado com sucesso.']);
+        return $this->successResponse(null, 'Token revogado com sucesso.');
     }
 }
