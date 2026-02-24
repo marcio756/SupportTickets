@@ -2,6 +2,13 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { useForm, usePage, router } from '@inertiajs/vue3';
 import axios from 'axios';
 
+/**
+ * Encapsulates the reactive state, form handling, and WebSocket interactions
+ * required for the ticket chat and support time tracking interface.
+ *
+ * @param {import('vue').Ref<Object>} ticket - The reactive reference to the ticket object.
+ * @returns {Object} Exposes reactive variables and control functions for the UI.
+ */
 export function useTicketSupport(ticket) {
     const page = usePage();
     const currentUser = page.props.auth.user;
@@ -38,7 +45,7 @@ export function useTicketSupport(ticket) {
     });
 
     /**
-     * Updated: Lock input if status is NOT 'in_progress'
+     * Lock input if status is NOT 'in_progress', time is up, or user is unassigned.
      */
     const isInputDisabled = computed(() => {
         if (isTimeUp.value || ticket.value.status === 'closed' || ticket.value.status === 'resolved') {
@@ -61,7 +68,7 @@ export function useTicketSupport(ticket) {
     });
 
     /**
-     * Updated: Only run heartbeat if status is 'in_progress'
+     * Determines if the automated time deduction ping should be dispatched.
      */
     const shouldRunHeartbeat = computed(() => {
         return isAssignedSupporter.value && ticket.value.status === 'in_progress' && !isTimeUp.value;

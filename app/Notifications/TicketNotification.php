@@ -2,63 +2,75 @@
 
 namespace App\Notifications;
 
+use App\Models\Ticket;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\BroadcastMessage;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
+/**
+ * Handles all system notifications related to tickets (status changes, new messages).
+ * Dispatches to both database (UI bell) and email channels.
+ */
 class TicketNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    protected $data;
+    public Ticket $ticket;
+    public string $message;
 
     /**
      * Create a new notification instance.
-     * * @param array $data Contains ticket_id, title, message, type
+     * * @param Ticket $ticket
+     * @param string $message
      */
-    public function __construct(array $data)
+    public function __construct(Ticket $ticket, string $message)
     {
-        $this->data = $data;
+        $this->ticket = $ticket;
+        $this->message = $message;
     }
 
     /**
-     * Determine the delivery channels for the notification.
-     * * @param object $notifiable
-     * @return array
+     * Get the notification's delivery channels.
+     *
+     * @param object $notifiable
+     * @return array<int, string>
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        // Enforce dispatching to both UI and Email as per requirements
+        return ['database', 'mail'];
     }
 
     /**
-     * Format the notification data for the database channel.
-     * * @param object $notifiable
-     * @return array
+     * Get the mail representation of the notification.
+     *
+     * @param object $notifiable
+     * @return MailMessage
+     */
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new MailMessage)
+                    ->subject("Atualização no Ticket #{$this->ticket->id}")
+                    ->greeting("Olá, {$notifiable->name}!")
+                    ->line($this->message)
+                    ->action('Ver Ticket', route('tickets.show', $this->ticket->id))
+                    ->line('Obrigado por usar a nossa plataforma de suporte técnico!');
+    }
+
+    /**
+     * Get the array representation of the notification for the database (Sininho).
+     *
+     * @param object $notifiable
+     * @return array<string, mixed>
      */
     public function toArray(object $notifiable): array
     {
         return [
-            'ticket_id' => $this->data['ticket_id'],
-            'title'     => $this->data['title'],
-            'message'   => $this->data['message'],
-            'type'      => $this->data['type'],
+            'ticket_id' => $this->ticket->id,
+            'title' => $this->ticket->title,
+            'message' => $this->message,
+            'url' => route('tickets.show', $this->ticket->id),
         ];
-    }
-
-    /**
-     * Format the notification data for real-time broadcasting via Laravel Echo.
-     * * @param object $notifiable
-     * @return BroadcastMessage
-     */
-    public function toBroadcast(object $notifiable): BroadcastMessage
-    {
-        return new BroadcastMessage([
-            'id'         => $this->id,
-            'data'       => $this->toArray($notifiable),
-            'read_at'    => null,
-            'created_at' => now()->toDateTimeString(),
-        ]);
     }
 }

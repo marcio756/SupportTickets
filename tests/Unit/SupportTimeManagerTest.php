@@ -11,14 +11,18 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
+/**
+ * Validates the core business logic related to customer support time deduction.
+ */
 class SupportTimeManagerTest extends TestCase
 {
     use RefreshDatabase;
 
     /**
-     * Tests the time deduction logic for an open ticket.
+     * Tests the time deduction logic for an in-progress ticket.
+     * * @return void
      */
-    public function test_it_deducts_time_from_customer_when_ticket_is_open(): void
+    public function test_it_deducts_time_from_customer_when_ticket_is_in_progress(): void
     {
         Event::fake();
 
@@ -29,7 +33,7 @@ class SupportTimeManagerTest extends TestCase
 
         $ticket = Ticket::factory()->create([
             'customer_id' => $customer->id,
-            'status' => TicketStatusEnum::OPEN->value,
+            'status' => TicketStatusEnum::IN_PROGRESS->value, // Fix: Must be in progress
         ]);
 
         $manager = new SupportTimeManager();
@@ -42,9 +46,10 @@ class SupportTimeManagerTest extends TestCase
     }
 
     /**
-     * Tests that the time deduction is ignored when a ticket is not active.
+     * Tests that the time deduction is safely ignored when a ticket is not actively in progress.
+     * * @return void
      */
-    public function test_it_does_not_deduct_time_if_ticket_is_not_open(): void
+    public function test_it_does_not_deduct_time_if_ticket_is_not_in_progress(): void
     {
         $customer = User::factory()->create([
             'role' => RoleEnum::CUSTOMER->value,
@@ -53,7 +58,7 @@ class SupportTimeManagerTest extends TestCase
 
         $ticket = Ticket::factory()->create([
             'customer_id' => $customer->id,
-            'status' => TicketStatusEnum::CLOSED->value,
+            'status' => TicketStatusEnum::OPEN->value, // Simulate an inactive status
         ]);
 
         $manager = new SupportTimeManager();

@@ -6,68 +6,40 @@ use App\Enums\RoleEnum;
 use App\Enums\TicketStatusEnum;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\AttachmentService;
+use App\Services\SupportTimeManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Validation\Rule;
+use App\Events\TicketMessageCreated;
 
+/**
+ * Manages the core ticketing operations including listing, creation, and updates.
+ */
 class TicketController extends Controller
 {
     /**
-     * Display a listing of the tickets.
+     * Display a paginated listing of the tickets based on user role and applied filters.
+     *
+     * @param Request $request
+     * @return Response
      */
     public function index(Request $request): Response
     {
         $user = $request->user();
         $query = Ticket::with(['customer', 'assignee']);
 
-        // Isolate records based on user role
+        // Isolate records to ensure customers only see their own tickets
         if (! $user->isSupporter()) {
             $query->where('customer_id', $user->id);
         }
 
-        // Apply text search filter
-        if ($request->filled('search')) {
-            $searchTerm = $request->search;
-            $query->where(function ($q) use ($searchTerm, $user) {
-                $q->where('title', 'like', '%' . $searchTerm . '%');
-                
-                // Supporters can also search by customer name
-                if ($user->isSupporter()) {
-                    $q->orWhereHas('customer', function ($customerQuery) use ($searchTerm) {
-                        $customerQuery->where('name', 'like', '%' . $searchTerm . '%');
-                    });
-                }
-            });
-        }
+        $this->applyIndexFilters($query, $request, $user);
 
-        // Apply status dropdown filter
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Apply multiple customers filter
-        if ($request->filled('customers') && $user->isSupporter()) {
-            $customerIds = is_array($request->customers) ? $request->customers : explode(',', $request->customers);
-            $query->whereIn('customer_id', $customerIds);
-        }
-
-        // Apply multi-select assignment filter (Supporters only)
-        if ($request->filled('assignees') && $user->isSupporter()) {
-            $assignees = is_array($request->assignees) ? $request->assignees : explode(',', $request->assignees);
-            
-            // Usar uma subquery lógica para agrupar as opções "OU"
-            $query->where(function ($q) use ($assignees, $user) {
-                if (in_array('unassigned', $assignees)) {
-                    $q->orWhereNull('assigned_to');
-                }
-                if (in_array('me', $assignees)) {
-                    $q->orWhere('assigned_to', $user->id);
-                }
-            });
-        }
-
-        // Execute query with pagination and preserve query strings
+        // Execute query with pagination and preserve query strings for UI state retention
         $tickets = $query->latest()->paginate(10)->withQueryString();
 
         // Fetch the list of customers to populate the dropdown for supporters
@@ -87,7 +59,59 @@ class TicketController extends Controller
     }
 
     /**
+     * Applies search and dropdown filters to the ticket query.
+     * Extracted to maintain the index method's readability and strictly handle query constraints.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param Request $request
+     * @param User $user
+     * @return void
+     */
+    private function applyIndexFilters($query, Request $request, User $user): void
+    {
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm, $user) {
+                $q->where('title', 'like', '%' . $searchTerm . '%');
+                
+                // Supporters require the ability to search by customer name
+                if ($user->isSupporter()) {
+                    $q->orWhereHas('customer', function ($customerQuery) use ($searchTerm) {
+                        $customerQuery->where('name', 'like', '%' . $searchTerm . '%');
+                    });
+                }
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('customers') && $user->isSupporter()) {
+            $customerIds = is_array($request->customers) ? $request->customers : explode(',', $request->customers);
+            $query->whereIn('customer_id', $customerIds);
+        }
+
+        if ($request->filled('assignees') && $user->isSupporter()) {
+            $assignees = is_array($request->assignees) ? $request->assignees : explode(',', $request->assignees);
+            
+            // Group logical OR options within a subquery to prevent filter bleeding
+            $query->where(function ($q) use ($assignees, $user) {
+                if (in_array('unassigned', $assignees)) {
+                    $q->orWhereNull('assigned_to');
+                }
+                if (in_array('me', $assignees)) {
+                    $q->orWhere('assigned_to', $user->id);
+                }
+            });
+        }
+    }
+
+    /**
      * Show the form for creating a new ticket.
+     *
+     * @param Request $request
+     * @return Response
      */
     public function create(Request $request): Response
     {
@@ -107,8 +131,12 @@ class TicketController extends Controller
 
     /**
      * Store a newly created ticket and its initial message.
+     *
+     * @param Request $request
+     * @param AttachmentService $attachmentService
+     * @return RedirectResponse
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, AttachmentService $attachmentService): RedirectResponse
     {
         $isSupporter = $request->user()->isSupporter();
 
@@ -128,10 +156,7 @@ class TicketController extends Controller
             'assigned_to' => $isSupporter ? $request->user()->id : null,
         ]);
 
-        $attachmentPath = null;
-        if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('attachments', 'public');
-        }
+        $attachmentPath = $attachmentService->store($request->file('attachment'));
 
         $ticket->messages()->create([
             'user_id' => $request->user()->id,
@@ -145,6 +170,10 @@ class TicketController extends Controller
 
     /**
      * Display the specified ticket.
+     *
+     * @param Request $request
+     * @param Ticket $ticket
+     * @return Response
      */
     public function show(Request $request, Ticket $ticket): Response
     {
@@ -161,6 +190,10 @@ class TicketController extends Controller
 
     /**
      * Assigns the ticket to the authenticated supporter.
+     *
+     * @param Request $request
+     * @param Ticket $ticket
+     * @return RedirectResponse
      */
     public function assign(Request $request, Ticket $ticket): RedirectResponse
     {
@@ -177,12 +210,17 @@ class TicketController extends Controller
 
     /**
      * Store a new reply message in the ticket.
+     *
+     * @param Request $request
+     * @param Ticket $ticket
+     * @param AttachmentService $attachmentService
+     * @return RedirectResponse
      */
-    public function storeMessage(Request $request, Ticket $ticket): RedirectResponse
+    public function storeMessage(Request $request, Ticket $ticket, AttachmentService $attachmentService): RedirectResponse
     {
         $user = $request->user();
 
-        // Restriction: Ticket must be In Progress to allow messages
+        // Enforce state machine rules: Messages can only be added when actively in progress
         if ($ticket->status !== TicketStatusEnum::IN_PROGRESS) {
             abort(403, 'The ticket must be "In Progress" to send messages.');
         }
@@ -198,10 +236,7 @@ class TicketController extends Controller
             'attachment' => ['nullable', 'file', 'max:10240'], 
         ]);
 
-        $attachmentPath = null;
-        if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('attachments', 'public');
-        }
+        $attachmentPath = $attachmentService->store($request->file('attachment'));
 
         $message = $ticket->messages()->create([
             'user_id' => $user->id,
@@ -210,13 +245,17 @@ class TicketController extends Controller
         ]);
 
         $message->load('sender');
-        broadcast(new \App\Events\TicketMessageCreated($message));
+        broadcast(new TicketMessageCreated($message));
 
         return redirect()->back();
     }
 
     /**
      * Update the status of a specific ticket.
+     *
+     * @param Request $request
+     * @param Ticket $ticket
+     * @return RedirectResponse
      */
     public function updateStatus(Request $request, Ticket $ticket): RedirectResponse
     {
@@ -229,7 +268,7 @@ class TicketController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => ['required', 'string', \Illuminate\Validation\Rule::enum(TicketStatusEnum::class)],
+            'status' => ['required', 'string', Rule::enum(TicketStatusEnum::class)],
         ]);
 
         $newStatus = $validated['status'];
@@ -248,15 +287,20 @@ class TicketController extends Controller
         ]);
 
         $message->load('sender');
-        broadcast(new \App\Events\TicketMessageCreated($message));
+        broadcast(new TicketMessageCreated($message));
 
         return redirect()->back();
     }
 
     /**
      * Handles the regular heartbeat from the frontend to deduct support time.
+     *
+     * @param Request $request
+     * @param Ticket $ticket
+     * @param SupportTimeManager $timeManager
+     * @return JsonResponse
      */
-    public function tickTime(Request $request, Ticket $ticket, \App\Services\SupportTimeManager $timeManager): \Illuminate\Http\JsonResponse
+    public function tickTime(Request $request, Ticket $ticket, SupportTimeManager $timeManager): JsonResponse
     {
         $user = $request->user();
 
@@ -268,7 +312,7 @@ class TicketController extends Controller
             return response()->json(['status' => 'not_assigned', 'message' => 'You must claim this ticket to deduct time.']);
         }
 
-        // Restriction: Only deduct time if In Progress
+        // Timer constraints: Time is only deducted when actively being worked on
         if ($ticket->status !== TicketStatusEnum::IN_PROGRESS) {
             return response()->json(['status' => 'not_in_progress']);
         }
@@ -283,6 +327,10 @@ class TicketController extends Controller
 
     /**
      * Delete the ticket after password verification.
+     *
+     * @param Request $request
+     * @param Ticket $ticket
+     * @return RedirectResponse
      */
     public function destroy(Request $request, Ticket $ticket): RedirectResponse
     {

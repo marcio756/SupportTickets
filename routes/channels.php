@@ -1,30 +1,27 @@
 <?php
 
-use Illuminate\Support\Facades\Broadcast;
-use App\Models\Ticket;
 use App\Models\User;
+use App\Models\Ticket;
+use Illuminate\Support\Facades\Broadcast;
 
 /**
- * Authorize users to listen to a specific ticket's real-time events.
- * Only the ticket owner (customer) and supporters can listen.
- */
-Broadcast::channel('ticket.{id}', function (User $user, int $id) {
-    $ticket = Ticket::find($id);
-    
-    if (! $ticket) {
-        return false;
-    }
-
-    return $user->isSupporter() || $user->id === $ticket->customer_id;
-});
-
-/**
- * Authorize the user to listen to their own private notification channel.
- * This is required for Laravel's default notification broadcasting via $user->notify().
- * * @param User $user The currently authenticated user.
- * @param int $id The user ID from the channel name.
- * @return bool
+ * Register default broadcasting authorization rules.
  */
 Broadcast::channel('App.Models.User.{id}', function (User $user, int $id) {
     return (int) $user->id === (int) $id;
+});
+
+/**
+ * Secure the private ticket channel.
+ * Only the customer who owns the ticket OR an authorized supporter can listen to it.
+ */
+Broadcast::channel('ticket.{ticketId}', function (User $user, int $ticketId) {
+    // Supporters have global access to ticket channels
+    if ($user->isSupporter()) {
+        return true;
+    }
+
+    // Customers can only access their own ticket channels
+    $ticket = Ticket::find($ticketId);
+    return $ticket !== null && (int) $ticket->customer_id === (int) $user->id;
 });
