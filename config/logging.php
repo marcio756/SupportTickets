@@ -52,6 +52,22 @@ return [
 
     'channels' => [
 
+        /*
+        |--------------------------------------------------------------------------
+        | Dedicated Email Log Channel
+        |--------------------------------------------------------------------------
+        |
+        | Isolates all outbound emails sent via the 'log' mailer driver into a
+        | specific file, preventing clutter in the main system laravel.log.
+        |
+        */
+        'email' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/email.log'),
+            'level' => 'debug',
+            'replace_placeholders' => true,
+        ],
+
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),

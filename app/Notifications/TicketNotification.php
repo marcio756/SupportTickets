@@ -7,6 +7,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Handles all system notifications related to tickets (status changes, new messages).
@@ -50,6 +51,9 @@ class TicketNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
+        // Regista apenas uma linha limpa no ficheiro email.log
+        Log::channel('email')->info("📩 E-mail simulado para {$notifiable->email}: {$this->message}");
+
         return (new MailMessage)
                     ->subject("Atualização no Ticket #{$this->ticket->id}")
                     ->greeting("Olá, {$notifiable->name}!")
