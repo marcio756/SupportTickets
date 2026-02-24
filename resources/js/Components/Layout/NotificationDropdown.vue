@@ -73,7 +73,8 @@ const unreadCount = computed(() => notifications.value.length);
 /**
  * Group notifications by ticket_id for new messages.
  * This ensures multiple messages for the same ticket appear as a single notification indicator.
- * * @returns {Array} Array of grouped notification objects.
+ *
+ * @returns {Array} Array of grouped notification objects.
  */
 const groupedNotifications = computed(() => {
     const groups = [];
@@ -110,7 +111,8 @@ const fetchNotifications = async () => {
 /**
  * Handle clicking on a notification group or single item.
  * Marks all associated IDs as read and redirects the user to the specific ticket view.
- * * @param {Object} item The notification item/group.
+ *
+ * @param {Object} item The notification item/group.
  */
 const handleNotificationClick = async (item) => {
     try {
@@ -124,7 +126,8 @@ const handleNotificationClick = async (item) => {
 
 /**
  * Delete a specific notification or group of notifications without redirecting.
- * * @param {Object} item The notification item/group to delete.
+ *
+ * @param {Object} item The notification item/group to delete.
  */
 const deleteNotification = async (item) => {
     try {
@@ -150,9 +153,12 @@ const clearAll = async () => {
 onMounted(() => {
     fetchNotifications();
     
-    // Listen for real-time broadcasted notifications via Laravel Echo
-    if (window.Echo) {
-        window.Echo.private(`App.Models.User.${usePage().props.auth.user.id}`)
+    // Safety check: Safely retrieve user ID to avoid unhandled errors on non-auth views
+    const userId = usePage().props.auth?.user?.id;
+    
+    // Listen for real-time broadcasted notifications via Laravel Echo only if user is logged in
+    if (window.Echo && userId) {
+        window.Echo.private(`App.Models.User.${userId}`)
             .notification((notification) => {
                 notifications.value.unshift(notification);
             });

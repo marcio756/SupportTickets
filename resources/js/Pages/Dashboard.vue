@@ -5,11 +5,11 @@
         <div class="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">
-                    Welcome, {{ $page.props.auth.user.name }}!
+                    Welcome, {{ user?.name }}!
                 </h1>
                 <p class="text-gray-500 dark:text-gray-400">Here is your daily overview.</p>
             </div>
-            <va-badge :text="$page.props.auth.user.role.toUpperCase()" color="primary" />
+            <va-badge v-if="user?.role" :text="user.role.toUpperCase()" color="primary" />
         </div>
 
         <div v-if="!isSupporter" class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -37,6 +37,10 @@
 </template>
 
 <script setup>
+/**
+ * Dashboard view component displaying user-specific metrics and statistics.
+ * Refactored to handle potential undefined state during Inertia hydration.
+ */
 import { computed } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -44,9 +48,27 @@ import StatCard from '@/Components/Dashboard/StatCard.vue';
 import TopClientsTable from '@/Components/Dashboard/TopClientsTable.vue';
 
 defineProps({
-    metrics: { type: Object, required: true }
+    metrics: { 
+        type: Object, 
+        required: true 
+    }
 });
 
 const page = usePage();
-const isSupporter = computed(() => ['admin', 'supporter'].includes(page.props.auth.user.role));
+
+/**
+ * Computed property to safely access the authenticated user.
+ * Prevents "Cannot read properties of undefined" errors.
+ * * @returns {Object|undefined} The authenticated user object or undefined.
+ */
+const user = computed(() => page.props.auth?.user);
+
+/**
+ * Determines if the current user has elevated privileges (admin or supporter).
+ * * @returns {boolean} True if the user is a supporter or admin, false otherwise.
+ */
+const isSupporter = computed(() => {
+    if (!user.value?.role) return false;
+    return ['admin', 'supporter'].includes(user.value.role);
+});
 </script>

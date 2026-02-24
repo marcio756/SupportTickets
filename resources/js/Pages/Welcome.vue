@@ -6,7 +6,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
+import FeatureCard from '@/Components/Welcome/FeatureCard.vue';
 
 defineProps({
     canLogin: Boolean,
@@ -30,29 +30,25 @@ defineProps({
             </div>
 
             <div class="space-y-4 mb-10 text-left px-2">
-                <div class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
-                    <div class="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-lg">
-                        <va-icon name="confirmation_number" color="primary" />
-                    </div>
-                    <div>
-                        <h4 class="font-bold text-gray-900 dark:text-gray-100">Smart Ticketing</h4>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Organize and prioritize requests efficiently.</p>
-                    </div>
-                </div>
+                <FeatureCard 
+                    icon="confirmation_number"
+                    iconColor="primary"
+                    iconBgClass="bg-indigo-100 dark:bg-indigo-900/50"
+                    title="Smart Ticketing"
+                    description="Organize and prioritize requests efficiently."
+                />
                 
-                <div class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
-                    <div class="bg-green-100 dark:bg-green-900/50 p-2 rounded-lg">
-                        <va-icon name="chat" color="success" />
-                    </div>
-                    <div>
-                        <h4 class="font-bold text-gray-900 dark:text-gray-100">Real-time Updates</h4>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Get notified the moment a supporter responds.</p>
-                    </div>
-                </div>
+                <FeatureCard 
+                    icon="chat"
+                    iconColor="success"
+                    iconBgClass="bg-green-100 dark:bg-green-900/50"
+                    title="Real-time Updates"
+                    description="Get notified the moment a supporter responds."
+                />
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <template v-if="$page.props.auth.user">
+                <template v-if="$page.props.auth?.user">
                     <Link :href="route('dashboard')" class="sm:col-span-2">
                         <PrimaryButton class="w-full justify-center py-3 text-base">
                             Access Dashboard

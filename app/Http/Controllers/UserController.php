@@ -9,12 +9,78 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use Inertia\Response;
+use Illuminate\Http\RedirectResponse;
 
 class UserController extends Controller
 {
-    // ... index and store methods remain the same ...
+    /**
+     * Display a listing of the resource.
+     * Includes basic filtering by name/email and role.
+     * * @param Request $request
+     * @return Response
+     */
+    public function index(Request $request): Response
+    {
+        // Garante que só utilizadores Supporter ou Admin podem aceder
+        if (!$request->user()->isSupporter()) {
+            abort(403, 'Unauthorized access.');
+        }
 
-    public function update(Request $request, User $user)
+        $query = User::query();
+
+        if ($request->filled('query')) {
+            $searchTerm = '%' . $request->input('query') . '%';
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', $searchTerm)
+                  ->orWhere('email', 'like', $searchTerm);
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->input('role'));
+        }
+
+        $users = $query->paginate(10)->withQueryString();
+
+        return Inertia::render('Users/Index', [
+            'users' => $users,
+            'filters' => $request->only(['query', 'role']),
+            'roles' => [RoleEnum::CUSTOMER->value, RoleEnum::SUPPORTER->value],
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     * * @param Request $request
+     * @return RedirectResponse
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')],
+            'role' => ['required', Rule::enum(RoleEnum::class)],
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'role' => $request->role,
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect()->back()->with('success', 'User created successfully.');
+    }
+
+    /**
+     * Update the specified resource in storage.
+     * * @param Request $request
+     * @param User $user
+     * @return RedirectResponse
+     */
+    public function update(Request $request, User $user): RedirectResponse
     {
         $request->validate([
             'current_password' => ['required', 'current_password'],
@@ -45,7 +111,13 @@ class UserController extends Controller
         return redirect()->back()->with('success', 'User updated successfully.');
     }
 
-    public function destroy(Request $request, User $user)
+    /**
+     * Remove the specified resource from storage.
+     * * @param Request $request
+     * @param User $user
+     * @return RedirectResponse
+     */
+    public function destroy(Request $request, User $user): RedirectResponse
     {
         $request->validate([
             'current_password' => ['required', 'current_password'],

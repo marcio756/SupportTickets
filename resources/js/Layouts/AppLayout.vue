@@ -1,9 +1,9 @@
 <script setup>
 /**
- * Layout Global da Aplicação.
- * Gere scroll independente, persistência de Sidebar e navegação principal.
- * Integrado com o sistema de notificações em tempo real.
- * * @author Arquiteto de Software Sénior
+ * Global Application Layout.
+ * Manages independent scrolling, Sidebar persistence, and main navigation.
+ * Integrated with the real-time notification system.
+ * Refactored to include safe evaluation chains for auth props.
  */
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
@@ -20,10 +20,15 @@ const { initTheme } = useTheme();
 const isSidebarMinimized = ref(false);
 const showSidebar = ref(true);
 
-const user = computed(() => usePage().props.auth.user);
+/**
+ * Safely computes the authenticated user from Inertia page props.
+ * * @returns {Object|undefined} The user object.
+ */
+const user = computed(() => usePage().props.auth?.user);
 
 /**
- * Alterna o estado da sidebar e persiste no localStorage para manter entre refreshes.
+ * Toggles the sidebar state and persists it to localStorage to maintain state across page refreshes.
+ * * @returns {void}
  */
 const toggleSidebar = () => {
     isSidebarMinimized.value = !isSidebarMinimized.value;
@@ -33,7 +38,7 @@ const toggleSidebar = () => {
 onMounted(() => {
     initTheme();
     
-    // Recupera o estado anterior da sidebar
+    // Retrieves previous sidebar state
     const savedSidebar = localStorage.getItem('sidebar-is-minimized');
     if (savedSidebar !== null) {
         isSidebarMinimized.value = savedSidebar === 'true';
@@ -76,7 +81,7 @@ onMounted(() => {
                                 <template #anchor>
                                     <div class="flex items-center cursor-pointer gap-2 text-white px-2 py-1 rounded hover:bg-white/10 transition-colors">
                                         <UserAvatar :user="user" size="32px" />
-                                        <span class="hidden sm:block font-medium text-white">{{ user.name }}</span>
+                                        <span class="hidden sm:block font-medium text-white">{{ user?.name }}</span>
                                         <VaIcon name="expand_more" color="white" />
                                     </div>
                                 </template>

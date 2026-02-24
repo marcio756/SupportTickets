@@ -2,7 +2,7 @@ import axios from 'axios';
 window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-// Adiciona esta linha para garantir que os cookies de sessão/CSRF são enviados:
+// Garante que os cookies de sessão/CSRF são enviados:
 window.axios.defaults.withCredentials = true;
 
 /**
@@ -22,4 +22,11 @@ window.Echo = new Echo({
     wssPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
+    // Correção: Indica explicitamente que a auth do Echo deve ser feita com cookies
+    authEndpoint: '/broadcasting/auth',
+    auth: {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    }
 });
