@@ -6,6 +6,7 @@ use App\Enums\TicketStatusEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Services\SupportTimeManager;
 use App\Services\TicketService;
 use App\Traits\ApiResponser;
@@ -32,7 +33,7 @@ class TicketController extends Controller
     ) {}
 
     /**
-     * List all tickets relevant to the authenticated user
+     * List all tickets relevant to the authenticated user, applying search and filters.
      *
      * @param Request $request
      * @return AnonymousResourceCollection
@@ -41,12 +42,64 @@ class TicketController extends Controller
     {
         $user = $request->user();
 
-        $tickets = Ticket::with(['customer', 'assignee'])
-            ->when($user->isCustomer(), fn($q) => $q->where('customer_id', $user->id))
-            ->latest()
-            ->paginate(15);
+        $query = Ticket::with(['customer', 'assignee']);
+
+        if ($user->isCustomer()) {
+            $query->where('customer_id', $user->id);
+        }
+
+        // Aplica os filtros enviados pela App Móvel (Query Parameters)
+        $this->applyIndexFilters($query, $request, $user);
+
+        $tickets = $query->latest()->paginate(15);
 
         return TicketResource::collection($tickets);
+    }
+
+    /**
+     * Applies search and dropdown filters to the ticket query.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param Request $request
+     * @param User $user
+     * @return void
+     */
+    private function applyIndexFilters($query, Request $request, User $user): void
+    {
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm, $user) {
+                $q->where('title', 'like', '%' . $searchTerm . '%');
+                
+                if ($user->isSupporter()) {
+                    $q->orWhereHas('customer', function ($customerQuery) use ($searchTerm) {
+                        $customerQuery->where('name', 'like', '%' . $searchTerm . '%');
+                    });
+                }
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('customers') && $user->isSupporter()) {
+            $customerIds = is_array($request->customers) ? $request->customers : explode(',', $request->customers);
+            $query->whereIn('customer_id', $customerIds);
+        }
+
+        if ($request->filled('assignees') && $user->isSupporter()) {
+            $assignees = is_array($request->assignees) ? $request->assignees : explode(',', $request->assignees);
+            
+            $query->where(function ($q) use ($assignees, $user) {
+                if (in_array('unassigned', $assignees)) {
+                    $q->orWhereNull('assigned_to');
+                }
+                if (in_array('me', $assignees)) {
+                    $q->orWhere('assigned_to', $user->id);
+                }
+            });
+        }
     }
 
     /**
