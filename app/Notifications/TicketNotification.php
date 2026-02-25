@@ -10,8 +10,8 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Handles all system notifications related to tickets (status changes, new messages).
- * Dispatches to both database (UI bell) and email channels.
+ * Lida com todas as notificações do sistema relacionadas a tickets (alteração de estado, mensagens).
+ * Despacha para a base de dados (Sininho UI) e canais de E-mail.
  */
 class TicketNotification extends Notification implements ShouldQueue
 {
@@ -19,39 +19,41 @@ class TicketNotification extends Notification implements ShouldQueue
 
     public Ticket $ticket;
     public string $message;
+    public string $type;
 
     /**
-     * Create a new notification instance.
-     * * @param Ticket $ticket
+     * Cria uma nova instância da notificação.
+     *
+     * @param Ticket $ticket
      * @param string $message
+     * @param string $type Ajuda o frontend a agrupar notificações semelhantes (ex: 'new_message', 'status_change').
      */
-    public function __construct(Ticket $ticket, string $message)
+    public function __construct(Ticket $ticket, string $message, string $type = 'new_message')
     {
         $this->ticket = $ticket;
         $this->message = $message;
+        $this->type = $type;
     }
 
     /**
-     * Get the notification's delivery channels.
+     * Obtém os canais de entrega da notificação.
      *
      * @param object $notifiable
      * @return array<int, string>
      */
     public function via(object $notifiable): array
     {
-        // Enforce dispatching to both UI and Email as per requirements
         return ['database', 'mail'];
     }
 
     /**
-     * Get the mail representation of the notification.
+     * Obtém a representação de e-mail da notificação.
      *
      * @param object $notifiable
      * @return MailMessage
      */
     public function toMail(object $notifiable): MailMessage
     {
-        // Regista apenas uma linha limpa no ficheiro email.log
         Log::channel('email')->info("📩 E-mail simulado para {$notifiable->email}: {$this->message}");
 
         return (new MailMessage)
@@ -63,7 +65,7 @@ class TicketNotification extends Notification implements ShouldQueue
     }
 
     /**
-     * Get the array representation of the notification for the database (Sininho).
+     * Obtém a representação em array da notificação para a base de dados (Sininho).
      *
      * @param object $notifiable
      * @return array<string, mixed>
@@ -74,6 +76,7 @@ class TicketNotification extends Notification implements ShouldQueue
             'ticket_id' => $this->ticket->id,
             'title' => $this->ticket->title,
             'message' => $this->message,
+            'type' => $this->type,
             'url' => route('tickets.show', $this->ticket->id),
         ];
     }

@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Enums\RoleEnum;
+use App\Enums\TicketStatusEnum;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -31,9 +32,14 @@ class TicketApiTest extends TestCase
     {
         $customer = User::factory()->create([
             'role' => RoleEnum::CUSTOMER,
-            'daily_support_seconds' => 1800 // Corrected column name
+            'daily_support_seconds' => 1800 
         ]);
-        $ticket = Ticket::factory()->create(['customer_id' => $customer->id]);
+        
+        // Correção: Garantir que o ticket está EM PROGRESSO para respeitar as novas regras de negócio do TicketService
+        $ticket = Ticket::factory()->create([
+            'customer_id' => $customer->id,
+            'status' => TicketStatusEnum::IN_PROGRESS
+        ]);
 
         $response = $this->actingAs($customer, 'sanctum')
             ->postJson("/api/tickets/{$ticket->id}/messages", [

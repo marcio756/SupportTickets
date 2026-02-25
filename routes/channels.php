@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Broadcast;
 /**
  * Register default broadcasting authorization rules.
  */
-Broadcast::channel('App.Models.User.{id}', function (User $user, int $id) {
+// Correção: Removido o type-hint 'int' para evitar falhas de type casting na injeção via WebSockets
+Broadcast::channel('App.Models.User.{id}', function (User $user, $id) {
     return (int) $user->id === (int) $id;
 });
 
@@ -15,7 +16,7 @@ Broadcast::channel('App.Models.User.{id}', function (User $user, int $id) {
  * Secure the private ticket channel.
  * Only the customer who owns the ticket OR an authorized supporter can listen to it.
  */
-Broadcast::channel('ticket.{ticketId}', function (User $user, int $ticketId) {
+Broadcast::channel('ticket.{ticketId}', function (User $user, $ticketId) {
     // Supporters have global access to ticket channels
     if ($user->isSupporter()) {
         return true;

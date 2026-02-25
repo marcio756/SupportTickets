@@ -48,13 +48,13 @@ Route::middleware('auth')->group(function () {
 
     /**
      * Notification Management Routes
-     * Handles indexing, marking as read (delete on click), clearing, and bulk removals.
+     * Prefixo /api/ removido para evitar colisão crítica com o ficheiro routes/api.php nativo.
      */
-    Route::get('/api/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::post('/api/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
-    Route::post('/api/notifications/read-bulk', [NotificationController::class, 'markBulkAsRead'])->name('notifications.read-bulk');
-    Route::post('/api/notifications/clear', [NotificationController::class, 'destroyAll'])->name('notifications.clear');
-    Route::delete('/api/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-bulk', [NotificationController::class, 'markBulkAsRead'])->name('notifications.read-bulk');
+    Route::post('/notifications/clear', [NotificationController::class, 'destroyAll'])->name('notifications.clear');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
     /**
      * User Management Routes

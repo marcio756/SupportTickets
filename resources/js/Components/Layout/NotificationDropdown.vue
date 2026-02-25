@@ -35,6 +35,11 @@
           >
             <div class="content">
               <p class="message">
+                <va-icon 
+                  :name="item.data.type === 'status_change' ? 'info' : 'chat'" 
+                  size="small" 
+                  class="mr-1 text-gray-400" 
+                />
                 {{ item.data.message }}
                 <va-badge 
                   v-if="item.count > 1" 
@@ -68,25 +73,34 @@ import axios from 'axios';
 
 const notifications = ref([]);
 
+/**
+ * @type {import('vue').ComputedRef<number>}
+ */
 const unreadCount = computed(() => notifications.value.length);
 
 /**
- * Group notifications by ticket_id for new messages.
- * This ensures multiple messages for the same ticket appear as a single notification indicator.
+ * Agrupa as notificações pelo ticket_id E pelo tipo de notificação.
+ * Isto garante que mensagens não se misturam com mudanças de estado.
  *
- * @returns {Array} Array of grouped notification objects.
+ * @returns {Array<Object>} Array de objetos de notificação agrupados.
  */
 const groupedNotifications = computed(() => {
     const groups = [];
     const messageGroups = {};
 
     notifications.value.forEach(n => {
-        if (n.data.type === 'new_message') {
-            if (!messageGroups[n.data.ticket_id]) {
-                messageGroups[n.data.ticket_id] = { ...n, count: 1, ids: [n.id] };
+        const tId = n.data?.ticket_id;
+        const type = n.data?.type || 'general';
+        
+        if (tId) {
+            // Chave composta (Ex: "1_new_message" ou "1_status_change")
+            const groupKey = `${tId}_${type}`;
+
+            if (!messageGroups[groupKey]) {
+                messageGroups[groupKey] = { ...n, count: 1, ids: [n.id] };
             } else {
-                messageGroups[n.data.ticket_id].count++;
-                messageGroups[n.data.ticket_id].ids.push(n.id);
+                messageGroups[groupKey].count++;
+                messageGroups[groupKey].ids.push(n.id);
             }
         } else {
             groups.push({ ...n, count: 1, ids: [n.id] });
@@ -97,7 +111,8 @@ const groupedNotifications = computed(() => {
 });
 
 /**
- * Fetch initial unread notifications from the server endpoint.
+ * Busca notificações iniciais não lidas da API nativa.
+ * @returns {Promise<void>}
  */
 const fetchNotifications = async () => {
     try {
@@ -109,10 +124,11 @@ const fetchNotifications = async () => {
 };
 
 /**
- * Handle clicking on a notification group or single item.
- * Marks all associated IDs as read and redirects the user to the specific ticket view.
+ * Lida com o clique numa notificação agrupada ou item único.
+ * Elimina todas as notificações atreladas a ela na DB.
  *
- * @param {Object} item The notification item/group.
+ * @param {Object} item O item ou grupo com os respetivos IDs
+ * @returns {Promise<void>}
  */
 const handleNotificationClick = async (item) => {
     try {
@@ -125,9 +141,10 @@ const handleNotificationClick = async (item) => {
 };
 
 /**
- * Delete a specific notification or group of notifications without redirecting.
+ * Apaga a notificação visualmente e da DB sem redirecionar a view.
  *
- * @param {Object} item The notification item/group to delete.
+ * @param {Object} item O item ou grupo de notificação.
+ * @returns {Promise<void>}
  */
 const deleteNotification = async (item) => {
     try {
@@ -139,7 +156,8 @@ const deleteNotification = async (item) => {
 };
 
 /**
- * Clear all notifications for the currently authenticated user.
+ * Hard reset que elimina todas as notificações do painel.
+ * @returns {Promise<void>}
  */
 const clearAll = async () => {
     try {
@@ -153,10 +171,9 @@ const clearAll = async () => {
 onMounted(() => {
     fetchNotifications();
     
-    // Safety check: Safely retrieve user ID to avoid unhandled errors on non-auth views
     const userId = usePage().props.auth?.user?.id;
     
-    // Listen for real-time broadcasted notifications via Laravel Echo only if user is logged in
+    // Ouve notificações via WebSockets (Laravel Echo + Reverb)
     if (window.Echo && userId) {
         window.Echo.private(`App.Models.User.${userId}`)
             .notification((notification) => {

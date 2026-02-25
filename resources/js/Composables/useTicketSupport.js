@@ -3,11 +3,11 @@ import { useForm, usePage, router } from '@inertiajs/vue3';
 import axios from 'axios';
 
 /**
- * Encapsulates the reactive state, form handling, and WebSocket interactions
- * required for the ticket chat and support time tracking interface.
+ * Encapsula o estado reativo, manipulação de formulários e interações WebSocket
+ * necessários para o chat de tickets e acompanhamento de tempo de suporte.
  *
- * @param {import('vue').Ref<Object>} ticket - The reactive reference to the ticket object.
- * @returns {Object} Exposes reactive variables and control functions for the UI.
+ * @param {import('vue').Ref<Object>} ticket - A referência reativa ao objeto do ticket.
+ * @returns {Object} Variáveis reativas e funções de controlo para a UI.
  */
 export function useTicketSupport(ticket) {
     const page = usePage();
@@ -31,12 +31,21 @@ export function useTicketSupport(ticket) {
 
     let heartbeatInterval = null;
 
+    /**
+     * @type {import('vue').ComputedRef<boolean>}
+     */
     const isTimeUp = computed(() => currentRemainingSeconds.value <= 0);
 
+    /**
+     * @type {import('vue').ComputedRef<boolean>}
+     */
     const isAssignedSupporter = computed(() => {
         return isSupporter && ticket.value.assignee && ticket.value.assignee.id === currentUser.id;
     });
 
+    /**
+     * @type {import('vue').ComputedRef<boolean>}
+     */
     const showClaimOverlay = computed(() => {
         if (ticket.value.status === 'closed' || ticket.value.status === 'resolved') {
             return false;
@@ -45,7 +54,8 @@ export function useTicketSupport(ticket) {
     });
 
     /**
-     * Lock input if status is NOT 'in_progress', time is up, or user is unassigned.
+     * Bloqueia o input se o estado NÃO for 'in_progress', se o tempo esgotou ou se o utilizador não estiver atribuído.
+     * @type {import('vue').ComputedRef<boolean>}
      */
     const isInputDisabled = computed(() => {
         if (isTimeUp.value || ticket.value.status === 'closed' || ticket.value.status === 'resolved') {
@@ -60,6 +70,9 @@ export function useTicketSupport(ticket) {
         return false;
     });
 
+    /**
+     * @type {import('vue').ComputedRef<boolean>}
+     */
     const isSubmitDisabled = computed(() => {
         if (isInputDisabled.value) return true;
         const hasMessage = replyForm.message && replyForm.message.trim().length > 0;
@@ -68,12 +81,17 @@ export function useTicketSupport(ticket) {
     });
 
     /**
-     * Determines if the automated time deduction ping should be dispatched.
+     * Determina se o ping automático de dedução de tempo deve ser despachado.
+     * @type {import('vue').ComputedRef<boolean>}
      */
     const shouldRunHeartbeat = computed(() => {
         return isAssignedSupporter.value && ticket.value.status === 'in_progress' && !isTimeUp.value;
     });
 
+    /**
+     * Rola o scroll do contentor de mensagens para o fundo.
+     * @returns {Promise<void>}
+     */
     const scrollToBottom = async () => {
         await nextTick();
         if (messagesContainer.value) {
@@ -81,6 +99,10 @@ export function useTicketSupport(ticket) {
         }
     };
 
+    /**
+     * Submete uma nova mensagem de resposta no ticket.
+     * @returns {void}
+     */
     const submitReply = () => {
         if (isSubmitDisabled.value) return;
         replyForm.clearErrors('attachment');
@@ -100,6 +122,10 @@ export function useTicketSupport(ticket) {
         });
     };
 
+    /**
+     * Reivindica o ticket para o supporter autenticado.
+     * @returns {void}
+     */
     const assignToMe = () => {
         isAssigning.value = true;
         router.patch(route('tickets.assign', ticket.value.id), {}, {
@@ -108,10 +134,19 @@ export function useTicketSupport(ticket) {
         });
     };
 
+    /**
+     * Atualiza o estado do ticket via API local.
+     * @param {string} newStatus O novo estado do ticket.
+     * @returns {void}
+     */
     const updateStatus = (newStatus) => {
         router.patch(route('tickets.update-status', ticket.value.id), { status: newStatus }, { preserveScroll: true });
     };
 
+    /**
+     * Executa o soft-delete ou hard-delete do ticket.
+     * @returns {void}
+     */
     const deleteTicket = () => {
         deleteForm.delete(route('tickets.destroy', ticket.value.id), {
             preserveScroll: true,
@@ -120,6 +155,10 @@ export function useTicketSupport(ticket) {
         });
     };
 
+    /**
+     * Inicia o intervalo de heartbeat para dedução de tempo de suporte.
+     * @returns {void}
+     */
     const startHeartbeat = () => {
         if (heartbeatInterval) return;
         heartbeatInterval = setInterval(() => {
@@ -134,6 +173,10 @@ export function useTicketSupport(ticket) {
         }, 5000);
     };
 
+    /**
+     * Para o intervalo de heartbeat ativamente em execução.
+     * @returns {void}
+     */
     const stopHeartbeat = () => {
         if (heartbeatInterval) {
             clearInterval(heartbeatInterval);

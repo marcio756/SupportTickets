@@ -36,15 +36,18 @@ class TicketChannelTest extends TestCase
      */
     public function test_customer_cannot_access_other_customers_channel(): void
     {
-        $owner = User::factory()->create(['role' => RoleEnum::CUSTOMER->value]);
-        $intruder = User::factory()->create(['role' => RoleEnum::CUSTOMER->value]);
+        // Correção: Passar a instância do Enum em vez da string (->value) para garantir o casting correto
+        $owner = User::factory()->create(['role' => RoleEnum::CUSTOMER]);
+        $intruder = User::factory()->create(['role' => RoleEnum::CUSTOMER]);
         
         $ticket = Ticket::factory()->create([
             'customer_id' => $owner->id,
             'title' => 'My Private Issue',
-            'status' => TicketStatusEnum::OPEN->value,
+            'status' => TicketStatusEnum::OPEN,
         ]);
 
+        // Refresh para garantir que a memória reflete os Casts do Eloquent
+        $intruder->refresh();
         $this->actingAs($intruder);
 
         $response = $this->postJson('/broadcasting/auth', [
@@ -62,15 +65,18 @@ class TicketChannelTest extends TestCase
      */
     public function test_supporter_can_access_any_ticket_channel(): void
     {
-        $owner = User::factory()->create(['role' => RoleEnum::CUSTOMER->value]);
-        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER->value]);
+        // Correção: Passar a instância do Enum em vez da string (->value) para garantir o casting correto
+        $owner = User::factory()->create(['role' => RoleEnum::CUSTOMER]);
+        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER]);
         
         $ticket = Ticket::factory()->create([
             'customer_id' => $owner->id,
             'title' => 'My Private Issue',
-            'status' => TicketStatusEnum::OPEN->value,
+            'status' => TicketStatusEnum::OPEN,
         ]);
 
+        // Refresh para garantir que o $user->role é um objeto Enum e passa na verificação estrita ===
+        $supporter->refresh();
         $this->actingAs($supporter);
 
         $response = $this->postJson('/broadcasting/auth', [

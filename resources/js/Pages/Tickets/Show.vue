@@ -218,12 +218,17 @@ import {
 } from 'vuestic-ui';
 import { useTicketSupport } from '@/Composables/useTicketSupport';
 
+/**
+ * Propriedades injetadas através do controlador Inertia.
+ * @type {Object} ticket Contém a relação cliente, mensagens, assignees e tempo disponível.
+ */
 const props = defineProps({
     ticket: { type: Object, required: true }
 });
 
 const ticketRef = toRef(props, 'ticket');
 
+// Injeção da lógica abstrata para lidar com as conexões Echo/Axios e Formulários
 const {
     isSupporter, currentRemainingSeconds, localMessages, messagesContainer,
     isAssigning, replyForm, deleteForm, confirmingDeletion, isTimeUp,

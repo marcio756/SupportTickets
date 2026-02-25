@@ -4,24 +4,30 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\JsonResponse;
 
+/**
+ * Controller responsável por gerir as notificações do utilizador na interface Web.
+ */
 class NotificationController extends Controller
 {
     /**
-     * Get all unread notifications for the authenticated user.
-     * * @return \Illuminate\Http\JsonResponse
+     * Recupera todas as notificações não lidas para o utilizador autenticado.
+     *
+     * @return JsonResponse
      */
-    public function index()
+    public function index(): JsonResponse
     {
         return response()->json(Auth::user()->unreadNotifications);
     }
 
     /**
-     * Mark a single notification as read (delete it) and return the associated ticket ID.
-     * * @param string $id
-     * @return \Illuminate\Http\JsonResponse
+     * Marca uma única notificação como lida (elimina-a) e retorna o ID do ticket associado.
+     *
+     * @param string $id O identificador único da notificação.
+     * @return JsonResponse
      */
-    public function markAsRead($id)
+    public function markAsRead(string $id): JsonResponse
     {
         $notification = Auth::user()->notifications()->findOrFail($id);
         $ticketId = $notification->data['ticket_id'];
@@ -32,12 +38,13 @@ class NotificationController extends Controller
     }
 
     /**
-     * Mark multiple grouped notifications as read (delete them) and return the ticket ID.
-     * Useful when handling bundled notifications from the same ticket.
-     * * @param Request $request Expects an array of notification 'ids'.
-     * @return \Illuminate\Http\JsonResponse
+     * Marca múltiplas notificações agrupadas como lidas (elimina-as) e retorna o ID do ticket.
+     * Útil quando se lida com notificações agrupadas do mesmo ticket.
+     *
+     * @param Request $request O request contendo o array de 'ids' das notificações.
+     * @return JsonResponse
      */
-    public function markBulkAsRead(Request $request)
+    public function markBulkAsRead(Request $request): JsonResponse
     {
         $ids = $request->input('ids', []);
 
@@ -51,7 +58,7 @@ class NotificationController extends Controller
             return response()->json(['status' => 'not_found'], 404);
         }
 
-        // We assume all grouped IDs belong to the same ticket, so retrieving the first is safe.
+        // Assumimos que todos os IDs agrupados pertencem ao mesmo ticket.
         $ticketId = $notifications->first()->data['ticket_id'];
         
         Auth::user()->notifications()->whereIn('id', $ids)->delete();
@@ -60,21 +67,23 @@ class NotificationController extends Controller
     }
 
     /**
-     * Delete all notifications for the currently authenticated user.
-     * * @return \Illuminate\Http\JsonResponse
+     * Elimina todas as notificações para o utilizador atualmente autenticado.
+     *
+     * @return JsonResponse
      */
-    public function destroyAll()
+    public function destroyAll(): JsonResponse
     {
         Auth::user()->notifications()->delete();
         return response()->json(['status' => 'success']);
     }
 
     /**
-     * Delete a single notification.
-     * * @param string $id
-     * @return \Illuminate\Http\JsonResponse
+     * Elimina uma única notificação sem redirecionamento.
+     *
+     * @param string $id O identificador único da notificação.
+     * @return JsonResponse
      */
-    public function destroy($id)
+    public function destroy(string $id): JsonResponse
     {
         Auth::user()->notifications()->findOrFail($id)->delete();
         return response()->json(['status' => 'success']);

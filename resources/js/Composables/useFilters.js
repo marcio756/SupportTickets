@@ -1,17 +1,24 @@
 /**
  * resources/js/Composables/useFilters.js
- * Provides encapsulated logic for server-side filtering with localStorage persistence.
+ * Fornece lógica encapsulada para filtragem server-side com persistência em localStorage.
  */
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 
+/**
+ * @param {Object} initialFilters Valores iniciais do filtro.
+ * @param {string} routeName O nome da rota Ziggy a chamar (ex: 'users.index' ou 'tickets.index').
+ * @param {number} currentPage A página atual da paginação.
+ * @returns {Object} Variáveis e métodos de filtragem reativos.
+ */
 export function useFilters(initialFilters = {}, routeName, currentPage = 1) {
     const storageKey = `filters-${routeName}`;
     
-    // Initialize from URL/Props or fallback to localStorage
+    // Inicializa do URL/Props ou faz fallback para localStorage
     const savedFilters = JSON.parse(localStorage.getItem(storageKey) || '{}');
 
-    const query = ref(initialFilters.search || savedFilters.search || '');
+    // A variável query acomoda tanto 'search' (Tickets) como 'query' (Users)
+    const query = ref(initialFilters.search || initialFilters.query || savedFilters.search || savedFilters.query || '');
     const selectedStatus = ref(initialFilters.status || savedFilters.status || '');
     const selectedCustomers = ref(initialFilters.customers || savedFilters.customers || []);
     const selectedAssignees = ref(initialFilters.assignees || savedFilters.assignees || []);
@@ -21,14 +28,17 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1) {
     let debounceTimeout = null;
 
     /**
-     * Executes the server-side request and updates local storage.
+     * Executa o pedido server-side e atualiza a local storage.
+     * @param {boolean} replace Define se substitui o histórico de navegação.
      */
     const fetchResults = (replace = true) => {
         if (debounceTimeout) clearTimeout(debounceTimeout);
         
         debounceTimeout = setTimeout(() => {
             const params = {
+                // Envia as duas keys para garantir compatibilidade com ambos os Controllers
                 search: query.value,
+                query: query.value, 
                 page: page.value
             };
             
@@ -37,7 +47,7 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1) {
             if (selectedAssignees.value?.length) params.assignees = selectedAssignees.value;
             if (selectedRole.value) params.role = selectedRole.value;
 
-            // Persist the current filter state
+            // Persiste o estado atual do filtro
             localStorage.setItem(storageKey, JSON.stringify(params));
 
             router.get(route(routeName), params, {
@@ -48,14 +58,15 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1) {
         }, 300);
     };
 
-    // Reset page to 1 whenever a filter changes to avoid empty results on high page numbers
+    // Fazer reset à página para 1 sempre que um filtro muda para evitar resultados vazios
     watch([query, selectedStatus, selectedCustomers, selectedAssignees, selectedRole], () => {
         page.value = 1; 
         fetchResults(true);
     }, { deep: true });
 
     /**
-     * Handles pagination changes.
+     * Lida com as mudanças de paginação.
+     * @param {number} newPage
      */
     const changePage = (newPage) => {
         page.value = newPage;

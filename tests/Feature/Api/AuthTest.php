@@ -25,10 +25,13 @@ class AuthTest extends TestCase
             'device_name' => 'MobileApp',
         ]);
 
+        // Correção: Agora verifica a estrutura padrão definida no ApiResponser ('data' wrapper)
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'token',
-                'user' => ['id', 'name', 'email', 'role']
+                'data' => [
+                    'token',
+                    'user' => ['id', 'name', 'email', 'role']
+                ]
             ]);
     }
 

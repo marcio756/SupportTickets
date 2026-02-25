@@ -5,11 +5,15 @@ namespace App\Observers;
 use App\Models\Ticket;
 use App\Notifications\TicketNotification;
 
+/**
+ * Observador responsável por despachar as lógicas reativas associadas
+ * ao modelo Ticket, como notificações de estado.
+ */
 class TicketObserver
 {
     /**
-     * Notify users conditionally when the ticket status changes.
-     * Ensures the actor who made the change does not receive a notification.
+     * Notifica os utilizadores condicionalmente quando o estado do ticket muda.
+     * Garante que o ator que fez a mudança não recebe a notificação.
      *
      * @param Ticket $ticket
      * @return void
@@ -20,28 +24,22 @@ class TicketObserver
         if ($ticket->wasChanged('status')) {
             $actorId = auth()->id();
             
-            $notificationData = [
-                'ticket_id' => $ticket->id,
-                'title'     => 'Status Alterado',
-                'message'   => "O ticket #{$ticket->id} mudou para {$ticket->status->value}",
-                'type'      => 'status_change'
-            ];
+            // A mensagem a enviar na notificação
+            $message = "O ticket #{$ticket->id} mudou para {$ticket->status->value}";
 
-            // Notify Customer if they aren't the ones changing the state
-            // Alterado de $ticket->user_id para $ticket->customer_id
+            // Notifica o Cliente caso ele não seja o responsável pela alteração
             if ($ticket->customer_id !== $actorId) {
-                // Alterado de $ticket->user para $ticket->customer
                 if ($ticket->customer) {
-                    $ticket->customer->notify(new TicketNotification($notificationData));
+                    // Adicionado explicitamente o tipo 'status_change'
+                    $ticket->customer->notify(new TicketNotification($ticket, $message, 'status_change'));
                 }
             }
 
-            // Notify Support/Agent if they aren't the ones changing the state
-            // Alterado de $ticket->agent_id para $ticket->assigned_to
+            // Notifica o Agente Atribuído caso ele não seja o responsável pela alteração
             if ($ticket->assigned_to && $ticket->assigned_to !== $actorId) {
-                // Alterado de $ticket->agent para $ticket->assignee
                 if ($ticket->assignee) {
-                    $ticket->assignee->notify(new TicketNotification($notificationData));
+                    // Adicionado explicitamente o tipo 'status_change'
+                    $ticket->assignee->notify(new TicketNotification($ticket, $message, 'status_change'));
                 }
             }
         }
