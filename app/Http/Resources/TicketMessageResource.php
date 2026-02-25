@@ -20,7 +20,8 @@ class TicketMessageResource extends JsonResource
         return [
             'id' => $this->id,
             'message' => $this->message,
-            'sender' => new UserResource($this->whenLoaded('user')),
+            // CORREÇÃO: Lê a relação correta 'sender' que é injetada no Controller
+            'sender' => new UserResource($this->whenLoaded('sender')),
             'attachment_url' => $this->attachment_path ? Storage::url($this->attachment_path) : null,
             'created_at' => $this->created_at->toISOString(),
         ];
