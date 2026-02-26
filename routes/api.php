@@ -6,13 +6,9 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TicketController;
+use App\Http\Controllers\Api\UserController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
-
-/**
- * API Routes
- * Namespaced with 'api.' to prevent collisions with Inertia/Web routes in Ziggy.
- */
 
 Route::post('/login', [AuthController::class, 'login'])->name('api.login');
 
@@ -31,17 +27,13 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
 
-    /**
-     * Retrieves a list of users holding the 'customer' role.
-     * Used primarily by support agents to assign new tickets on behalf of clients.
-     */
     Route::get('/customers', function () {
-        $customers = User::where('role', RoleEnum::CUSTOMER->value)
-            ->select('id', 'name', 'email')
-            ->get();
-            
+        $customers = User::where('role', RoleEnum::CUSTOMER->value)->select('id', 'name', 'email')->get();
         return response()->json(['data' => $customers]);
     })->name('customers.index');
+
+    // Users (User Management)
+    Route::apiResource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
 
     // Tickets
     Route::apiResource('tickets', TicketController::class)->only(['index', 'store', 'show']);
