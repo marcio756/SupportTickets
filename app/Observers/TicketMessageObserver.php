@@ -4,13 +4,21 @@ namespace App\Observers;
 
 use App\Models\TicketMessage;
 use App\Notifications\TicketNotification;
+use App\Services\FirebaseService;
 
 /**
  * Observer responsible for intercepting the creation of ticket messages
- * and dispatching notifications to the appropriate parties, enforcing SRP.
+ * and dispatching internal and push notifications to the appropriate parties.
  */
 class TicketMessageObserver
 {
+    /**
+     * Create a new observer instance.
+     *
+     * @param FirebaseService $firebaseService Service injected for push notifications.
+     */
+    public function __construct(private FirebaseService $firebaseService) {}
+
     /**
      * Notify the alternate participant when a new ticket message is dispatched.
      *
@@ -26,11 +34,18 @@ class TicketMessageObserver
         $recipient = ($ticket->customer_id === $senderId) ? $ticket->assignee : $ticket->customer;
 
         if ($recipient) {
-            // Correctly instantiate the TicketNotification with (Ticket $ticket, string $message)
+            $title = "Nova Mensagem";
+            $body = "Recebeu uma nova mensagem no ticket #{$ticket->id}";
+            $payload = ['ticket_id' => (string) $ticket->id];
+
+            // Local DB Notification
             $recipient->notify(new TicketNotification(
                 $ticket, 
-                "Nova mensagem no ticket #{$ticket->id}"
+                $body
             ));
+
+            // Firebase Push Notification
+            $this->firebaseService->sendNotificationToUser($recipient, $title, $body, $payload);
         }
     }
 }

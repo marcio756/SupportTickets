@@ -91,4 +91,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Ticket::class, 'assigned_to');
     }
+
+    /**
+     * Retrieves all FCM tokens associated with this user for push notifications.
+     *
+     * @return HasMany
+     */
+    public function fcmTokens(): HasMany
+    {
+        return $this->hasMany(FcmToken::class);
+    }
 }

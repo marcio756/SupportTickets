@@ -3,6 +3,7 @@
 use App\Enums\RoleEnum;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TicketController;
@@ -26,6 +27,9 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
+
+    // FCM Tokens Route
+    Route::post('/fcm-token', [FcmTokenController::class, 'store'])->name('fcm-token.store');
 
     Route::get('/customers', function () {
         $customers = User::where('role', RoleEnum::CUSTOMER->value)->select('id', 'name', 'email')->get();

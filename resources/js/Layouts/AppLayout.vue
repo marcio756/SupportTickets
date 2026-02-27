@@ -11,6 +11,7 @@ import { useTheme } from '@/Composables/useTheme';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import ThemeButton from '@/Components/navbar/ThemeButton.vue';
 import NotificationDropdown from '@/Components/Layout/NotificationDropdown.vue';
+import FirebaseMessagingService from '@/Services/FirebaseMessagingService';
 
 defineProps({
     title: String,
@@ -43,6 +44,25 @@ onMounted(() => {
     if (savedSidebar !== null) {
         isSidebarMinimized.value = savedSidebar === 'true';
     }
+
+    // Initialize Firebase Cloud Messaging for Push Notifications
+    FirebaseMessagingService.init();
+    
+    // Request permission from the user for Push Notifications
+    FirebaseMessagingService.requestPermissionAndGetToken();
+
+    // Listen for notifications while the user has the browser tab actively open
+    FirebaseMessagingService.onForegroundMessage((payload) => {
+        console.log('Foreground Push Notification received: ', payload);
+        
+        // Native browser alert fallback if a toast library is not available
+        if (Notification.permission === 'granted') {
+            new Notification(payload.notification.title, {
+                body: payload.notification.body,
+                icon: '/icons/Icon-192.png'
+            });
+        }
+    });
 });
 </script>
 
