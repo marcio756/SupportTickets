@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FcmToken;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,6 +14,7 @@ class FcmTokenController extends Controller
 {
     /**
      * Store or update an FCM token for the authenticated user.
+     * Reassigns the token to the newly authenticated user if the device is shared.
      *
      * @param Request $request
      * @return JsonResponse
@@ -26,10 +28,15 @@ class FcmTokenController extends Controller
 
         $user = $request->user();
 
-        // Use updateOrCreate to prevent duplicate tokens for the same user
-        $user->fcmTokens()->updateOrCreate(
+        // Utilizamos o modelo diretamente para procurar pelo token na BD inteira.
+        // Se o token já existir (mesmo que de outro utilizador), atualiza o 'user_id' para o utilizador atual.
+        // Se não existir, cria um novo registo. Isto evita o erro 500 de Unique Constraint.
+        FcmToken::updateOrCreate(
             ['token' => $validated['token']],
-            ['device_type' => $validated['device_type'] ?? 'unknown']
+            [
+                'user_id' => $user->id,
+                'device_type' => $validated['device_type'] ?? 'unknown'
+            ]
         );
 
         return response()->json([

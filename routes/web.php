@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TicketController;
@@ -60,6 +61,12 @@ Route::middleware('auth')->group(function () {
      * User Management Routes
      */
     Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+
+    /**
+     * Firebase Web Integration
+     * Rota isolada na web para guardar o token utilizando a Sessão/Cookies do Inertia.js.
+     */
+    Route::post('/fcm-token', [FcmTokenController::class, 'store'])->name('web.fcm-token.store');
 });
 
 require __DIR__.'/auth.php';

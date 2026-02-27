@@ -75,13 +75,15 @@ class FirebaseMessagingService {
 
     /**
      * Sends the retrieved FCM token to the Laravel API for persistence.
+     * Utilizes the web route to automatically leverage Inertia/Sanctum session cookies.
      *
      * @param {string} token The FCM device token.
      * @returns {Promise<void>}
      */
     async registerTokenWithBackend(token) {
         try {
-            await axios.post('/api/fcm-token', {
+            // Removemos o /api/ para usar as rotas Web com autenticação baseada em Cookies
+            await axios.post('/fcm-token', {
                 token: token,
                 device_type: 'web'
             });
