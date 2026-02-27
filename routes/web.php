@@ -48,6 +48,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/{ticket}/tick-time', [TicketController::class, 'tickTime'])->name('tickets.tick-time');
 
     /**
+     * Tags Related
+     */
+    Route::put('/tickets/{ticket}/tags', [TicketController::class, 'syncTags'])->name('tickets.tags.sync');
+    Route::resource('tags', TagController::class)->except(['create', 'show', 'edit']);
+
+    /**
      * Notification Management Routes
      * Prefixo /api/ removido para evitar colisão crítica com o ficheiro routes/api.php nativo.
      */

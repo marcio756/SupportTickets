@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\RoleEnum;
 use App\Enums\TicketStatusEnum;
+use App\Models\Tag;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\SupportTimeManager;
@@ -37,7 +38,9 @@ class TicketController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $query = Ticket::with(['customer', 'assignee']);
+        
+        // Eager load tags alongside standard relationships to avoid N+1 queries
+        $query = Ticket::with(['customer', 'assignee', 'tags']);
 
         if (! $user->isSupporter()) {
             $query->where('customer_id', $user->id);
@@ -48,17 +51,23 @@ class TicketController extends Controller
         $tickets = $query->latest()->paginate(10)->withQueryString();
 
         $customersList = [];
+        $availableTags = [];
+        
         if ($user->isSupporter()) {
             $customersList = User::where('role', 'customer')
                 ->select('id', 'name')
                 ->orderBy('name')
                 ->get();
+                
+            // Fetch all tags to populate the filtering dropdowns on the frontend
+            $availableTags = Tag::select('id', 'name', 'color')->orderBy('name')->get();
         }
 
         return Inertia::render('Tickets/Index', [
             'tickets' => $tickets,
-            'filters' => $request->only(['search', 'status', 'customers', 'assignees']),
+            'filters' => $request->only(['search', 'status', 'customers', 'assignees', 'tags']),
             'customersList' => $customersList,
+            'availableTags' => $availableTags,
         ]);
     }
 
@@ -104,6 +113,14 @@ class TicketController extends Controller
                 if (in_array('me', $assignees)) {
                     $q->orWhere('assigned_to', $user->id);
                 }
+            });
+        }
+
+        // Apply tag filtering if present in the request
+        if ($request->filled('tags')) {
+            $tagIds = is_array($request->tags) ? $request->tags : explode(',', $request->tags);
+            $query->whereHas('tags', function ($q) use ($tagIds) {
+                $q->whereIn('tags.id', $tagIds);
             });
         }
     }
@@ -168,11 +185,43 @@ class TicketController extends Controller
             abort(403, 'Unauthorized access to this ticket.');
         }
 
-        $ticket->load(['customer', 'assignee', 'messages.sender']);
+        // Load tags relationships for the details view
+        $ticket->load(['customer', 'assignee', 'messages.sender', 'tags']);
+
+        $availableTags = [];
+        if ($request->user()->isSupporter()) {
+            $availableTags = Tag::select('id', 'name', 'color')->orderBy('name')->get();
+        }
 
         return Inertia::render('Tickets/Show', [
             'ticket' => $ticket,
+            'availableTags' => $availableTags,
         ]);
+    }
+
+    /**
+     * Sync the tags for a specific ticket.
+     * Restricted to supporters.
+     *
+     * @param Request $request
+     * @param Ticket $ticket
+     * @return RedirectResponse
+     */
+    public function syncTags(Request $request, Ticket $ticket): RedirectResponse
+    {
+        if (! $request->user()->isSupporter()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'tags' => ['array'],
+            'tags.*' => ['exists:tags,id'],
+        ]);
+
+        // Sync updates the pivot table completely matching the provided array
+        $ticket->tags()->sync($validated['tags'] ?? []);
+
+        return redirect()->back()->with('success', 'Ticket tags updated successfully.');
     }
 
     /**
