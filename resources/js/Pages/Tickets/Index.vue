@@ -9,45 +9,18 @@
       </va-button>
     </div>
 
-    <div class="flex flex-col md:flex-row gap-4 mb-6">
-      <div class="flex-grow">
-        <ResourceFilter
-          v-model:query="query"
-          v-model:status="selectedStatus"
-          v-model:customers="selectedCustomers"
-          v-model:assignees="selectedAssignees"
-          :status-options="statusOptions"
-          :customer-options="customersList"
-          :assignee-options="assigneeOptions"
-          :is-supporter="isSupporter"
-        />
-      </div>
-      
-      <div v-if="isSupporter && availableTags.length > 0" class="min-w-[200px]">
-        <va-select
-          v-model="selectedTags"
-          :options="tagOptions"
-          value-by="value"
-          text-by="text"
-          label="Filter by Tags"
-          multiple
-          clearable
-          searchable
-          class="w-full"
-        >
-          <template #content="{ valueArray }">
-            <div class="flex gap-1 flex-wrap">
-              <span v-if="valueArray.length === 0" class="text-gray-500">Select tags...</span>
-              <TagBadge 
-                v-for="tagId in valueArray" 
-                :key="tagId" 
-                :tag="getDetailedTag(tagId)" 
-              />
-            </div>
-          </template>
-        </va-select>
-      </div>
-    </div>
+    <ResourceFilter
+      v-model:query="query"
+      v-model:status="selectedStatus"
+      v-model:customers="selectedCustomers"
+      v-model:assignees="selectedAssignees"
+      v-model:tags="selectedTags"
+      :status-options="statusOptions"
+      :customer-options="customersList"
+      :assignee-options="assigneeOptions"
+      :available-tags="availableTags"
+      :is-supporter="isSupporter"
+    />
 
     <ResourceTable
       :resource-data="tickets"
@@ -111,7 +84,6 @@ import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import TagBadge from '@/Components/Common/TagBadge.vue';
 import TicketFormModal from './Partials/TicketFormModal.vue';
 import { useFilters } from '@/Composables/useFilters';
-import { VaSelect } from 'vuestic-ui';
 
 const props = defineProps({
   tickets: { type: Object, required: true },
@@ -142,23 +114,6 @@ const assigneeOptions = [
   { text: 'Unassigned', value: 'unassigned' },
   { text: 'Assigned to Me', value: 'me' }
 ];
-
-// Maps tags for the va-select component formatting
-const tagOptions = computed(() => {
-  return props.availableTags.map(tag => ({
-    text: tag.name,
-    value: String(tag.id) // Ensure string format for URL params consistency
-  }));
-});
-
-/**
- * Retrieves the full tag object from the availableTags array using its ID.
- * @param {string|number} id - The ID of the requested tag.
- * @returns {Object} The complete tag object.
- */
-const getDetailedTag = (id) => {
-  return props.availableTags.find(t => String(t.id) === String(id)) || { name: 'Unknown', color: '#ccc' };
-};
 
 const columns = computed(() => {
   const baseColumns = [

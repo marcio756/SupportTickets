@@ -1,7 +1,7 @@
 <template>
   <va-card class="mb-6">
     <va-card-content>
-      <div class="flex flex-col xl:flex-row items-center gap-4 w-full">
+      <div class="flex flex-col xl:flex-row items-center gap-4 w-full flex-wrap">
         
         <va-input
           v-model="internalQuery"
@@ -95,6 +95,43 @@
             </template>
         </va-select>
 
+        <va-select
+          v-if="isSupporter && availableTags && availableTags.length > 0"
+          v-model="internalTags"
+          :options="formattedTagOptions"
+          value-by="value"
+          text-by="text"
+          placeholder="Filter by Tags"
+          multiple
+          clearable
+          searchable
+          preset="bordered"
+          class="w-full xl:w-64 flex-none"
+          @update:modelValue="emitFilters"
+        >
+          <template #content="{ valueArray }">
+            <div class="flex gap-1 flex-wrap items-center">
+              <span v-if="valueArray.length === 0" class="text-gray-400">Filter by Tags</span>
+              <template v-else>
+                <span 
+                    v-for="(val, index) in valueArray.slice(0, 3)" 
+                    :key="index"
+                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                    {{ resolveTagName(val) }}{{ index < Math.min(valueArray.length, 3) - 1 ? ', ' : '' }}
+                </span>
+                
+                <span 
+                    v-if="valueArray.length > 3" 
+                    class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-primary text-white"
+                >
+                    +{{ valueArray.length - 3 }}
+                </span>
+              </template>
+            </div>
+          </template>
+        </va-select>
+
         <va-button
           v-if="activeFiltersCount > 1"
           preset="plain"
@@ -119,26 +156,30 @@ const props = defineProps({
   role: { type: [String, Object], default: '' },
   customers: { type: Array, default: () => [] },
   assignees: { type: Array, default: () => [] },
+  tags: { type: Array, default: () => [] },
   statusOptions: { type: Array, default: () => [] },
   roleOptions: { type: Array, default: () => [] },
   customerOptions: { type: Array, default: () => [] },
   assigneeOptions: { type: Array, default: () => [] },
+  availableTags: { type: Array, default: () => [] },
   isSupporter: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['update:query', 'update:status', 'update:role', 'update:customers', 'update:assignees']);
+const emit = defineEmits(['update:query', 'update:status', 'update:role', 'update:customers', 'update:assignees', 'update:tags']);
 
 const internalQuery = ref(props.query);
 const internalStatus = ref(props.status);
 const internalRole = ref(props.role);
 const internalCustomers = ref(props.customers);
 const internalAssignees = ref(props.assignees);
+const internalTags = ref(props.tags);
 
 watch(() => props.query, (newVal) => { internalQuery.value = newVal; });
 watch(() => props.status, (newVal) => { internalStatus.value = newVal; });
 watch(() => props.role, (newVal) => { internalRole.value = newVal; });
 watch(() => props.customers, (newVal) => { internalCustomers.value = newVal; });
 watch(() => props.assignees, (newVal) => { internalAssignees.value = newVal; });
+watch(() => props.tags, (newVal) => { internalTags.value = newVal; });
 
 const activeFiltersCount = computed(() => {
     let count = 0;
@@ -147,8 +188,38 @@ const activeFiltersCount = computed(() => {
     if (internalRole.value && internalRole.value !== '') count++;
     if (internalCustomers.value && internalCustomers.value.length > 0) count++;
     if (internalAssignees.value && internalAssignees.value.length > 0) count++;
+    if (internalTags.value && internalTags.value.length > 0) count++;
     return count;
 });
+
+const formattedTagOptions = computed(() => {
+  return props.availableTags.map(tag => ({
+    text: tag.name,
+    value: String(tag.id)
+  }));
+});
+
+/**
+ * Retrieves the full tag object from the available list to display properties like color and name.
+ * @param {string|number} id - The ID of the requested tag.
+ * @returns {Object} The complete tag object or a fallback generic object.
+ */
+const getDetailedTag = (id) => {
+  return props.availableTags.find(t => String(t.id) === String(id)) || { name: 'Unknown', color: '#ccc' };
+};
+
+/**
+ * Safely resolves the tag name irrespective of the format emitted by the select component.
+ * Prevents "Unknown" display bugs when UI frameworks modify the emitted payload format.
+ * @param {Object|string|number} val - The tag payload.
+ * @returns {string} The resolved tag name.
+ */
+const resolveTagName = (val) => {
+    if (typeof val === 'object' && val !== null) {
+        return val.text || val.name || getDetailedTag(val.value || val.id).name;
+    }
+    return getDetailedTag(val).name;
+};
 
 const clearAllFilters = () => {
     internalQuery.value = '';
@@ -156,6 +227,7 @@ const clearAllFilters = () => {
     internalRole.value = '';
     internalCustomers.value = [];
     internalAssignees.value = [];
+    internalTags.value = [];
     emitFilters();
 };
 
@@ -170,5 +242,6 @@ const emitFilters = () => {
   emit('update:role', roleValue || '');
   emit('update:customers', internalCustomers.value || []);
   emit('update:assignees', internalAssignees.value || []);
+  emit('update:tags', internalTags.value || []);
 };
 </script>

@@ -151,9 +151,24 @@
                     class="w-full"
                 >
                     <template #content="{ valueArray }">
-                        <div class="flex gap-1 flex-wrap">
-                            <span v-if="valueArray.length === 0" class="text-gray-500">No tags selected</span>
-                            <TagBadge v-for="tagId in valueArray" :key="tagId" :tag="getDetailedTag(tagId)" />
+                        <div class="flex gap-1 flex-wrap items-center">
+                            <span v-if="valueArray.length === 0" class="text-gray-400">Select tags...</span>
+                            <template v-else>
+                                <span 
+                                    v-for="(val, index) in valueArray.slice(0, 3)" 
+                                    :key="index"
+                                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
+                                >
+                                    {{ resolveTagName(val) }}{{ index < Math.min(valueArray.length, 3) - 1 ? ', ' : '' }}
+                                </span>
+                                
+                                <span 
+                                    v-if="valueArray.length > 3" 
+                                    class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-primary text-white"
+                                >
+                                    +{{ valueArray.length - 3 }}
+                                </span>
+                            </template>
                         </div>
                     </template>
                 </va-select>
@@ -211,8 +226,26 @@ const tagOptions = computed(() => {
     }));
 });
 
+/**
+ * Retrieves the full tag object from the available list to display properties like color and name.
+ * @param {string|number} id - The ID of the requested tag.
+ * @returns {Object} The complete tag object or a fallback generic object.
+ */
 const getDetailedTag = (id) => {
     return props.availableTags.find(t => String(t.id) === String(id)) || { name: 'Unknown', color: '#ccc' };
+};
+
+/**
+ * Safely resolves the tag name irrespective of the format emitted by the select component.
+ * Prevents "Unknown" display bugs when UI frameworks modify the emitted payload format.
+ * @param {Object|string|number} val - The tag payload.
+ * @returns {string} The resolved tag name.
+ */
+const resolveTagName = (val) => {
+    if (typeof val === 'object' && val !== null) {
+        return val.text || val.name || getDetailedTag(val.value || val.id).name;
+    }
+    return getDetailedTag(val).name;
 };
 
 /**
