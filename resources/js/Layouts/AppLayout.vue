@@ -83,7 +83,7 @@ onMounted(() => {
                                     <div class="flex items-center cursor-pointer gap-2 text-white px-2 py-1 rounded hover:bg-white/10 transition-colors">
                                         <UserAvatar :user="user" size="32px" />
                                         <span class="hidden sm:block font-medium text-white">{{ user?.name }}</span>
-                                        <VaIcon name="expand_more" color="white" />
+                                        <VaIcon name="expand_more" color="#ffffff" />
                                     </div>
                                 </template>
 
