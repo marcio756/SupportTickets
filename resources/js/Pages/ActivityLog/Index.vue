@@ -3,80 +3,131 @@
     <Head title="System Activity Logs" />
 
     <div class="mb-6">
-      <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">Activity Logs</h1>
-      <p class="text-sm text-gray-500 mt-1">Audit trail of system creations, updates, and deletions.</p>
+        <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">Activity Logs</h1>
+        <p class="text-sm text-gray-500 mt-1">Audit trail of system creations, updates, and deletions.</p>
     </div>
 
-    <va-card>
-      <va-card-content>
-        <div v-if="logs.data.length === 0" class="text-center py-10 text-gray-500">
-          No activity logs recorded yet.
-        </div>
-
-        <div class="overflow-x-auto" v-else>
-          <table class="va-table w-full striped border-collapse">
-            <thead>
-              <tr>
-                <th class="text-left font-bold py-3">Date / Time</th>
-                <th class="text-left font-bold py-3">User (Causer)</th>
-                <th class="text-left font-bold py-3">Event</th>
-                <th class="text-left font-bold py-3">Target Model</th>
-                <th class="text-left font-bold py-3">Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="log in logs.data" :key="log.id">
-                <td class="text-sm text-gray-600 whitespace-nowrap">
-                  {{ formatDateTime(log.created_at) }}
-                </td>
-                
-                <td>
-                  <div v-if="log.causer" class="flex items-center gap-2">
-                    <UserAvatar :user="log.causer" size="24px" />
-                    <span class="text-sm font-medium">{{ log.causer.name }}</span>
-                  </div>
-                  <span v-else class="text-sm text-gray-400 italic">System / Automator</span>
-                </td>
-                
-                <td>
-                  <va-badge 
-                    :text="log.event" 
-                    :color="getEventColor(log.event)" 
-                    class="uppercase text-[10px]"
-                  />
-                </td>
-                
-                <td class="text-sm font-mono text-gray-600">
-                  {{ extractModelName(log.subject_type) }} #{{ log.subject_id }}
-                </td>
-                
-                <td class="text-xs">
-                  <div v-if="log.properties" class="max-w-xs overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer hover:text-blue-600" @click="viewDetails(log)">
-                     <va-icon name="visibility" size="small" class="mr-1" /> View Changes
-                  </div>
-                  <span v-else class="text-gray-400">N/A</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="mt-6 flex justify-center" v-if="logs.last_page > 1">
-          <va-pagination
-            v-model="currentPage"
-            :pages="logs.last_page"
-            :visible-pages="5"
-            @update:modelValue="changePage"
-          />
-        </div>
-      </va-card-content>
-    </va-card>
-
-    <va-modal
-      v-model="isModalOpen"
-      title="Activity Properties"
-      hide-default-actions
+    <ResourceFilter
+      hide-search
+      :additional-filter-count="customActiveCount"
+      @clear-all="clearCustomFilters"
     >
+        <template #append>
+            <va-select
+                v-model="customFilters.user"
+                :options="userOptions"
+                value-by="value"
+                label="Filter by User"
+                multiple
+                clearable
+                class="w-full xl:w-48 flex-none"
+                preset="bordered"
+            >
+                <template #content="{ valueArray }">
+                    <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
+                    <span v-else-if="valueArray.length > 1" class="font-bold text-sm">{{ valueArray.length }} selected</span>
+                    <span v-else class="text-gray-400">Filter by User</span>
+                </template>
+            </va-select>
+
+            <va-select
+                v-model="customFilters.event"
+                :options="options.events"
+                label="Filter by Event"
+                multiple
+                clearable
+                class="w-full xl:w-48 flex-none"
+                preset="bordered"
+            >
+                <template #content="{ valueArray }">
+                    <span v-if="valueArray.length === 1">{{ valueArray[0] }}</span>
+                    <span v-else-if="valueArray.length > 1" class="font-bold text-sm">{{ valueArray.length }} selected</span>
+                    <span v-else class="text-gray-400">Filter by Event</span>
+                </template>
+            </va-select>
+
+            <va-select
+                v-model="customFilters.target"
+                :options="mappedTargets"
+                value-by="value"
+                label="Filter by Target Model"
+                multiple
+                clearable
+                class="w-full xl:w-56 flex-none"
+                preset="bordered"
+            >
+                <template #content="{ valueArray }">
+                    <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
+                    <span v-else-if="valueArray.length > 1" class="font-bold text-sm">{{ valueArray.length }} selected</span>
+                    <span v-else class="text-gray-400">Filter by Target Model</span>
+                </template>
+            </va-select>
+
+            <va-input
+                v-model="customFilters.date_start"
+                type="date"
+                label="Date From"
+                :max="customFilters.date_end"
+                clearable
+                class="w-full xl:w-40 flex-none"
+                preset="bordered"
+            />
+
+            <va-input
+                v-model="customFilters.date_end"
+                type="date"
+                label="Date To"
+                :min="customFilters.date_start"
+                clearable
+                class="w-full xl:w-40 flex-none"
+                preset="bordered"
+            />
+        </template>
+    </ResourceFilter>
+
+    <ResourceTable
+        :resource-data="logs"
+        :columns="tableColumns"
+        empty-message="No activity logs match your filter criteria."
+        @page-change="changePage"
+    >
+      <template #cell(created_at)="{ rowData }">
+        <span class="text-sm text-gray-600 whitespace-nowrap">
+          {{ formatDateTime(rowData.created_at) }}
+        </span>
+      </template>
+
+      <template #cell(causer)="{ rowData }">
+        <div v-if="rowData.causer" class="flex items-center gap-2">
+          <UserAvatar :user="rowData.causer" size="24px" />
+          <span class="text-sm font-medium">{{ rowData.causer.name }}</span>
+        </div>
+        <span v-else class="text-sm text-gray-400 italic">System / Automator</span>
+      </template>
+
+      <template #cell(event)="{ rowData }">
+        <va-badge 
+          :text="rowData.event" 
+          :color="getEventColor(rowData.event)" 
+          class="uppercase text-[10px]"
+        />
+      </template>
+
+      <template #cell(subject_type)="{ rowData }">
+        <span class="text-sm font-mono text-gray-600">
+          {{ extractModelName(rowData.subject_type) }} #{{ rowData.subject_id }}
+        </span>
+      </template>
+
+      <template #cell(details)="{ rowData }">
+        <div v-if="rowData.properties" class="text-xs max-w-xs overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer text-blue-500 hover:text-blue-700 font-medium" @click="viewDetails(rowData)">
+            <va-icon name="visibility" size="small" class="mr-1" /> View Changes
+        </div>
+        <span v-else class="text-gray-400 text-xs">N/A</span>
+      </template>
+    </ResourceTable>
+
+    <va-modal v-model="isModalOpen" title="Activity Properties" hide-default-actions>
       <div v-if="selectedLog" class="p-4 bg-gray-50 rounded-md">
         <div class="text-sm font-bold mb-2 text-gray-700">Description:</div>
         <p class="text-sm text-gray-600 mb-4">{{ selectedLog.description }}</p>
@@ -93,25 +144,86 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
-import { VaBadge, VaPagination, VaModal, VaButton, VaIcon, VaCard, VaCardContent } from 'vuestic-ui';
+import ResourceTable from '@/Components/Common/ResourceTable.vue';
+import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
+import { useFilters } from '@/Composables/useFilters.js';
+import { VaBadge, VaModal, VaButton, VaIcon, VaInput, VaSelect } from 'vuestic-ui';
 
 const props = defineProps({
-  logs: {
-    type: Object,
-    required: true
-  }
+  logs: { type: Object, required: true },
+  filters: { type: Object, default: () => ({}) },
+  options: { type: Object, default: () => ({ users: [], events: [], targets: [] }) }
 });
 
-const currentPage = ref(props.logs.current_page);
 const isModalOpen = ref(false);
 const selectedLog = ref(null);
 
-const changePage = (pageNumber) => {
-  router.get(route('activity-logs.index'), { page: pageNumber }, { preserveScroll: true });
+/**
+ * Safely parse incoming query arrays to prevent Vue from throwing type errors on multiple selects.
+ */
+const safeArray = (val) => {
+    if (!val) return [];
+    return Array.isArray(val) ? val : [val];
+};
+
+const initialFilters = {
+    ...props.filters,
+    user: safeArray(props.filters.user),
+    event: safeArray(props.filters.event),
+    target: safeArray(props.filters.target),
+};
+
+const { customFilters, changePage } = useFilters(
+    initialFilters, 
+    'activity-logs.index', 
+    props.logs.current_page, 
+    ['user', 'event', 'target', 'date_start', 'date_end']
+);
+
+const tableColumns = [
+  { key: 'created_at', label: 'Date / Time' },
+  { key: 'causer', label: 'User (Causer)' },
+  { key: 'event', label: 'Event' },
+  { key: 'subject_type', label: 'Target Model' },
+  { key: 'details', label: 'Details' }
+];
+
+const userOptions = computed(() => {
+  const opts = props.options.users.map(u => ({ text: u.name, value: String(u.id) }));
+  opts.unshift({ text: 'System / Automator', value: 'system' });
+  return opts;
+});
+
+const extractModelName = (fullyQualifiedName) => {
+  if (!fullyQualifiedName) return 'Unknown';
+  const parts = fullyQualifiedName.split('\\');
+  return parts[parts.length - 1];
+};
+
+const mappedTargets = computed(() => {
+  return props.options.targets.map(t => ({ text: extractModelName(t), value: t }));
+});
+
+/**
+ * Accurately tracks active filters recognizing empty arrays as inactive.
+ */
+const customActiveCount = computed(() => {
+    return Object.values(customFilters).filter(val => {
+        if (Array.isArray(val)) return val.length > 0;
+        return val !== null && val !== '';
+    }).length;
+});
+
+const clearCustomFilters = () => {
+    customFilters.user = [];
+    customFilters.event = [];
+    customFilters.target = [];
+    customFilters.date_start = null;
+    customFilters.date_end = null;
 };
 
 const viewDetails = (log) => {
@@ -123,12 +235,6 @@ const formatDateTime = (dateString) => {
   return new Date(dateString).toLocaleString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
-};
-
-const extractModelName = (fullyQualifiedName) => {
-  if (!fullyQualifiedName) return 'Unknown';
-  const parts = fullyQualifiedName.split('\\');
-  return parts[parts.length - 1];
 };
 
 const getEventColor = (event) => {

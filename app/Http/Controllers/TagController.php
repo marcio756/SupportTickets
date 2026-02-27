@@ -16,6 +16,7 @@ class TagController extends Controller
 {
     /**
      * Display a listing of all available tags.
+     * Includes search functionality and pagination.
      *
      * @param Request $request
      * @return Response
@@ -26,10 +27,17 @@ class TagController extends Controller
             abort(403, 'Acesso restrito apenas a Supporters.');
         }
 
-        $tags = Tag::orderBy('name')->get();
+        $query = Tag::query();
+
+        if ($search = $request->input('search')) {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        $tags = $query->orderBy('name')->paginate(15)->withQueryString();
 
         return Inertia::render('Tags/Index', [
             'tags' => $tags,
+            'filters' => $request->only('search'),
         ]);
     }
 

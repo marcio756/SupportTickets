@@ -9,39 +9,29 @@
             </va-button>
         </div>
 
-        <va-card>
-            <va-card-content>
-                <div v-if="tags.length === 0" class="text-center py-8 text-gray-500">
-                    No tags have been created yet.
+        <ResourceFilter v-model:query="query" />
+
+        <ResourceTable
+            :resource-data="tags"
+            :columns="tableColumns"
+            empty-message="No tags found matching your criteria."
+            @page-change="changePage"
+        >
+            <template #cell(preview)="{ rowData }">
+                <TagBadge :tag="rowData" />
+            </template>
+
+            <template #cell(color)="{ rowData }">
+                <span class="font-mono text-sm text-gray-500">{{ rowData.color }}</span>
+            </template>
+
+            <template #cell(actions)="{ rowData }">
+                <div class="flex justify-end gap-2">
+                    <va-button preset="plain" icon="edit" color="secondary" @click="openEditModal(rowData)" />
+                    <va-button preset="plain" icon="delete" color="danger" @click="confirmDelete(rowData)" />
                 </div>
-                
-                <div class="overflow-x-auto" v-else>
-                    <table class="va-table w-full">
-                        <thead>
-                            <tr>
-                                <th>Preview</th>
-                                <th>Name</th>
-                                <th>Color Code</th>
-                                <th class="text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="tag in tags" :key="tag.id">
-                                <td>
-                                    <TagBadge :tag="tag" />
-                                </td>
-                                <td>{{ tag.name }}</td>
-                                <td class="font-mono text-sm text-gray-500">{{ tag.color }}</td>
-                                <td class="text-right">
-                                    <va-button preset="plain" icon="edit" color="secondary" @click="openEditModal(tag)" class="mr-2" />
-                                    <va-button preset="plain" icon="delete" color="danger" @click="confirmDelete(tag)" />
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </va-card-content>
-        </va-card>
+            </template>
+        </ResourceTable>
 
         <va-modal
             v-model="isModalOpen"
@@ -85,19 +75,30 @@ import { ref } from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TagBadge from '@/Components/Common/TagBadge.vue';
-import { VaCard, VaCardContent, VaButton, VaModal, VaInput, VaColorInput } from 'vuestic-ui';
+import ResourceTable from '@/Components/Common/ResourceTable.vue';
+import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
+import { useFilters } from '@/Composables/useFilters.js';
+import { VaButton, VaModal, VaInput, VaColorInput } from 'vuestic-ui';
 
-defineProps({
-    tags: {
-        type: Array,
-        required: true
-    }
+const props = defineProps({
+    tags: { type: Object, required: true },
+    filters: { type: Object, default: () => ({}) }
 });
 
 const isModalOpen = ref(false);
 const isDeleteModalOpen = ref(false);
 const editingTag = ref(null);
 const tagToDelete = ref(null);
+
+// Inject Centralized Filtering Logic
+const { query, changePage } = useFilters(props.filters, 'tags.index', props.tags.current_page);
+
+const tableColumns = [
+    { key: 'preview', label: 'Preview' },
+    { key: 'name', label: 'Name', sortable: true },
+    { key: 'color', label: 'Color Code' },
+    { key: 'actions', label: 'Actions', align: 'right' }
+];
 
 const form = useForm({
     name: '',

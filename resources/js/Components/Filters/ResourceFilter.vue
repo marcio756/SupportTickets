@@ -3,7 +3,10 @@
     <va-card-content>
       <div class="flex flex-col xl:flex-row items-center gap-4 w-full flex-wrap">
         
+        <slot name="prepend" />
+
         <va-input
+          v-if="!hideSearch"
           v-model="internalQuery"
           placeholder="Search..."
           class="flex-1 w-full min-w-[200px]"
@@ -15,6 +18,8 @@
             <va-icon name="search" color="secondary" />
           </template>
         </va-input>
+
+        <slot name="append" />
 
         <va-select
           v-if="statusOptions && statusOptions.length > 0"
@@ -152,6 +157,8 @@ import { ref, watch, computed } from 'vue';
 
 const props = defineProps({
   query: { type: String, default: '' },
+  hideSearch: { type: Boolean, default: false },
+  additionalFilterCount: { type: Number, default: 0 },
   status: { type: [String, Object], default: '' },
   role: { type: [String, Object], default: '' },
   customers: { type: Array, default: () => [] },
@@ -165,7 +172,10 @@ const props = defineProps({
   isSupporter: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['update:query', 'update:status', 'update:role', 'update:customers', 'update:assignees', 'update:tags']);
+const emit = defineEmits([
+    'update:query', 'update:status', 'update:role', 
+    'update:customers', 'update:assignees', 'update:tags', 'clear-all'
+]);
 
 const internalQuery = ref(props.query);
 const internalStatus = ref(props.status);
@@ -182,8 +192,8 @@ watch(() => props.assignees, (newVal) => { internalAssignees.value = newVal; });
 watch(() => props.tags, (newVal) => { internalTags.value = newVal; });
 
 const activeFiltersCount = computed(() => {
-    let count = 0;
-    if (internalQuery.value && internalQuery.value.trim() !== '') count++;
+    let count = props.additionalFilterCount;
+    if (!props.hideSearch && internalQuery.value && internalQuery.value.trim() !== '') count++;
     if (internalStatus.value && internalStatus.value !== '') count++;
     if (internalRole.value && internalRole.value !== '') count++;
     if (internalCustomers.value && internalCustomers.value.length > 0) count++;
@@ -199,21 +209,10 @@ const formattedTagOptions = computed(() => {
   }));
 });
 
-/**
- * Retrieves the full tag object from the available list to display properties like color and name.
- * @param {string|number} id - The ID of the requested tag.
- * @returns {Object} The complete tag object or a fallback generic object.
- */
 const getDetailedTag = (id) => {
   return props.availableTags.find(t => String(t.id) === String(id)) || { name: 'Unknown', color: '#ccc' };
 };
 
-/**
- * Safely resolves the tag name irrespective of the format emitted by the select component.
- * Prevents "Unknown" display bugs when UI frameworks modify the emitted payload format.
- * @param {Object|string|number} val - The tag payload.
- * @returns {string} The resolved tag name.
- */
 const resolveTagName = (val) => {
     if (typeof val === 'object' && val !== null) {
         return val.text || val.name || getDetailedTag(val.value || val.id).name;
@@ -229,6 +228,7 @@ const clearAllFilters = () => {
     internalAssignees.value = [];
     internalTags.value = [];
     emitFilters();
+    emit('clear-all');
 };
 
 const emitFilters = () => {
