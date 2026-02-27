@@ -8,14 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 /**
- * Handle fetching and managing notifications for the mobile app
+ * Handle fetching and managing notifications for the mobile app.
  */
 class NotificationController extends Controller
 {
     use ApiResponser;
 
     /**
-     * Get all notifications for the authenticated user
+     * Get all notifications for the authenticated user.
      *
      * @param Request $request
      * @return JsonResponse
@@ -28,7 +28,7 @@ class NotificationController extends Controller
     }
 
     /**
-     * Mark a specific notification as read
+     * Mark a specific notification as read.
      *
      * @param Request $request
      * @param string $id
@@ -43,7 +43,7 @@ class NotificationController extends Controller
     }
 
     /**
-     * Mark all unread notifications as read
+     * Mark all unread notifications as read.
      *
      * @param Request $request
      * @return JsonResponse
@@ -53,5 +53,33 @@ class NotificationController extends Controller
         $request->user()->unreadNotifications->markAsRead();
 
         return $this->successResponse(null, 'Todas as notificações foram marcadas como lidas.');
+    }
+
+    /**
+     * Delete a specific notification.
+     *
+     * @param Request $request
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function destroy(Request $request, string $id): JsonResponse
+    {
+        $notification = $request->user()->notifications()->findOrFail($id);
+        $notification->delete();
+
+        return $this->successResponse(null, 'Notificação eliminada com sucesso.');
+    }
+
+    /**
+     * Delete all notifications for the authenticated user.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function destroyAll(Request $request): JsonResponse
+    {
+        $request->user()->notifications()->delete();
+
+        return $this->successResponse(null, 'Todas as notificações foram eliminadas.');
     }
 }

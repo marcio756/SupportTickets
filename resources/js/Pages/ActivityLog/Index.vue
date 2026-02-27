@@ -127,16 +127,23 @@
       </template>
     </ResourceTable>
 
-    <va-modal v-model="isModalOpen" title="Activity Properties" hide-default-actions>
-      <div v-if="selectedLog" class="p-4 bg-gray-50 rounded-md">
-        <div class="text-sm font-bold mb-2 text-gray-700">Description:</div>
-        <p class="text-sm text-gray-600 mb-4">{{ selectedLog.description }}</p>
+    <va-modal v-model="isModalOpen" title="Activity Details" hide-default-actions size="large">
+      <div v-if="selectedLog" class="p-2">
+        <div class="mb-4">
+          <div class="text-xs font-semibold text-gray-400 uppercase mb-1">Description</div>
+          <p class="text-md text-gray-700 font-medium">{{ selectedLog.description }}</p>
+        </div>
 
-        <div class="text-sm font-bold mb-2 text-gray-700">Raw Data (JSON):</div>
-        <pre class="text-xs bg-gray-800 text-green-400 p-3 rounded overflow-x-auto max-h-64">{{ formatJSON(selectedLog.properties) }}</pre>
+        <div class="mb-2">
+          <div class="text-xs font-semibold text-gray-400 uppercase mb-3">Changes</div>
+          <ActivityLogDetails 
+            :properties="selectedLog.properties" 
+            :users="options.users"
+          />
+        </div>
       </div>
       <template #footer>
-        <va-button @click="isModalOpen = false">Close</va-button>
+        <va-button @click="isModalOpen = false" color="secondary" preset="secondary">Close</va-button>
       </template>
     </va-modal>
 
@@ -150,6 +157,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import ResourceTable from '@/Components/Common/ResourceTable.vue';
 import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
+import ActivityLogDetails from '@/Components/ActivityLog/ActivityLogDetails.vue';
 import { useFilters } from '@/Composables/useFilters.js';
 import { VaBadge, VaModal, VaButton, VaIcon, VaInput, VaSelect } from 'vuestic-ui';
 
@@ -244,10 +252,5 @@ const getEventColor = (event) => {
     case 'deleted': return 'danger';
     default: return 'info';
   }
-};
-
-const formatJSON = (data) => {
-  if (!data) return '{}';
-  return JSON.stringify(data, null, 2);
 };
 </script>

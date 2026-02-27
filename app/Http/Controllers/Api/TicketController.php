@@ -149,6 +149,29 @@ class TicketController extends Controller
     }
 
     /**
+     * Delete a specific ticket via API
+     *
+     * @param Ticket $ticket
+     * @return JsonResponse
+     */
+    public function destroy(Ticket $ticket): JsonResponse
+    {
+        Gate::authorize('delete', $ticket);
+
+        try {
+            $ticket->delete();
+
+            return $this->successResponse(
+                null,
+                'Ticket eliminado com sucesso.'
+            );
+        } catch (\Exception $e) {
+            $code = $e instanceof HttpException ? $e->getStatusCode() : 500;
+            return $this->errorResponse($e->getMessage(), $code);
+        }
+    }
+
+    /**
      * Assigns the ticket to the authenticated supporter via API
      *
      * @param Request $request
@@ -262,5 +285,34 @@ class TicketController extends Controller
             ['remaining_seconds' => $remainingSeconds],
             'Tempo descontado com sucesso.'
         );
+    }
+
+    /**
+     * Sync tags for a specific ticket via API
+     *
+     * @param Request $request
+     * @param Ticket $ticket
+     * @return JsonResponse
+     */
+    public function syncTags(Request $request, Ticket $ticket): JsonResponse
+    {
+        Gate::authorize('update', $ticket);
+
+        $validated = $request->validate([
+            'tags' => ['array'],
+            'tags.*' => ['exists:tags,id'],
+        ]);
+
+        try {
+            $ticket->tags()->sync($validated['tags'] ?? []);
+
+            return $this->successResponse(
+                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])),
+                'Tags sincronizadas com sucesso.'
+            );
+        } catch (\Exception $e) {
+            $code = $e instanceof HttpException ? $e->getStatusCode() : 500;
+            return $this->errorResponse($e->getMessage(), $code);
+        }
     }
 }

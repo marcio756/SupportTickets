@@ -17,6 +17,7 @@ class ActivityLogController extends Controller
     /**
      * Display a paginated listing of all system activities with multi-filter support.
      * Supports intervals, system queries, and multiple event/target isolation.
+     * * Refactored to provide explicit data mapping for enhanced frontend resolution.
      *
      * @param Request $request
      * @return Response
@@ -27,8 +28,10 @@ class ActivityLogController extends Controller
             abort(403, 'Unauthorized access to activity logs.');
         }
 
+        // We eager-load 'causer' to avoid N+1 issues when displaying names in the main table.
         $query = Activity::with(['causer'])->latest();
 
+        // 1. Filter by User (Causer)
         if ($request->filled('user')) {
             $users = (array) $request->input('user');
             
@@ -41,7 +44,7 @@ class ActivityLogController extends Controller
                 }
 
                 if (!empty($userIds)) {
-                    // Use orWhereIn to combine logic if 'system' is also checked
+                    // Combine system (null causer) with specific user IDs if both selected
                     if ($hasSystem) {
                         $q->orWhereIn('causer_id', $userIds);
                     } else {
@@ -51,14 +54,17 @@ class ActivityLogController extends Controller
             });
         }
 
+        // 2. Filter by Event (created, updated, deleted, etc.)
         if ($request->filled('event')) {
             $query->whereIn('event', (array) $request->input('event'));
         }
 
+        // 3. Filter by Target Model (subject_type)
         if ($request->filled('target')) {
             $query->whereIn('subject_type', (array) $request->input('target'));
         }
 
+        // 4. Date Range Filters
         if ($startDate = $request->input('date_start')) {
             $query->whereDate('created_at', '>=', $startDate);
         }
@@ -67,9 +73,30 @@ class ActivityLogController extends Controller
             $query->whereDate('created_at', '<=', $endDate);
         }
 
-        $logs = $query->paginate(15)->withQueryString();
+        /**
+         * We transform the paginated collection using 'through'.
+         * This ensures the frontend receives a clean, predictable data shape
+         * and avoids leaking internal model attributes that aren't needed.
+         */
+        $logs = $query->paginate(15)->withQueryString()->through(fn ($log) => [
+            'id'           => $log->id,
+            'description'  => $log->description,
+            'event'        => $log->event,
+            'subject_type' => $log->subject_type,
+            'subject_id'   => $log->subject_id,
+            'properties'   => $log->properties, // Contains the attributes/old JSON
+            'causer'       => $log->causer ? [
+                'id'   => $log->causer->id,
+                'name' => $log->causer->name,
+            ] : null,
+            'created_at'   => $log->created_at,
+        ]);
 
-        // Fetch required options to populate frontend dropdowns
+        /**
+         * Fetch required options for dropdowns and name resolution.
+         * The 'users' list is essential for the ActivityLogDetails component 
+         * to map IDs to Names in the 'View Changes' modal.
+         */
         $usersList = User::select('id', 'name')->orderBy('name')->get();
         $events = Activity::select('event')->distinct()->pluck('event');
         $targets = Activity::select('subject_type')->distinct()->pluck('subject_type');
