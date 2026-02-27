@@ -26,14 +26,14 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 
 Route::middleware('auth')->group(function () {
     /**
-     * Profile Management Routes
+     * Controls user profile updates and deletion.
      */
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     /**
-     * Ticket Management Routes
+     * Core ticketing system endpoints including status tracking and agent assignments.
      */
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
@@ -44,25 +44,24 @@ Route::middleware('auth')->group(function () {
     Route::patch('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])->name('tickets.update-status');
     
     /**
-     * Chat Messages Route
+     * Handles live chat interactions and time tracking within a specific ticket.
      */
     Route::post('/tickets/{ticket}/messages', [TicketController::class, 'storeMessage'])->name('tickets.messages.store');
     Route::post('/tickets/{ticket}/tick-time', [TicketController::class, 'tickTime'])->name('tickets.tick-time');
 
     /**
-     * Tags Related
+     * Global tagging system for ticket categorization and filtering.
      */
     Route::put('/tickets/{ticket}/tags', [TicketController::class, 'syncTags'])->name('tickets.tags.sync');
     Route::resource('tags', TagController::class)->except(['create', 'show', 'edit']);
 
     /**
-     * Activity Log
+     * Centralized audit logging for administrative oversight.
      */
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
 
     /**
-     * Notification Management Routes
-     * Prefixo /api/ removido para evitar colisão crítica com o ficheiro routes/api.php nativo.
+     * Notification endpoints adjusted to prevent collision with core API routes.
      */
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
@@ -71,13 +70,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
     /**
-     * User Management Routes
+     * User administration panel for role and access management.
      */
     Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
 
     /**
-     * Firebase Web Integration
-     * Rota isolada na web para guardar o token utilizando a Sessão/Cookies do Inertia.js.
+     * Persists Firebase Cloud Messaging tokens via standard web session authentication.
      */
     Route::post('/fcm-token', [FcmTokenController::class, 'store'])->name('web.fcm-token.store');
 });

@@ -11,6 +11,7 @@ import { useAppNotifications } from '@/Composables/useAppNotifications';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import ThemeButton from '@/Components/navbar/ThemeButton.vue';
 import NotificationDropdown from '@/Components/Layout/NotificationDropdown.vue';
+import AppSidebar from '@/Components/Layout/AppSidebar.vue';
 
 defineProps({
     title: String,
@@ -20,17 +21,16 @@ const { initTheme } = useTheme();
 useAppNotifications();
 
 const isSidebarMinimized = ref(false);
-const showSidebar = ref(true);
 
 /**
  * Safely computes the authenticated user from Inertia page props.
- * * @returns {Object|undefined} The user object.
+ * @returns {Object|undefined} The user object.
  */
 const user = computed(() => usePage().props.auth?.user);
 
 /**
  * Toggles the sidebar state and persists it to localStorage to maintain state across page refreshes.
- * * @returns {void}
+ * @returns {void}
  */
 const toggleSidebar = () => {
     isSidebarMinimized.value = !isSidebarMinimized.value;
@@ -111,46 +111,7 @@ onMounted(() => {
             </template>
 
             <template #left>
-                <VaSidebar
-                    v-model="showSidebar"
-                    :minimized="isSidebarMinimized"
-                    width="16rem"
-                    minimized-width="4rem"
-                    color="background-secondary"
-                    class="h-full border-r border-gray-200 dark:border-gray-800 flex flex-col"
-                >
-                    <div class="flex-grow overflow-y-auto overflow-x-hidden">
-                        <VaSidebarItem :active="route().current('dashboard')">
-                            <Link :href="route('dashboard')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
-                                <VaSidebarItemContent>
-                                    <VaIcon name="dashboard" />
-                                    <VaSidebarItemTitle v-if="!isSidebarMinimized">Dashboard</VaSidebarItemTitle>
-                                </VaSidebarItemContent>
-                            </Link>
-                        </VaSidebarItem>
-
-                        <VaSidebarItem :active="route().current('tickets.*')">
-                            <Link :href="route('tickets.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
-                                <VaSidebarItemContent>
-                                    <VaIcon name="confirmation_number" />
-                                    <VaSidebarItemTitle v-if="!isSidebarMinimized">Tickets</VaSidebarItemTitle>
-                                </VaSidebarItemContent>
-                            </Link>
-                        </VaSidebarItem>
-                        
-                        <VaSidebarItem
-                            v-if="user?.role === 'supporter' || user?.role === 'admin'"
-                            :active="route().current('users.*')"
-                        >
-                            <Link :href="route('users.index')" class="w-full h-full flex items-center p-3 text-inherit decoration-0">
-                                <VaSidebarItemContent>
-                                    <VaIcon name="group" />
-                                    <VaSidebarItemTitle v-if="!isSidebarMinimized">Utilizadores</VaSidebarItemTitle>
-                                </VaSidebarItemContent>
-                            </Link>
-                        </VaSidebarItem>
-                    </div>
-                </VaSidebar>
+                <AppSidebar :minimized="isSidebarMinimized" />
             </template>
 
             <template #content>
@@ -175,8 +136,5 @@ onMounted(() => {
 }
 :deep(.va-layout__area--content) {
     height: 100%;
-}
-:deep(.va-sidebar__menu) {
-    background-color: transparent !important;
 }
 </style>
