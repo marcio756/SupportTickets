@@ -2,22 +2,23 @@
 /**
  * Global Application Layout.
  * Manages independent scrolling, Sidebar persistence, and main navigation.
- * Integrated with the real-time notification system.
- * Refactored to include safe evaluation chains for auth props.
+ * Delegates notification orchestration to useAppNotifications composable for SRP compliance.
  */
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { useTheme } from '@/Composables/useTheme';
+import { useAppNotifications } from '@/Composables/useAppNotifications';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import ThemeButton from '@/Components/navbar/ThemeButton.vue';
 import NotificationDropdown from '@/Components/Layout/NotificationDropdown.vue';
-import FirebaseMessagingService from '@/Services/FirebaseMessagingService';
 
 defineProps({
     title: String,
 });
 
 const { initTheme } = useTheme();
+useAppNotifications();
+
 const isSidebarMinimized = ref(false);
 const showSidebar = ref(true);
 
@@ -39,30 +40,10 @@ const toggleSidebar = () => {
 onMounted(() => {
     initTheme();
     
-    // Retrieves previous sidebar state
     const savedSidebar = localStorage.getItem('sidebar-is-minimized');
     if (savedSidebar !== null) {
         isSidebarMinimized.value = savedSidebar === 'true';
     }
-
-    // Initialize Firebase Cloud Messaging for Push Notifications
-    FirebaseMessagingService.init();
-    
-    // Request permission from the user for Push Notifications
-    FirebaseMessagingService.requestPermissionAndGetToken();
-
-    // Listen for notifications while the user has the browser tab actively open
-    FirebaseMessagingService.onForegroundMessage((payload) => {
-        console.log('Foreground Push Notification received: ', payload);
-        
-        // Native browser alert fallback if a toast library is not available
-        if (Notification.permission === 'granted') {
-            new Notification(payload.notification.title, {
-                body: payload.notification.body,
-                icon: '/icons/Icon-192.png'
-            });
-        }
-    });
 });
 </script>
 
