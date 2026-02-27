@@ -24,6 +24,7 @@ class TicketService
 
     /**
      * Creates a new ticket and its initial message.
+     * Attach tags immediately if provided.
      *
      * @param User $user
      * @param array $data
@@ -41,6 +42,10 @@ class TicketService
             'status' => TicketStatusEnum::OPEN,
             'assigned_to' => $isSupporter ? $user->id : null,
         ]);
+
+        if (isset($data['tags']) && is_array($data['tags'])) {
+            $ticket->tags()->sync($data['tags']);
+        }
 
         $attachmentPath = $attachment ? $this->attachmentService->store($attachment) : null;
 

@@ -147,6 +147,7 @@
                     label="Select Categories"
                     multiple
                     clearable
+                    searchable
                     class="w-full"
                 >
                     <template #content="{ valueArray }">

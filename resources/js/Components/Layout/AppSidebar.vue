@@ -44,6 +44,8 @@ const navigationItems = computed(() => {
   // Supporters and Admins have access to the User management
   if (role === 'supporter') {
     items.push({ title: 'Users', icon: 'group', route: 'users.index' });
+    items.push({ title: 'Manage Tags', icon: 'local_offer', route: 'tags.index' });
+    items.push({ title: 'Activity Logs', icon: 'history', route: 'activity-logs.index' });
   }
 
   return items;

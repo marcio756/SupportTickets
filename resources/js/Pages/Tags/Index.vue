@@ -101,7 +101,7 @@ const tagToDelete = ref(null);
 
 const form = useForm({
     name: '',
-    color: '#3B82F6' // Default to a blueish tone
+    color: '#3B82F6' 
 });
 
 /**

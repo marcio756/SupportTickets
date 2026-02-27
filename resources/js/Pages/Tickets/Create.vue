@@ -35,6 +35,34 @@
               </va-select>
             </div>
 
+            <div v-if="isSupporter && availableTags.length > 0" class="mb-4">
+              <va-select
+                v-model="form.tags"
+                :options="tagOptions"
+                label="Assign Categories (Tags)"
+                placeholder="Search and select tags..."
+                searchable
+                multiple
+                clearable
+                text-by="text"
+                value-by="value"
+                :error="!!form.errors.tags"
+                :error-messages="form.errors.tags"
+                class="w-full"
+              >
+                <template #content="{ valueArray }">
+                  <div class="flex gap-1 flex-wrap">
+                    <span v-if="valueArray.length === 0" class="text-gray-500">No tags selected</span>
+                    <TagBadge 
+                      v-for="tagId in valueArray" 
+                      :key="tagId" 
+                      :tag="getDetailedTag(tagId)" 
+                    />
+                  </div>
+                </template>
+              </va-select>
+            </div>
+
             <div class="mb-4">
               <va-input
                 v-model="form.title"
@@ -78,12 +106,11 @@
 import { computed } from 'vue';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import TagBadge from '@/Components/Common/TagBadge.vue';
 
 const props = defineProps({
-  customers: {
-    type: Array,
-    default: () => [],
-  },
+  customers: { type: Array, default: () => [] },
+  availableTags: { type: Array, default: () => [] }
 });
 
 const page = usePage();
@@ -93,11 +120,9 @@ const form = useForm({
   title: '',
   message: '',
   customer_id: '',
+  tags: []
 });
 
-/**
- * Adapts raw backend data for Vuestic select
- */
 const customerOptions = computed(() => {
   return props.customers.map(customer => ({
     value: customer.id,
@@ -105,14 +130,24 @@ const customerOptions = computed(() => {
   }));
 });
 
-/**
- * Submits the ticket without attachment logic
- */
+const tagOptions = computed(() => {
+  return props.availableTags.map(tag => ({
+    text: tag.name,
+    value: String(tag.id)
+  }));
+});
+
+const getDetailedTag = (id) => {
+  return props.availableTags.find(t => String(t.id) === String(id)) || { name: 'Unknown', color: '#ccc' };
+};
+
 const submit = () => {
   form.transform((data) => {
     return {
       ...data,
       customer_id: data.customer_id?.value || data.customer_id,
+      // Map back to string array to send properly formatted IDs
+      tags: data.tags?.map(tag => typeof tag === 'object' ? tag.value : tag) || [],
     };
   }).post(route('tickets.store'), {
     preserveScroll: true,

@@ -39,7 +39,6 @@ class TicketController extends Controller
     {
         $user = $request->user();
         
-        // Eager load tags alongside standard relationships to avoid N+1 queries
         $query = Ticket::with(['customer', 'assignee', 'tags']);
 
         if (! $user->isSupporter()) {
@@ -59,7 +58,6 @@ class TicketController extends Controller
                 ->orderBy('name')
                 ->get();
                 
-            // Fetch all tags to populate the filtering dropdowns on the frontend
             $availableTags = Tag::select('id', 'name', 'color')->orderBy('name')->get();
         }
 
@@ -116,7 +114,6 @@ class TicketController extends Controller
             });
         }
 
-        // Apply tag filtering if present in the request
         if ($request->filled('tags')) {
             $tagIds = is_array($request->tags) ? $request->tags : explode(',', $request->tags);
             $query->whereHas('tags', function ($q) use ($tagIds) {
@@ -134,16 +131,20 @@ class TicketController extends Controller
     public function create(Request $request): Response
     {
         $customers = [];
+        $availableTags = [];
 
         if ($request->user()->isSupporter()) {
             $customers = User::where('role', 'customer') 
                 ->select('id', 'name')
                 ->orderBy('name')
                 ->get();
+                
+            $availableTags = Tag::select('id', 'name', 'color')->orderBy('name')->get();
         }
 
         return Inertia::render('Tickets/Create', [
             'customers' => $customers,
+            'availableTags' => $availableTags,
         ]);
     }
 
@@ -160,6 +161,8 @@ class TicketController extends Controller
             'message' => ['required', 'string'],
             'customer_id' => [$request->user()->isSupporter() ? 'required' : 'nullable', 'exists:users,id'],
             'attachment' => ['nullable', 'file', 'max:10240'], 
+            'tags' => ['nullable', 'array'],
+            'tags.*' => ['exists:tags,id'],
         ]);
 
         $ticket = $this->ticketService->createTicket(
@@ -185,7 +188,6 @@ class TicketController extends Controller
             abort(403, 'Unauthorized access to this ticket.');
         }
 
-        // Load tags relationships for the details view
         $ticket->load(['customer', 'assignee', 'messages.sender', 'tags']);
 
         $availableTags = [];
@@ -201,7 +203,6 @@ class TicketController extends Controller
 
     /**
      * Sync the tags for a specific ticket.
-     * Restricted to supporters.
      *
      * @param Request $request
      * @param Ticket $ticket
@@ -218,7 +219,6 @@ class TicketController extends Controller
             'tags.*' => ['exists:tags,id'],
         ]);
 
-        // Sync updates the pivot table completely matching the provided array
         $ticket->tags()->sync($validated['tags'] ?? []);
 
         return redirect()->back()->with('success', 'Ticket tags updated successfully.');

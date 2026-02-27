@@ -10,17 +10,22 @@ use Inertia\Response;
 
 /**
  * Handles the CRUD operations for Tags.
- * Intended to be accessed only by users with supporter privileges.
+ * Exclusively restricted to users with supporter privileges.
  */
 class TagController extends Controller
 {
     /**
      * Display a listing of all available tags.
      *
+     * @param Request $request
      * @return Response
      */
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        if (!$request->user()->isSupporter()) {
+            abort(403, 'Acesso restrito apenas a Supporters.');
+        }
+
         $tags = Tag::orderBy('name')->get();
 
         return Inertia::render('Tags/Index', [
@@ -36,6 +41,10 @@ class TagController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        if (!$request->user()->isSupporter()) {
+            abort(403, 'Acesso restrito apenas a Supporters.');
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:tags,name'],
             'color' => ['nullable', 'string', 'max:50'],
@@ -43,7 +52,7 @@ class TagController extends Controller
 
         Tag::create($validated);
 
-        return redirect()->back()->with('success', 'Tag created successfully.');
+        return redirect()->back()->with('success', 'Tag criada com sucesso.');
     }
 
     /**
@@ -55,6 +64,10 @@ class TagController extends Controller
      */
     public function update(Request $request, Tag $tag): RedirectResponse
     {
+        if (!$request->user()->isSupporter()) {
+            abort(403, 'Acesso restrito apenas a Supporters.');
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:tags,name,' . $tag->id],
             'color' => ['nullable', 'string', 'max:50'],
@@ -62,19 +75,24 @@ class TagController extends Controller
 
         $tag->update($validated);
 
-        return redirect()->back()->with('success', 'Tag updated successfully.');
+        return redirect()->back()->with('success', 'Tag atualizada com sucesso.');
     }
 
     /**
      * Remove the specified tag from storage.
      *
+     * @param Request $request
      * @param Tag $tag
      * @return RedirectResponse
      */
-    public function destroy(Tag $tag): RedirectResponse
+    public function destroy(Request $request, Tag $tag): RedirectResponse
     {
+        if (!$request->user()->isSupporter()) {
+            abort(403, 'Acesso restrito apenas a Supporters.');
+        }
+
         $tag->delete();
 
-        return redirect()->back()->with('success', 'Tag deleted successfully.');
+        return redirect()->back()->with('success', 'Tag eliminada com sucesso.');
     }
 }
