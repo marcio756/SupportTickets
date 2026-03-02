@@ -37,6 +37,11 @@
                     <div>
                         <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-3">
                             #{{ ticket.id }} {{ ticket.title }}
+                            <span v-if="ticket.source === 'email'"
+                                  class="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                                  title="Received via Email">
+                                📧 Email
+                            </span>
                         </h1>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             Opened by <span class="font-medium text-gray-700 dark:text-gray-300">{{ ticket.customer.name }}</span>

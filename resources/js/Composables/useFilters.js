@@ -29,6 +29,7 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1, cust
 
     const query = ref(initialFilters.search ?? initialFilters.query ?? sourceFilters.search ?? sourceFilters.query ?? '');
     const selectedStatus = ref(initialFilters.status ?? sourceFilters.status ?? '');
+    const selectedSource = ref(initialFilters.source ?? sourceFilters.source ?? '');
     const selectedCustomers = ref(initialFilters.customers ?? sourceFilters.customers ?? []);
     const selectedAssignees = ref(initialFilters.assignees ?? sourceFilters.assignees ?? []);
     const selectedRole = ref(initialFilters.role ?? sourceFilters.role ?? '');
@@ -62,6 +63,7 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1, cust
                 params.query = query.value;
             }
             if (selectedStatus.value) params.status = selectedStatus.value;
+            if (selectedSource.value) params.source = selectedSource.value;
             if (selectedCustomers.value?.length) params.customers = selectedCustomers.value;
             if (selectedAssignees.value?.length) params.assignees = selectedAssignees.value;
             if (selectedRole.value) params.role = selectedRole.value;
@@ -91,7 +93,7 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1, cust
     };
 
     // Reset page to 1 whenever any filter changes to avoid empty result sets on unmapped pages
-    watch([query, selectedStatus, selectedCustomers, selectedAssignees, selectedRole, selectedTags, customFilters], () => {
+    watch([query, selectedStatus, selectedSource, selectedCustomers, selectedAssignees, selectedRole, selectedTags, customFilters], () => {
         page.value = 1; 
         fetchResults(true);
     }, { deep: true });
@@ -112,6 +114,7 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1, cust
             const hasActiveFilters = 
                 query.value || 
                 selectedStatus.value || 
+                selectedSource.value ||
                 selectedRole.value || 
                 selectedCustomers.value?.length > 0 || 
                 selectedAssignees.value?.length > 0 || 
@@ -128,6 +131,7 @@ export function useFilters(initialFilters = {}, routeName, currentPage = 1, cust
     return {
         query,
         selectedStatus,
+        selectedSource,
         selectedCustomers,
         selectedAssignees,
         selectedRole,

@@ -84,6 +84,11 @@ class TicketController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Filtro pela nova coluna de origem (web/email)
+        if ($request->filled('source')) {
+            $query->where('source', $request->source);
+        }
+
         if ($request->filled('customers') && $user->isSupporter()) {
             $customerIds = is_array($request->customers) ? $request->customers : explode(',', $request->customers);
             $query->whereIn('customer_id', $customerIds);

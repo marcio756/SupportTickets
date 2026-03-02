@@ -63,7 +63,8 @@ class TicketController extends Controller
 
         return Inertia::render('Tickets/Index', [
             'tickets' => $tickets,
-            'filters' => $request->only(['search', 'status', 'customers', 'assignees', 'tags']),
+            // ADICIONADO: 'source' para os filtros manterem o estado
+            'filters' => $request->only(['search', 'status', 'source', 'customers', 'assignees', 'tags']),
             'customersList' => $customersList,
             'availableTags' => $availableTags,
         ]);
@@ -94,6 +95,11 @@ class TicketController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+
+        // ADICIONADO: Filtro pela origem
+        if ($request->filled('source')) {
+            $query->where('source', $request->source);
         }
 
         if ($request->filled('customers') && $user->isSupporter()) {

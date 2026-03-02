@@ -88,6 +88,13 @@ class DatabaseSeeder extends Seeder
             'assigned_to' => null,
         ]);
 
+        // ADIÇÃO: Criar 3 tickets com origem 'email' para o Customer Demo
+        Ticket::factory(3)->create([
+            'customer_id' => $testCustomer->id,
+            'assigned_to' => null,
+            'source'      => 'email', // Forçamos a origem a ser email
+        ]);
+
         foreach ($randomCustomers as $customer) {
             Ticket::factory(rand(1, 5))->create([
                 'customer_id' => $customer->id,

@@ -39,6 +39,24 @@
         </va-select>
 
         <va-select
+          v-if="sourceOptions && sourceOptions.length > 0"
+          v-model="internalSource"
+          :options="sourceOptions"
+          value-by="value"
+          text-by="text"
+          placeholder="All Sources"
+          clearable
+          preset="bordered"
+          class="w-full xl:w-48 flex-none"
+          @update:modelValue="emitFilters"
+        >
+            <template #content="{ valueArray }">
+                <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
+                <span v-else class="text-gray-400">All Sources</span>
+            </template>
+        </va-select>
+
+        <va-select
           v-if="roleOptions && roleOptions.length > 0"
           v-model="internalRole"
           :options="roleOptions"
@@ -160,11 +178,13 @@ const props = defineProps({
   hideSearch: { type: Boolean, default: false },
   additionalFilterCount: { type: Number, default: 0 },
   status: { type: [String, Object], default: '' },
+  source: { type: [String, Object], default: '' },
   role: { type: [String, Object], default: '' },
   customers: { type: Array, default: () => [] },
   assignees: { type: Array, default: () => [] },
   tags: { type: Array, default: () => [] },
   statusOptions: { type: Array, default: () => [] },
+  sourceOptions: { type: Array, default: () => [] },
   roleOptions: { type: Array, default: () => [] },
   customerOptions: { type: Array, default: () => [] },
   assigneeOptions: { type: Array, default: () => [] },
@@ -173,12 +193,13 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-    'update:query', 'update:status', 'update:role', 
+    'update:query', 'update:status', 'update:source', 'update:role', 
     'update:customers', 'update:assignees', 'update:tags', 'clear-all'
 ]);
 
 const internalQuery = ref(props.query);
 const internalStatus = ref(props.status);
+const internalSource = ref(props.source);
 const internalRole = ref(props.role);
 const internalCustomers = ref(props.customers);
 const internalAssignees = ref(props.assignees);
@@ -186,6 +207,7 @@ const internalTags = ref(props.tags);
 
 watch(() => props.query, (newVal) => { internalQuery.value = newVal; });
 watch(() => props.status, (newVal) => { internalStatus.value = newVal; });
+watch(() => props.source, (newVal) => { internalSource.value = newVal; });
 watch(() => props.role, (newVal) => { internalRole.value = newVal; });
 watch(() => props.customers, (newVal) => { internalCustomers.value = newVal; });
 watch(() => props.assignees, (newVal) => { internalAssignees.value = newVal; });
@@ -195,6 +217,7 @@ const activeFiltersCount = computed(() => {
     let count = props.additionalFilterCount;
     if (!props.hideSearch && internalQuery.value && internalQuery.value.trim() !== '') count++;
     if (internalStatus.value && internalStatus.value !== '') count++;
+    if (internalSource.value && internalSource.value !== '') count++;
     if (internalRole.value && internalRole.value !== '') count++;
     if (internalCustomers.value && internalCustomers.value.length > 0) count++;
     if (internalAssignees.value && internalAssignees.value.length > 0) count++;
@@ -223,6 +246,7 @@ const resolveTagName = (val) => {
 const clearAllFilters = () => {
     internalQuery.value = '';
     internalStatus.value = '';
+    internalSource.value = '';
     internalRole.value = '';
     internalCustomers.value = [];
     internalAssignees.value = [];
@@ -234,11 +258,14 @@ const clearAllFilters = () => {
 const emitFilters = () => {
   const statusValue = typeof internalStatus.value === 'object' && internalStatus.value !== null 
       ? internalStatus.value.value : internalStatus.value;
+  const sourceValue = typeof internalSource.value === 'object' && internalSource.value !== null 
+      ? internalSource.value.value : internalSource.value;
   const roleValue = typeof internalRole.value === 'object' && internalRole.value !== null 
       ? internalRole.value.value : internalRole.value;
 
   emit('update:query', internalQuery.value);
   emit('update:status', statusValue || '');
+  emit('update:source', sourceValue || '');
   emit('update:role', roleValue || '');
   emit('update:customers', internalCustomers.value || []);
   emit('update:assignees', internalAssignees.value || []);

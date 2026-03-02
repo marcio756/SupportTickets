@@ -12,10 +12,12 @@
     <ResourceFilter
       v-model:query="query"
       v-model:status="selectedStatus"
+      v-model:source="selectedSource"
       v-model:customers="selectedCustomers"
       v-model:assignees="selectedAssignees"
       v-model:tags="selectedTags"
       :status-options="statusOptions"
+      :source-options="sourceOptions"
       :customer-options="customersList"
       :assignee-options="assigneeOptions"
       :available-tags="availableTags"
@@ -32,6 +34,17 @@
     >
       <template #cell(id)="{ rowData }">
         <span class="font-bold" style="color: var(--va-primary)">#{{ rowData.id }}</span>
+      </template>
+
+      <template #cell(title)="{ rowData }">
+        <div class="flex items-center gap-2">
+          <span style="color: var(--va-text-primary)">{{ rowData.title }}</span>
+          <span v-if="rowData.source === 'email'"
+                class="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                title="Received via Email">
+            📧 Email
+          </span>
+        </div>
       </template>
 
       <template #cell(tags)="{ rowData }">
@@ -97,7 +110,7 @@ const isSupporter = page.props.auth.user.role !== 'customer';
 
 const isCreateModalOpen = ref(false);
 
-const { query, selectedStatus, selectedCustomers, selectedAssignees, selectedTags, changePage } = useFilters(
+const { query, selectedStatus, selectedSource, selectedCustomers, selectedAssignees, selectedTags, changePage } = useFilters(
   props.filters, 
   'tickets.index', 
   props.tickets.current_page
@@ -108,6 +121,11 @@ const statusOptions = [
   { text: 'In Progress', value: 'in_progress' },
   { text: 'Resolved', value: 'resolved' },
   { text: 'Closed', value: 'closed' },
+];
+
+const sourceOptions = [
+  { text: 'Web', value: 'web' },
+  { text: 'Email', value: 'email' },
 ];
 
 const assigneeOptions = [
