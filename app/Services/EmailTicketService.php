@@ -71,15 +71,15 @@ class EmailTicketService
     private function createNewTicket(int $userId, string $subject, string $body): Ticket
     {
         $ticket = Ticket::create([
-            'user_id' => $userId,
-            'title'   => $subject,
+            'customer_id' => $userId, // Alterado para corresponder à tua migração
+            'title'       => $subject,
             // Status may be handled by default database values or an observer,
             // but normally we would start it as 'open' or 'pending'.
         ]);
 
         TicketMessage::create([
             'ticket_id' => $ticket->id,
-            'user_id'   => $userId,
+            'user_id'   => $userId, // A migração de mensagens usa user_id
             'message'   => $body,
         ]);
 
