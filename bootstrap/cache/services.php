@@ -37,7 +37,8 @@
     33 => 'Termwind\\Laravel\\TermwindServiceProvider',
     34 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
     35 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
-    36 => 'App\\Providers\\AppServiceProvider',
+    36 => 'Webklex\\IMAP\\Providers\\LaravelServiceProvider',
+    37 => 'App\\Providers\\AppServiceProvider',
   ),
   'eager' => 
   array (
@@ -60,7 +61,8 @@
     16 => 'Termwind\\Laravel\\TermwindServiceProvider',
     17 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
     18 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
-    19 => 'App\\Providers\\AppServiceProvider',
+    19 => 'Webklex\\IMAP\\Providers\\LaravelServiceProvider',
+    20 => 'App\\Providers\\AppServiceProvider',
   ),
   'deferred' => 
   array (
