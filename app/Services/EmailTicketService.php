@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\TicketCreatedAutoReply;
 
 /**
  * Service responsible for processing incoming support emails.
@@ -71,17 +73,22 @@ class EmailTicketService
     private function createNewTicket(int $userId, string $subject, string $body): Ticket
     {
         $ticket = Ticket::create([
-            'customer_id' => $userId, // Alterado para corresponder à tua migração
+            'customer_id' => $userId,
             'title'       => $subject,
-            // Status may be handled by default database values or an observer,
-            // but normally we would start it as 'open' or 'pending'.
+            'source'      => 'email', 
         ]);
 
         TicketMessage::create([
             'ticket_id' => $ticket->id,
-            'user_id'   => $userId, // A migração de mensagens usa user_id
+            'user_id'   => $userId,
             'message'   => $body,
         ]);
+
+        // Disparar o envio do email de auto-resposta para o cliente
+        $user = User::find($userId);
+        if ($user) {
+            Mail::to($user->email)->send(new TicketCreatedAutoReply($ticket));
+        }
 
         return $ticket;
     }

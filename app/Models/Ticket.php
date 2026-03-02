@@ -25,6 +25,7 @@ class Ticket extends Model
         'assigned_to',
         'title',
         'status',
+        'source',
     ];
 
     /**

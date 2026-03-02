@@ -35,8 +35,9 @@ class EmailTicketServiceTest extends TestCase
 
         // 3. Verificação: Confirmar que o ticket e a mensagem inicial foram criados corretamente
         $this->assertDatabaseHas('tickets', [
-            'customer_id' => $cliente->id, // Alterado para verificar a coluna correta
+            'customer_id' => $cliente->id,
             'title'       => 'Problema com o meu servidor',
+            'source'      => 'email',
         ]);
         
         $this->assertDatabaseHas('ticket_messages', [
