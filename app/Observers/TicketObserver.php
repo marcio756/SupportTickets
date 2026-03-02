@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\Ticket;
 use App\Notifications\TicketNotification;
 use App\Services\FirebaseService;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Observador responsável por despachar as lógicas reativas associadas
@@ -34,18 +35,23 @@ class TicketObserver
             
             // A mensagem a enviar na notificação
             $title = "Atualização de Ticket";
-            $message = "O ticket #{$ticket->id} mudou para {$ticket->status->value}";
+            $message = "O ticket #{$ticket->id} mudou o seu estado para: {$ticket->status->value}";
             $payload = ['ticket_id' => (string) $ticket->id];
 
-            // Notifica o Cliente caso ele não seja o responsável pela alteração
+            // 1. Notifica o Cliente caso ele não seja o responsável pela alteração
             if ($ticket->customer_id !== $actorId) {
                 if ($ticket->customer) {
+                    // Cliente com conta registada
                     $ticket->customer->notify(new TicketNotification($ticket, $message, 'status_change'));
                     $this->firebaseService->sendNotificationToUser($ticket->customer, $title, $message, $payload);
+                } elseif ($ticket->sender_email) {
+                    // Cliente sem conta (via e-mail)
+                    Notification::route('mail', $ticket->sender_email)
+                        ->notify(new TicketNotification($ticket, $message, 'status_change'));
                 }
             }
 
-            // Notifica o Agente Atribuído caso ele não seja o responsável pela alteração
+            // 2. Notifica o Agente Atribuído caso ele não seja o responsável pela alteração
             if ($ticket->assigned_to && $ticket->assigned_to !== $actorId) {
                 if ($ticket->assignee) {
                     $ticket->assignee->notify(new TicketNotification($ticket, $message, 'status_change'));
