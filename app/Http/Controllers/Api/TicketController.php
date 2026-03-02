@@ -42,7 +42,8 @@ class TicketController extends Controller
     {
         $user = $request->user();
 
-        $query = Ticket::with(['customer', 'assignee']);
+        // Added 'tags' to eager loading to prevent N+1 queries and provide data to the app
+        $query = Ticket::with(['customer', 'assignee', 'tags']);
 
         if ($user->isCustomer()) {
             $query->where('customer_id', $user->id);
@@ -100,6 +101,14 @@ class TicketController extends Controller
                 }
             });
         }
+
+        // Added robust tag filtering capability
+        if ($request->filled('tags') && $user->isSupporter()) {
+            $tags = is_array($request->tags) ? $request->tags : explode(',', $request->tags);
+            $query->whereHas('tags', function ($q) use ($tags) {
+                $q->whereIn('tags.id', $tags);
+            });
+        }
     }
 
     /**
@@ -124,8 +133,9 @@ class TicketController extends Controller
                 $request->file('attachment')
             );
 
+            // Added 'tags' to the payload return
             return $this->successResponse(
-                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender'])), 
+                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])), 
                 'Ticket criado com sucesso.', 
                 201
             );
@@ -145,7 +155,8 @@ class TicketController extends Controller
     {
         Gate::authorize('view', $ticket);
 
-        return new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender']));
+        // Added 'tags' so the detail view shows them
+        return new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags']));
     }
 
     /**
@@ -183,8 +194,9 @@ class TicketController extends Controller
         try {
             $ticket = $this->ticketService->assignTicket($request->user(), $ticket);
 
+            // Added 'tags' to maintain consistency in returned state
             return $this->successResponse(
-                new TicketResource($ticket->load(['customer', 'assignee'])),
+                new TicketResource($ticket->load(['customer', 'assignee', 'tags'])),
                 'Ticket reivindicado com sucesso.'
             );
         } catch (\Exception $e) {
@@ -209,8 +221,9 @@ class TicketController extends Controller
         try {
             $ticket = $this->ticketService->updateStatus($request->user(), $ticket, $validated['status']);
 
+            // Added 'tags' to maintain consistency in returned state
             return $this->successResponse(
-                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender'])),
+                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])),
                 'Estado do ticket atualizado.'
             );
         } catch (\Exception $e) {
@@ -243,8 +256,9 @@ class TicketController extends Controller
                 $request->file('attachment')
             );
 
+            // Added 'tags' to maintain consistency in returned state
             return $this->successResponse(
-                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender'])), 
+                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])), 
                 'Mensagem enviada com sucesso.'
             );
         } catch (\Exception $e) {

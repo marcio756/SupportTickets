@@ -25,6 +25,7 @@ class TicketResource extends JsonResource
             'assigned_to' => $this->assigned_to, 
             'support' => new UserResource($this->whenLoaded('assignee')),
             'messages' => TicketMessageResource::collection($this->whenLoaded('messages')),
+            'tags' => $this->whenLoaded('tags'),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];
