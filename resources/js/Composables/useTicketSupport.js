@@ -14,7 +14,7 @@ export function useTicketSupport(ticket) {
     const currentUser = page.props.auth.user;
     const isSupporter = currentUser.role === 'supporter' || currentUser.role === 'admin';
 
-    const currentRemainingSeconds = ref(ticket.value.customer.daily_support_seconds);
+    const currentRemainingSeconds = ref(ticket.value.customer ? ticket.value.customer.daily_support_seconds : 0);
     const localMessages = ref([...ticket.value.messages]);
     const messagesContainer = ref(null);
     const isAssigning = ref(false);
@@ -34,7 +34,11 @@ export function useTicketSupport(ticket) {
     /**
      * @type {import('vue').ComputedRef<boolean>}
      */
-    const isTimeUp = computed(() => currentRemainingSeconds.value <= 0);
+    const isTimeUp = computed(() => {
+        // Correção principal: Utilizadores de e-mail (sem conta) não têm restrição de tempo
+        if (!ticket.value.customer) return false;
+        return currentRemainingSeconds.value <= 0;
+    });
 
     /**
      * @type {import('vue').ComputedRef<boolean>}
@@ -85,6 +89,7 @@ export function useTicketSupport(ticket) {
      * @type {import('vue').ComputedRef<boolean>}
      */
     const shouldRunHeartbeat = computed(() => {
+        if (!ticket.value.customer) return false;
         return isAssignedSupporter.value && ticket.value.status === 'in_progress' && !isTimeUp.value;
     });
 

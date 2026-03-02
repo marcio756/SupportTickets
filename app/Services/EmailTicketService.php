@@ -26,23 +26,15 @@ class EmailTicketService
     public function processEmail(array $emailData): ?Ticket
     {
         $user = User::where('email', $emailData['from_email'])->first();
-
-        // Halt execution if the sender is not registered. 
-        // This prevents unauthorized entities or automated spam from bloating the database.
-        if (!$user) {
-            Log::warning('Support email ignored: Sender not found in records.', [
-                'email' => $emailData['from_email']
-            ]);
-            return null;
-        }
+        $userId = $user ? $user->id : null;
 
         $ticketId = $this->extractTicketIdFromSubject($emailData['subject']);
 
         if ($ticketId) {
-            return $this->appendMessageToTicket($ticketId, $user->id, $emailData['body']);
+            return $this->appendMessageToTicket($ticketId, $userId, $emailData['body'], $emailData['from_email']);
         }
 
-        return $this->createNewTicket($user->id, $emailData['subject'], $emailData['body']);
+        return $this->createNewTicket($userId, $emailData['subject'], $emailData['body'], $emailData['from_email']);
     }
 
     /**
@@ -64,31 +56,32 @@ class EmailTicketService
 
     /**
      * Bootstraps a new ticket entity and logs its foundational message.
+     * Supports unregistered users by storing their email address.
      *
-     * @param int $userId
+     * @param int|null $userId
      * @param string $subject
      * @param string $body
+     * @param string $senderEmail
      * @return \App\Models\Ticket
      */
-    private function createNewTicket(int $userId, string $subject, string $body): Ticket
+    private function createNewTicket(?int $userId, string $subject, string $body, string $senderEmail): Ticket
     {
         $ticket = Ticket::create([
-            'customer_id' => $userId,
-            'title'       => $subject,
-            'source'      => 'email', 
+            'customer_id'  => $userId,
+            'sender_email' => $senderEmail,
+            'title'        => $subject,
+            'source'       => 'email', 
         ]);
 
         TicketMessage::create([
-            'ticket_id' => $ticket->id,
-            'user_id'   => $userId,
-            'message'   => $body,
+            'ticket_id'    => $ticket->id,
+            'user_id'      => $userId,
+            'sender_email' => $userId ? null : $senderEmail,
+            'message'      => $body,
         ]);
 
-        // Disparar o envio do email de auto-resposta para o cliente
-        $user = User::find($userId);
-        if ($user) {
-            Mail::to($user->email)->send(new TicketCreatedAutoReply($ticket));
-        }
+        // Disparar o envio do email de auto-resposta para o remetente (registado ou não)
+        Mail::to($senderEmail)->send(new TicketCreatedAutoReply($ticket));
 
         return $ticket;
     }
@@ -97,11 +90,12 @@ class EmailTicketService
      * Attaches a sequential message to an already existing ticket thread.
      *
      * @param int $ticketId
-     * @param int $userId
+     * @param int|null $userId
      * @param string $body
+     * @param string $senderEmail
      * @return \App\Models\Ticket|null
      */
-    private function appendMessageToTicket(int $ticketId, int $userId, string $body): ?Ticket
+    private function appendMessageToTicket(int $ticketId, ?int $userId, string $body, string $senderEmail): ?Ticket
     {
         $ticket = Ticket::find($ticketId);
 
@@ -109,15 +103,17 @@ class EmailTicketService
         if (!$ticket) {
             Log::warning('Support email reply failed: Ticket ID does not exist.', [
                 'ticket_id' => $ticketId,
-                'user_id'   => $userId
+                'user_id'   => $userId,
+                'email'     => $senderEmail
             ]);
             return null; 
         }
 
         TicketMessage::create([
-            'ticket_id' => $ticket->id,
-            'user_id'   => $userId,
-            'message'   => $body,
+            'ticket_id'    => $ticket->id,
+            'user_id'      => $userId,
+            'sender_email' => $userId ? null : $senderEmail,
+            'message'      => $body,
         ]);
 
         // Triggers timestamps update so the ticket registers recent activity

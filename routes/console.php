@@ -16,3 +16,8 @@ Artisan::command('inspire', function () {
  * Ensure the server cron is configured to run `php artisan schedule:run` every minute.
  */
 Schedule::command('app:reset-customer-chat-time')->dailyAt('00:00');
+
+/**
+ * Mailbox Watcher: Retrieves incoming support emails and processes them into tickets.
+ */
+Schedule::command('app:fetch-support-emails')->everyMinute();

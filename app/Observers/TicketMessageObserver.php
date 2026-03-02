@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\TicketMessage;
 use App\Notifications\TicketNotification;
 use App\Services\FirebaseService;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Observer responsible for intercepting the creation of ticket messages
@@ -30,22 +31,33 @@ class TicketMessageObserver
         $ticket = $message->ticket;
         $senderId = $message->user_id;
         
-        // Resolve the intended recipient by excluding the message sender
-        $recipient = ($ticket->customer_id === $senderId) ? $ticket->assignee : $ticket->customer;
+        $title = "Nova Mensagem";
+        $payload = ['ticket_id' => (string) $ticket->id];
 
-        if ($recipient) {
-            $title = "Nova Mensagem";
-            $body = "Recebeu uma nova mensagem no ticket #{$ticket->id}";
-            $payload = ['ticket_id' => (string) $ticket->id];
+        // Cenário 1: A mensagem foi enviada pelo cliente (com conta ou por e-mail)
+        // O destinatário a ser notificado é o Supporter associado (se existir)
+        if ($senderId === $ticket->customer_id || ($senderId === null && $ticket->sender_email)) {
+            $recipient = $ticket->assignee;
+            if ($recipient) {
+                $recipient->notify(new TicketNotification($ticket, "O cliente enviou uma nova resposta.", 'new_message'));
+                $this->firebaseService->sendNotificationToUser($recipient, $title, "Nova mensagem do cliente", $payload);
+            }
+            return;
+        }
 
-            // Local DB Notification
-            $recipient->notify(new TicketNotification(
-                $ticket, 
-                $body
-            ));
+        // Cenário 2: A mensagem foi enviada pelo Supporter
+        // O destinatário a ser notificado é o Cliente
+        $body = "Recebeu uma nova resposta no ticket #{$ticket->id}.";
 
-            // Firebase Push Notification
-            $this->firebaseService->sendNotificationToUser($recipient, $title, $body, $payload);
+        if ($ticket->customer) {
+            // Cliente possui conta registada no sistema
+            $ticket->customer->notify(new TicketNotification($ticket, $body, 'new_message'));
+            $this->firebaseService->sendNotificationToUser($ticket->customer, $title, $body, $payload);
+            
+        } elseif ($ticket->sender_email) {
+            // Cliente NÃO possui conta (origem E-mail). Dispara Notificação Anónima
+            Notification::route('mail', $ticket->sender_email)
+                ->notify(new TicketNotification($ticket, $body, 'new_message'));
         }
     }
 }

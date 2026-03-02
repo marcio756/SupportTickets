@@ -44,7 +44,9 @@
                             </span>
                         </h1>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Opened by <span class="font-medium text-gray-700 dark:text-gray-300">{{ ticket.customer.name }}</span>
+                            Opened by 
+                            <span v-if="ticket.customer" class="font-medium text-gray-700 dark:text-gray-300">{{ ticket.customer.name }}</span>
+                            <span v-else class="font-medium text-gray-700 dark:text-gray-300">{{ ticket.sender_email }}</span>
                         </p>
                         
                         <div class="flex flex-wrap items-center gap-2 mt-3">
@@ -68,7 +70,8 @@
                             <VaIcon name="support_agent" size="small" color="secondary" />
                             Assigned to: {{ ticket.assignee.name }}
                         </span>
-                        <SupportTimeDisplay :seconds="currentRemainingSeconds" />
+                        
+                        <SupportTimeDisplay v-if="ticket.customer" :seconds="currentRemainingSeconds" />
 
                         <va-dropdown placement="bottom-end" v-if="!isSupporter || isAssignedSupporter">
                             <template #anchor>
@@ -99,7 +102,7 @@
             </div>
 
             <div class="chat-container flex flex-col bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden h-[600px] mt-4">
-                <va-alert v-if="isTimeUp" color="danger" class="m-4" dense icon="block">
+                <va-alert v-if="ticket.customer && isTimeUp" color="danger" class="m-4" dense icon="block">
                     Daily support time has expired (30 minutes reached). The chat is locked until tomorrow.
                 </va-alert>
 

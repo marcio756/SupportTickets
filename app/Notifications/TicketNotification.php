@@ -7,6 +7,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -26,7 +27,7 @@ class TicketNotification extends Notification implements ShouldQueue
      *
      * @param Ticket $ticket
      * @param string $message
-     * @param string $type Ajuda o frontend a agrupar notificações semelhantes (ex: 'new_message', 'status_change').
+     * @param string $type Ajuda o frontend a agrupar notificações semelhantes.
      */
     public function __construct(Ticket $ticket, string $message, string $type = 'new_message')
     {
@@ -43,6 +44,11 @@ class TicketNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
+        // Se for um utilizador não registado (e-mail avulso), apenas enviamos e-mail.
+        if ($notifiable instanceof AnonymousNotifiable) {
+            return ['mail'];
+        }
+
         return ['database', 'mail'];
     }
 
@@ -54,12 +60,21 @@ class TicketNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        Log::channel('email')->info("📩 E-mail simulado para {$notifiable->email}: {$this->message}");
+        // Garante que não dá erro ao procurar o nome num utilizador anónimo
+        $name = $notifiable instanceof AnonymousNotifiable ? 'Cliente' : ($notifiable->name ?? 'Cliente');
+        
+        $email = $notifiable instanceof AnonymousNotifiable 
+            ? $notifiable->routes['mail'] 
+            : ($notifiable->email ?? 'Desconhecido');
+
+        Log::channel('email')->info("📩 E-mail simulado para {$email}: {$this->message}");
 
         return (new MailMessage)
-                    ->subject("Atualização no Ticket #{$this->ticket->id}")
-                    ->greeting("Olá, {$notifiable->name}!")
+                    // OBRIGATÓRIO: Passar o ID entre parênteses retos para o CronJob do IMAP conseguir associar a resposta!
+                    ->subject("[{$this->ticket->id}] Nova resposta no seu ticket")
+                    ->greeting("Olá, {$name}!")
                     ->line($this->message)
+                    ->line("⚠️ IMPORTANTE: Pode responder diretamente a este e-mail para continuar a conversa. Não altere o Assunto!")
                     ->action('Ver Ticket', route('tickets.show', $this->ticket->id))
                     ->line('Obrigado por usar a nossa plataforma de suporte técnico!');
     }

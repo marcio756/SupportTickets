@@ -64,8 +64,19 @@
 
       <template #cell(customer)="{ rowData }">
         <div class="flex items-center gap-2">
-          <UserAvatar :user="rowData.customer" size="36px" />
-          <span style="color: var(--va-text-primary)">{{ rowData.customer.name }}</span>
+          <template v-if="rowData.customer">
+            <UserAvatar :user="rowData.customer" size="36px" />
+            <span style="color: var(--va-text-primary)">{{ rowData.customer.name }}</span>
+          </template>
+          <template v-else>
+            <div class="flex items-center justify-center w-[36px] h-[36px] rounded-full bg-gray-200 text-gray-500" title="Utilizador não registado">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+              </svg>
+            </div>
+            <span style="color: var(--va-text-primary)">{{ rowData.sender_email }}</span>
+          </template>
         </div>
       </template>
 

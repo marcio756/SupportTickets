@@ -22,6 +22,7 @@ class TicketResource extends JsonResource
             'description' => $this->description,
             'status' => $this->status,
             'source'      => $this->source,
+            'sender_email' => $this->sender_email,
             'customer' => new UserResource($this->whenLoaded('customer')),
             'assigned_to' => $this->assigned_to, 
             'support' => new UserResource($this->whenLoaded('assignee')),

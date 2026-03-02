@@ -1,7 +1,17 @@
 <template>
     <div :class="['message-wrapper mb-4 flex items-start gap-3', isMine ? 'flex-row-reverse' : '']">
         
-        <UserAvatar :user="message.sender" size="48px" />
+        <template v-if="message.sender">
+            <UserAvatar :user="message.sender" size="48px" />
+        </template>
+        <template v-else>
+            <div class="flex items-center justify-center shrink-0 min-w-[48px] w-[48px] min-h-[48px] h-[48px] rounded-full bg-gray-200 text-gray-500 overflow-hidden shadow-sm" title="Mensagem via Email">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                </svg>
+            </div>
+        </template>
 
         <div 
             :class="[
@@ -11,7 +21,7 @@
         >
             <div class="flex justify-between items-baseline mb-1">
                 <span class="font-bold text-sm" :class="isMine ? 'text-blue-100' : 'text-gray-900'">
-                    {{ message.sender.name }}
+                    {{ message.sender ? message.sender.name : message.sender_email }}
                 </span>
                 <span class="text-xs ml-4" :class="isMine ? 'text-blue-200' : 'text-gray-400'">
                     {{ formattedDate }}
@@ -20,9 +30,9 @@
             
             <p v-if="message.message" class="text-sm whitespace-pre-wrap leading-relaxed">{{ message.message }}</p>
             
-            <div v-if="message.attachment_path" class="mt-2 pt-2 flex items-center gap-2" :class="[message.message ? 'border-t border-opacity-20' : '']">
+            <div v-if="message.attachment_url" class="mt-2 pt-2 flex items-center gap-2" :class="[message.message ? 'border-t border-opacity-20' : '']">
                 <va-icon name="attach_file" size="small" />
-                <a :href="attachmentUrl" target="_blank" class="text-sm underline hover:opacity-80">
+                <a :href="message.attachment_url" target="_blank" class="text-sm underline hover:opacity-80">
                     View Attachment
                 </a>
             </div>
@@ -46,23 +56,14 @@ const props = defineProps({
     }
 });
 
-/**
- * Determines if the message was sent by the currently authenticated user
- * to align the bubble to the right side.
- */
 const page = usePage();
-const isMine = computed(() => {
-    return props.message.user_id === page.props.auth.user.id;
-});
 
 /**
- * Computes the correct URL for the attachment.
+ * Determines if the message was sent by the currently authenticated user
+ * to align the bubble to the right side. Safely checks for null user_id.
  */
-const attachmentUrl = computed(() => {
-    if (!props.message.attachment_path) return null;
-    return props.message.attachment_path.startsWith('http') 
-        ? props.message.attachment_path 
-        : `/storage/${props.message.attachment_path}`;
+const isMine = computed(() => {
+    return props.message.user_id && props.message.user_id === page.props.auth.user.id;
 });
 
 /**
