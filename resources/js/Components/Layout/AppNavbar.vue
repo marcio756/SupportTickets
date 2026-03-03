@@ -27,7 +27,7 @@
           <va-dropdown-content class="user-dropdown">
             <div class="dropdown-item theme-item" @click="toggleTheme">
               <va-icon :name="isDark ? 'light_mode' : 'dark_mode'" size="small" class="mr-2" />
-              <span>{{ isDark ? 'Modo Claro' : 'Modo Escuro' }}</span>
+              <span>{{ isDark ? 'Light Mode' : 'Dark Mode' }}</span>
             </div>
             <va-divider class="m-0" />
             <Link href="/profile" class="dropdown-item">Profile</Link>

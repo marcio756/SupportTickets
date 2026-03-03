@@ -102,7 +102,8 @@ class TicketService
 
         $message = $ticket->messages()->create([
             'user_id' => $user->id,
-            'message' => "🔄 O estado do ticket foi alterado para: " . strtoupper($newStatus),
+            // Alterado para Inglês
+            'message' => "🔄 Ticket status was changed to: " . strtoupper($newStatus),
         ]);
 
         $message->load('sender');

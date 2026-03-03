@@ -23,7 +23,7 @@
 
     <div v-if="!minimized" class="p-4 mt-auto border-t border-gray-200 dark:border-gray-800">
        <span class="text-xs text-gray-500 font-mono font-bold uppercase">
-         Perfil: {{ displayRole }}
+         Role: {{ displayRole }}
        </span>
     </div>
   </va-sidebar>

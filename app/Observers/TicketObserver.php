@@ -8,8 +8,8 @@ use App\Services\FirebaseService;
 use Illuminate\Support\Facades\Notification;
 
 /**
- * Observador responsável por despachar as lógicas reativas associadas
- * ao modelo Ticket, como notificações de estado e push via Firebase.
+ * Observer responsible for dispatching reactive logic associated
+ * with the Ticket model, such as state notifications and Firebase push.
  */
 class TicketObserver
 {
@@ -21,37 +21,37 @@ class TicketObserver
     public function __construct(private FirebaseService $firebaseService) {}
 
     /**
-     * Notifica os utilizadores condicionalmente quando o estado do ticket muda.
-     * Garante que o ator que fez a mudança não recebe a notificação.
+     * Conditionally notifies users when the ticket status changes.
+     * Ensures the actor who made the change does not receive the notification.
      *
      * @param Ticket $ticket
      * @return void
      */
     public function updated(Ticket $ticket): void
     {
-        // Verifica se a propriedade status foi efetivamente alterada
+        // Check if the status property was actually changed
         if ($ticket->wasChanged('status')) {
             $actorId = auth()->id();
             
-            // A mensagem a enviar na notificação
-            $title = "Atualização de Ticket";
-            $message = "O ticket #{$ticket->id} mudou o seu estado para: {$ticket->status->value}";
+            // The message to send in the notification
+            $title = "Ticket Update";
+            $message = "Ticket #{$ticket->id} status was changed to: {$ticket->status->value}";
             $payload = ['ticket_id' => (string) $ticket->id];
 
-            // 1. Notifica o Cliente caso ele não seja o responsável pela alteração
+            // 1. Notify the Customer if they didn't make the change
             if ($ticket->customer_id !== $actorId) {
                 if ($ticket->customer) {
-                    // Cliente com conta registada
+                    // Registered customer account
                     $ticket->customer->notify(new TicketNotification($ticket, $message, 'status_change'));
                     $this->firebaseService->sendNotificationToUser($ticket->customer, $title, $message, $payload);
                 } elseif ($ticket->sender_email) {
-                    // Cliente sem conta (via e-mail)
+                    // Unregistered customer (via email)
                     Notification::route('mail', $ticket->sender_email)
                         ->notify(new TicketNotification($ticket, $message, 'status_change'));
                 }
             }
 
-            // 2. Notifica o Agente Atribuído caso ele não seja o responsável pela alteração
+            // 2. Notify the Assigned Agent if they didn't make the change
             if ($ticket->assigned_to && $ticket->assigned_to !== $actorId) {
                 if ($ticket->assignee) {
                     $ticket->assignee->notify(new TicketNotification($ticket, $message, 'status_change'));

@@ -56,7 +56,7 @@ class FetchSupportEmails extends Command
                 $body = $message->getTextBody() ?? $message->getHTMLBody() ?? '';
                 
                 $emailData = [
-                    'subject'    => $message->getSubject()[0] ?? 'Sem Assunto',
+                    'subject'    => $message->getSubject()[0] ?? 'No Subject',
                     'body'       => trim($body),
                     'from_email' => $message->getFrom()[0]->mail ?? null,
                 ];

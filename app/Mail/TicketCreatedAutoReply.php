@@ -20,7 +20,7 @@ class TicketCreatedAutoReply extends Mailable
     {
         // Aqui formatamos o Assunto (Subject) exigido pelo professor
         return new Envelope(
-            subject: '[' . $this->ticket->id . '] Novo ticket criado',
+            subject: '[' . $this->ticket->id . '] New ticket created',
         );
     }
 

@@ -35,12 +35,12 @@ class TicketNotification extends Notification implements ShouldQueue
         $messageId = "<ticket-{$this->ticket->id}@{$domain}>";
 
         return (new MailMessage)
-            ->subject("Re: [{$this->ticket->id}] Novo ticket criado")
+            ->subject("Re: [{$this->ticket->id}] New ticket created")
             ->greeting(" ")    // Removes automatic "Hello"
             ->salutation(" ")  // Removes automatic "Regards"
             ->line($this->content)
             ->line("________________________________")
-            ->line("Responda acima desta linha para continuar a conversa no ticket. Não altere o assunto.")
+            ->line("Reply above this line to continue the conversation in the ticket. Do not change the subject.")
             ->withSymfonyMessage(function (Email $message) use ($messageId) {
                 // Injects RFC 2822 standard headers to force email clients to group this into the original thread
                 $message->getHeaders()->addTextHeader('In-Reply-To', $messageId);

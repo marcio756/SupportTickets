@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ticket Recebido</title>
+    <title>Ticket Received</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6;">
-    <h2>Olá, recebemos o seu pedido de suporte!</h2>
+    <h2>Hello, we have received your support request!</h2>
     
-    <p>O seu ticket foi criado com sucesso. O título registado foi:</p>
+    <p>Your ticket was successfully created. The registered title is:</p>
     <blockquote style="background: #f4f4f4; padding: 10px; border-left: 5px solid #ccc;">
         {{ $ticket->title }}
     </blockquote>
 
-    <p><strong>⚠️ IMPORTANTE:</strong><br>
-    Qualquer questão ou atualização relacionada com este pedido deve ser feita <strong>respondendo diretamente a este e-mail</strong>. Não altere o Assunto do e-mail para garantirmos que a mensagem fica associada ao seu ticket original.</p>
+    <p><strong>⚠️ IMPORTANT:</strong><br>
+    Any question or update related to this request should be made by <strong>replying directly to this email</strong>. Do not change the Subject of the email to ensure the message remains associated with your original ticket.</p>
 
-    <p>A nossa equipa entrará em contacto em breve.</p>
+    <p>Our team will contact you shortly.</p>
     
-    <p>Obrigado,<br>
-    Equipa de Suporte</p>
+    <p>Thank you,<br>
+    Support Team</p>
 </body>
 </html>
