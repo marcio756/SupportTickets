@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\AnonymousNotifiable;
+use Symfony\Component\Mime\Email;
 
 /**
  * Handles ticket updates and chat messages via email and database.
@@ -29,13 +30,22 @@ class TicketNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
+        // Generate the exact same ID format used in the initial auto-reply
+        $domain = parse_url(config('app.url'), PHP_URL_HOST) ?? 'localhost';
+        $messageId = "<ticket-{$this->ticket->id}@{$domain}>";
+
         return (new MailMessage)
             ->subject("Re: [{$this->ticket->id}] Novo ticket criado")
             ->greeting(" ")    // Removes automatic "Hello"
             ->salutation(" ")  // Removes automatic "Regards"
             ->line($this->content)
             ->line("________________________________")
-            ->line("Responda acima desta linha para continuar a conversa no ticket. Não altere o assunto.");
+            ->line("Responda acima desta linha para continuar a conversa no ticket. Não altere o assunto.")
+            ->withSymfonyMessage(function (Email $message) use ($messageId) {
+                // Injects RFC 2822 standard headers to force email clients to group this into the original thread
+                $message->getHeaders()->addTextHeader('In-Reply-To', $messageId);
+                $message->getHeaders()->addTextHeader('References', $messageId);
+            });
     }
 
     public function toArray(object $notifiable): array

@@ -1,0 +1,6 @@
+quero que em vez de estar sempre a criar emails novos quando um support envia uma mensagem para um chat de um customer que utilize email em ves do site que responda ao proprio
+email criado no inicio porque senao o email do utilizador fica super cheio se isso ja estiver a acontecer deixa estar como esta
+tudo deve estar em ingles tanto na backend frontend
+deve se implementar tudo o que estiver ligado ao funcionamento dos emails a api para asseguir colocar o sistema de chat com email do site na app
+
+comando para dar fetch aos emails novos php artisan app:fetch-support-emails
