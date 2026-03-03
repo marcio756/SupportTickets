@@ -24,6 +24,7 @@ class TicketService
 
     /**
      * Creates a new ticket and its initial message.
+     * Capable of handling both registered customers and external email sources.
      * Attach tags immediately if provided.
      *
      * @param User $user
@@ -34,13 +35,32 @@ class TicketService
     public function createTicket(User $user, array $data, ?UploadedFile $attachment): Ticket
     {
         $isSupporter = $user->isSupporter();
-        $customerId = $isSupporter && !empty($data['customer_id']) ? $data['customer_id'] : $user->id;
+        
+        $customerId = null;
+        $senderEmail = null;
+        $source = 'web';
+
+        // Determines identity logic based on user role and provided data
+        if ($isSupporter) {
+            if (!empty($data['customer_id'])) {
+                $customerId = $data['customer_id'];
+            } elseif (!empty($data['sender_email'])) {
+                $senderEmail = $data['sender_email'];
+                $source = 'email';
+            } else {
+                $customerId = $user->id; // Fallback to self
+            }
+        } else {
+            $customerId = $user->id;
+        }
 
         $ticket = Ticket::create([
-            'customer_id' => $customerId,
-            'title' => $data['title'],
-            'status' => TicketStatusEnum::OPEN,
-            'assigned_to' => $isSupporter ? $user->id : null,
+            'customer_id'  => $customerId,
+            'sender_email' => $senderEmail,
+            'source'       => $source,
+            'title'        => $data['title'],
+            'status'       => TicketStatusEnum::OPEN,
+            'assigned_to'  => $isSupporter ? $user->id : null,
         ]);
 
         if (isset($data['tags']) && is_array($data['tags'])) {
@@ -50,8 +70,8 @@ class TicketService
         $attachmentPath = $attachment ? $this->attachmentService->store($attachment) : null;
 
         $ticket->messages()->create([
-            'user_id' => $user->id,
-            'message' => $data['message'] ?? '',
+            'user_id'         => $user->id,
+            'message'         => $data['message'] ?? '',
             'attachment_path' => $attachmentPath,
         ]);
 
@@ -102,7 +122,6 @@ class TicketService
 
         $message = $ticket->messages()->create([
             'user_id' => $user->id,
-            // Alterado para Inglês
             'message' => "🔄 Ticket status was changed to: " . strtoupper($newStatus),
         ]);
 
@@ -140,8 +159,8 @@ class TicketService
         $attachmentPath = $attachment ? $this->attachmentService->store($attachment) : null;
 
         $message = $ticket->messages()->create([
-            'user_id' => $user->id,
-            'message' => $data['message'] ?? '',
+            'user_id'         => $user->id,
+            'message'         => $data['message'] ?? '',
             'attachment_path' => $attachmentPath,
         ]);
 

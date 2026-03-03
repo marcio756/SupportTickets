@@ -49,7 +49,6 @@ class TicketController extends Controller
             $query->where('customer_id', $user->id);
         }
 
-        // Aplica os filtros enviados pela App Móvel (Query Parameters)
         $this->applyIndexFilters($query, $request, $user);
 
         $tickets = $query->latest()->paginate(15);
@@ -84,7 +83,6 @@ class TicketController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Filtro pela nova coluna de origem (web/email)
         if ($request->filled('source')) {
             $query->where('source', $request->source);
         }
@@ -107,7 +105,6 @@ class TicketController extends Controller
             });
         }
 
-        // Added robust tag filtering capability
         if ($request->filled('tags') && $user->isSupporter()) {
             $tags = is_array($request->tags) ? $request->tags : explode(',', $request->tags);
             $query->whereHas('tags', function ($q) use ($tags) {
@@ -124,11 +121,22 @@ class TicketController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $isSupporter = $request->user()->isSupporter();
+
+        // Validates requiring either a registered customer OR an external email
         $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'message' => ['required', 'string'],
-            'customer_id' => [$request->user()->isSupporter() ? 'required' : 'nullable', 'exists:users,id'],
-            'attachment' => ['nullable', 'file', 'max:10240'], 
+            'title'        => ['required', 'string', 'max:255'],
+            'message'      => ['required', 'string'],
+            'customer_id'  => [
+                $isSupporter ? 'required_without:sender_email' : 'nullable', 
+                'exists:users,id'
+            ],
+            'sender_email' => [
+                $isSupporter ? 'required_without:customer_id' : 'prohibited', 
+                'email', 
+                'nullable'
+            ],
+            'attachment'   => ['nullable', 'file', 'max:10240'], 
         ]);
 
         try {
@@ -138,10 +146,9 @@ class TicketController extends Controller
                 $request->file('attachment')
             );
 
-            // Added 'tags' to the payload return
             return $this->successResponse(
                 new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])), 
-                'Ticket criado com sucesso.', 
+                'Ticket created successfully.', 
                 201
             );
         } catch (\Exception $e) {
@@ -160,7 +167,6 @@ class TicketController extends Controller
     {
         Gate::authorize('view', $ticket);
 
-        // Added 'tags' so the detail view shows them
         return new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags']));
     }
 
@@ -179,7 +185,7 @@ class TicketController extends Controller
 
             return $this->successResponse(
                 null,
-                'Ticket eliminado com sucesso.'
+                'Ticket deleted successfully.'
             );
         } catch (\Exception $e) {
             $code = $e instanceof HttpException ? $e->getStatusCode() : 500;
@@ -199,10 +205,9 @@ class TicketController extends Controller
         try {
             $ticket = $this->ticketService->assignTicket($request->user(), $ticket);
 
-            // Added 'tags' to maintain consistency in returned state
             return $this->successResponse(
                 new TicketResource($ticket->load(['customer', 'assignee', 'tags'])),
-                'Ticket reivindicado com sucesso.'
+                'Ticket claimed successfully.'
             );
         } catch (\Exception $e) {
             $code = $e instanceof HttpException ? $e->getStatusCode() : 500;
@@ -226,10 +231,9 @@ class TicketController extends Controller
         try {
             $ticket = $this->ticketService->updateStatus($request->user(), $ticket, $validated['status']);
 
-            // Added 'tags' to maintain consistency in returned state
             return $this->successResponse(
                 new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])),
-                'Estado do ticket atualizado.'
+                'Ticket status updated.'
             );
         } catch (\Exception $e) {
             $code = $e instanceof HttpException ? $e->getStatusCode() : 500;
@@ -261,10 +265,9 @@ class TicketController extends Controller
                 $request->file('attachment')
             );
 
-            // Added 'tags' to maintain consistency in returned state
             return $this->successResponse(
                 new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])), 
-                'Mensagem enviada com sucesso.'
+                'Message sent successfully.'
             );
         } catch (\Exception $e) {
             $code = $e instanceof HttpException ? $e->getStatusCode() : 500;
@@ -285,24 +288,24 @@ class TicketController extends Controller
         $user = $request->user();
 
         if (!$user->isSupporter()) {
-            return $this->errorResponse('Não autorizado.', 403);
+            return $this->errorResponse('Unauthorized.', 403);
         }
 
         if ($ticket->assigned_to !== $user->id) {
-            return $this->errorResponse('Precisas de reivindicar este ticket para descontar tempo.', 403);
+            return $this->errorResponse('You must claim this ticket to deduct time.', 403);
         }
 
         Gate::authorize('update', $ticket);
 
         if ($ticket->status !== TicketStatusEnum::IN_PROGRESS) {
-            return $this->errorResponse('Ticket não está em progresso.', 400);
+            return $this->errorResponse('Ticket is not in progress.', 400);
         }
 
         $remainingSeconds = $timeManager->deductTime($ticket, 5);
 
         return $this->successResponse(
             ['remaining_seconds' => $remainingSeconds],
-            'Tempo descontado com sucesso.'
+            'Time deducted successfully.'
         );
     }
 
@@ -327,7 +330,7 @@ class TicketController extends Controller
 
             return $this->successResponse(
                 new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])),
-                'Tags sincronizadas com sucesso.'
+                'Tags synchronized successfully.'
             );
         } catch (\Exception $e) {
             $code = $e instanceof HttpException ? $e->getStatusCode() : 500;
