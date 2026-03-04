@@ -70,14 +70,20 @@ const navigationItems = computed(() => {
     }
   }
 
+  // Base items accessible by all authenticated users
   const items = [
     { title: 'Dashboard', icon: 'dashboard', route: 'dashboard' },
     { title: 'Tickets', icon: 'confirmation_number', route: 'tickets.index' },
   ];
 
+  // Supporters and Admins can manage users and tags
   if (role === 'supporter' || role === 'admin') {
     items.push({ title: 'Users', icon: 'group', route: 'users.index' });
     items.push({ title: 'Manage Tags', icon: 'local_offer', route: 'tags.index' });
+  }
+
+  // Activity Logs are strictly for system administrators
+  if (role === 'admin') {
     items.push({ title: 'Activity Logs', icon: 'history', route: 'activity-logs.index' });
   }
 
@@ -86,7 +92,6 @@ const navigationItems = computed(() => {
 
 /**
  * Safely resolves the Ziggy route URL to prevent frontend crashes.
- * Falls back to a safe anchor if the backend routes are out of sync with the frontend cache.
  * @param {string} routeName - The internal identifier for the route.
  * @returns {string} The formatted URL or a fallback hash.
  */

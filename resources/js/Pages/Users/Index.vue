@@ -22,7 +22,7 @@
       <ResourceFilter
           v-model:query="query"
           v-model:role="selectedRole"
-          :role-options="roleOptions"
+          :role-options="roles.length > 1 ? roleOptions : []"
       />
 
       <ResourceTable
@@ -44,7 +44,7 @@
 
         <template #cell(role)="{ rowData }">
           <va-badge 
-            :color="rowData.role === 'support' ? 'primary' : 'secondary'" 
+            :color="rowData.role === 'support' || rowData.role === 'supporter' ? 'primary' : 'secondary'" 
             :text="rowData.role.toUpperCase()" 
             class="font-semibold"
           />
@@ -93,7 +93,10 @@ const props = defineProps({
   workSessionStatus: { type: String, default: 'active' }
 });
 
-// Leverage the composable for reactivity and Inertia routing
+/**
+ * Leverage the useFilters composable to synchronize route state with UI.
+ * The role filter is only presented if the current user has access to multiple roles.
+ */
 const { query, selectedRole, changePage } = useFilters(props.filters, 'users.index', props.users.current_page || 1);
 
 const isFormModalOpen = ref(false);

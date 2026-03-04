@@ -34,6 +34,7 @@ watch(() => props.show, (isShowing) => {
     if (isShowing) {
         form.name = props.user ? props.user.name : '';
         form.email = props.user ? props.user.email : '';
+        // Automatically default to the first available role if multiple aren't allowed.
         form.role = props.user ? props.user.role : (props.roles[0] || '');
         form.password = '';
         form.password_confirmation = '';
@@ -109,6 +110,7 @@ const closeModal = () => {
             />
 
             <va-select
+                v-if="roles.length > 1"
                 v-model="form.role"
                 :options="roles"
                 label="Role"

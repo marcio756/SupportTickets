@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RoleEnum;
+use App\Models\User;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -42,6 +44,7 @@ class ProfileController extends Controller
 
     /**
      * Delete the user's account.
+     * Includes a critical architectural safeguard to prevent deleting the last system administrator.
      */
     public function destroy(Request $request): RedirectResponse
     {
@@ -50,6 +53,14 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+
+        // Enforce system integrity by preventing the deletion of the final admin account from the user profile
+        if ($user->isAdmin()) {
+            $adminCount = User::where('role', RoleEnum::ADMIN->value)->count();
+            if ($adminCount <= 1) {
+                return back()->withErrors(['password' => 'Critical: Cannot delete the last remaining administrator account.']);
+            }
+        }
 
         Auth::logout();
 

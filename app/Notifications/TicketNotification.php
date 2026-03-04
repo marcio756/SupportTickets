@@ -25,7 +25,19 @@ class TicketNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return $notifiable instanceof AnonymousNotifiable ? ['mail'] : ['database', 'mail'];
+        // Se for uma notificação para um email anónimo (Guest), enviamos apenas email
+        if ($notifiable instanceof AnonymousNotifiable) {
+            return ['mail'];
+        }
+
+        $channels = ['database']; // Canal do site é sempre obrigatório
+
+        // Verifica se o utilizador tem email e se não é um email fictício/placeholder do sistema
+        if (!empty($notifiable->email) && !str_ends_with($notifiable->email, '@example.com')) {
+            $channels[] = 'mail';
+        }
+
+        return $channels;
     }
 
     public function toMail(object $notifiable): MailMessage
