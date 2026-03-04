@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Enums\RoleEnum;
 use App\Enums\TicketStatusEnum;
+use App\Enums\WorkSessionStatusEnum;
 use App\Events\TicketMessageCreated;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
+use App\Models\WorkSession;
 use Illuminate\Http\UploadedFile;
 
 /**
@@ -24,8 +27,7 @@ class TicketService
 
     /**
      * Creates a new ticket and its initial message.
-     * Capable of handling both registered customers and external email sources.
-     * Attach tags immediately if provided.
+     * Integrates intelligent round-robin auto-assignment for available online supporters.
      *
      * @param User $user
      * @param array $data
@@ -40,7 +42,6 @@ class TicketService
         $senderEmail = null;
         $source = 'web';
 
-        // Determines identity logic based on user role and provided data
         if ($isSupporter) {
             if (!empty($data['customer_id'])) {
                 $customerId = $data['customer_id'];
@@ -48,11 +49,13 @@ class TicketService
                 $senderEmail = $data['sender_email'];
                 $source = 'email';
             } else {
-                $customerId = $user->id; // Fallback to self
+                $customerId = $user->id; 
             }
         } else {
             $customerId = $user->id;
         }
+
+        $assignedTo = $this->determineOptimalAssignee();
 
         $ticket = Ticket::create([
             'customer_id'  => $customerId,
@@ -60,7 +63,7 @@ class TicketService
             'source'       => $source,
             'title'        => $data['title'],
             'status'       => TicketStatusEnum::OPEN,
-            'assigned_to'  => $isSupporter ? $user->id : null,
+            'assigned_to'  => $assignedTo,
         ]);
 
         if (isset($data['tags']) && is_array($data['tags'])) {
@@ -76,6 +79,35 @@ class TicketService
         ]);
 
         return $ticket;
+    }
+
+    /**
+     * Finds the most eligible online supporter for a new ticket.
+     * Must have an ACTIVE work session and less than 5 OPEN/IN_PROGRESS tickets.
+     * * @return int|null The User ID of the optimal supporter, or null if none available.
+     */
+    private function determineOptimalAssignee(): ?int
+    {
+        $activeSupporterIds = WorkSession::where('status', WorkSessionStatusEnum::ACTIVE->value)
+            ->pluck('user_id');
+
+        if ($activeSupporterIds->isEmpty()) {
+            return null; // Put in global unassigned queue
+        }
+
+        $eligibleSupporter = User::whereIn('id', $activeSupporterIds)
+            ->where('role', RoleEnum::SUPPORTER->value)
+            ->withCount(['assignedTickets' => function ($query) {
+                $query->whereIn('status', [
+                    TicketStatusEnum::OPEN->value,
+                    TicketStatusEnum::IN_PROGRESS->value
+                ]);
+            }])
+            ->having('assigned_tickets_count', '<', 5)
+            ->orderBy('assigned_tickets_count', 'asc') // Distribute evenly
+            ->first();
+
+        return $eligibleSupporter ? $eligibleSupporter->id : null;
     }
 
     /**

@@ -1,3 +1,0 @@
-deve se implementar tudo o que estiver ligado ao funcionamento dos emails a api para asseguir colocar o sistema de chat com email do site na app
-
-comando para dar fetch aos emails novos php artisan app:fetch-support-emails

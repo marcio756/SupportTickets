@@ -53,6 +53,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if the user is an administrator.
+     *
+     * @return bool
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === RoleEnum::ADMIN;
+    }
+
+    /**
      * Check if the user is a supporter.
      *
      * @return bool

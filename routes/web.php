@@ -8,6 +8,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\WorkSessionController;
+use App\Http\Middleware\EnsureActiveWorkSession;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -33,26 +35,39 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     /**
-     * Core ticketing system endpoints including status tracking and agent assignments.
+     * Endpoints for tracking Supporter work sessions and time tracking.
+     */
+    Route::post('/work-sessions/start', [WorkSessionController::class, 'start'])->name('work-sessions.start');
+    Route::post('/work-sessions/pause', [WorkSessionController::class, 'pause'])->name('work-sessions.pause');
+    Route::post('/work-sessions/resume', [WorkSessionController::class, 'resume'])->name('work-sessions.resume');
+    Route::post('/work-sessions/end', [WorkSessionController::class, 'end'])->name('work-sessions.end');
+
+    /**
+     * Base ticket read endpoints. Open for active viewing without session lock.
      */
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
-    Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
-    Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
-    Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])->name('tickets.destroy');
-    Route::patch('/tickets/{ticket}/assign', [TicketController::class, 'assign'])->name('tickets.assign');
-    Route::patch('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])->name('tickets.update-status');
-    
+
     /**
-     * Handles live chat interactions and time tracking within a specific ticket.
+     * Core ticketing write operations, strictly protected by Work Session validation.
+     * Supporters cannot act here if clocked out.
      */
-    Route::post('/tickets/{ticket}/messages', [TicketController::class, 'storeMessage'])->name('tickets.messages.store');
-    Route::post('/tickets/{ticket}/tick-time', [TicketController::class, 'tickTime'])->name('tickets.tick-time');
+    Route::middleware([EnsureActiveWorkSession::class])->group(function () {
+        Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+        Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+        Route::delete('/tickets/{ticket}', [TicketController::class, 'destroy'])->name('tickets.destroy');
+        Route::patch('/tickets/{ticket}/assign', [TicketController::class, 'assign'])->name('tickets.assign');
+        Route::patch('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])->name('tickets.update-status');
+        
+        Route::post('/tickets/{ticket}/messages', [TicketController::class, 'storeMessage'])->name('tickets.messages.store');
+        Route::post('/tickets/{ticket}/tick-time', [TicketController::class, 'tickTime'])->name('tickets.tick-time');
+
+        Route::put('/tickets/{ticket}/tags', [TicketController::class, 'syncTags'])->name('tickets.tags.sync');
+    });
 
     /**
      * Global tagging system for ticket categorization and filtering.
      */
-    Route::put('/tickets/{ticket}/tags', [TicketController::class, 'syncTags'])->name('tickets.tags.sync');
     Route::resource('tags', TagController::class)->except(['create', 'show', 'edit']);
 
     /**

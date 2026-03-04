@@ -16,18 +16,29 @@ class UserController extends Controller
 {
     /**
      * Display a listing of the resource.
-     * Includes basic filtering by name/email and role.
+     * Enforces hierarchy: Admins see all, Supporters see only customers.
      * * @param Request $request
      * @return Response
      */
     public function index(Request $request): Response
     {
-        // Garante que só utilizadores Supporter ou Admin podem aceder
-        if (!$request->user()->isSupporter()) {
+        $user = $request->user();
+
+        // Only Admins and Supporters can access the user management panel
+        if (!$user->isAdmin() && !$user->isSupporter()) {
             abort(403, 'Unauthorized access.');
         }
 
         $query = User::query();
+
+        // Restrict supporters to only view and manage customers
+        if ($user->isSupporter()) {
+            $query->where('role', RoleEnum::CUSTOMER->value);
+            $availableRoles = [RoleEnum::CUSTOMER->value];
+        } else {
+            // Admins can manage all roles
+            $availableRoles = [RoleEnum::CUSTOMER->value, RoleEnum::SUPPORTER->value, RoleEnum::ADMIN->value];
+        }
 
         if ($request->filled('query')) {
             $searchTerm = '%' . $request->input('query') . '%';
@@ -37,7 +48,7 @@ class UserController extends Controller
             });
         }
 
-        if ($request->filled('role')) {
+        if ($request->filled('role') && in_array($request->input('role'), $availableRoles)) {
             $query->where('role', $request->input('role'));
         }
 
@@ -46,7 +57,7 @@ class UserController extends Controller
         return Inertia::render('Users/Index', [
             'users' => $users,
             'filters' => $request->only(['query', 'role']),
-            'roles' => [RoleEnum::CUSTOMER->value, RoleEnum::SUPPORTER->value],
+            'roles' => $availableRoles,
         ]);
     }
 
@@ -57,10 +68,14 @@ class UserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $allowedRoles = $request->user()->isAdmin() 
+            ? [RoleEnum::CUSTOMER->value, RoleEnum::SUPPORTER->value, RoleEnum::ADMIN->value]
+            : [RoleEnum::CUSTOMER->value];
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')],
-            'role' => ['required', Rule::enum(RoleEnum::class)],
+            'role' => ['required', Rule::in($allowedRoles)],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
@@ -80,32 +95,43 @@ class UserController extends Controller
      * @param User $user
      * @return RedirectResponse
      */
-    public function update(Request $request, User $user): RedirectResponse
+    public function update(Request $request, User $targetUser): RedirectResponse
     {
+        $actingUser = $request->user();
+
+        // Prevent supporters from updating admins or other supporters
+        if ($actingUser->isSupporter() && $targetUser->role !== RoleEnum::CUSTOMER) {
+            abort(403, 'You can only edit customer accounts.');
+        }
+
+        $allowedRoles = $actingUser->isAdmin() 
+            ? [RoleEnum::CUSTOMER->value, RoleEnum::SUPPORTER->value, RoleEnum::ADMIN->value]
+            : [RoleEnum::CUSTOMER->value];
+
         $request->validate([
             'current_password' => ['required', 'current_password'],
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'role' => ['required', Rule::enum(RoleEnum::class)],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($targetUser->id)],
+            'role' => ['required', Rule::in($allowedRoles)],
             'password' => ['nullable', 'confirmed', Password::defaults()],
         ]);
 
-        // Fix: Use SUPPORTER instead of SUPPORT
-        if ($user->role === RoleEnum::SUPPORTER && $request->role !== RoleEnum::SUPPORTER) {
-            $supportCount = User::where('role', RoleEnum::SUPPORTER)->count();
-            if ($supportCount <= 1) {
-                return back()->withErrors(['role' => 'Cannot change the role of the last support user.']);
+        // Prevent downgrading the last admin
+        if ($targetUser->isAdmin() && $request->role !== RoleEnum::ADMIN->value) {
+            $adminCount = User::where('role', RoleEnum::ADMIN->value)->count();
+            if ($adminCount <= 1) {
+                return back()->withErrors(['role' => 'Cannot change the role of the last administrator.']);
             }
         }
 
-        $user->update([
+        $targetUser->update([
             'name' => $request->name,
             'email' => $request->email,
             'role' => $request->role,
         ]);
 
         if ($request->filled('password')) {
-            $user->update(['password' => Hash::make($request->password)]);
+            $targetUser->update(['password' => Hash::make($request->password)]);
         }
 
         return redirect()->back()->with('success', 'User updated successfully.');
@@ -117,25 +143,32 @@ class UserController extends Controller
      * @param User $user
      * @return RedirectResponse
      */
-    public function destroy(Request $request, User $user): RedirectResponse
+    public function destroy(Request $request, User $targetUser): RedirectResponse
     {
+        $actingUser = $request->user();
+
+        // Prevent supporters from deleting admins or other supporters
+        if ($actingUser->isSupporter() && $targetUser->role !== RoleEnum::CUSTOMER) {
+            abort(403, 'You can only delete customer accounts.');
+        }
+
         $request->validate([
             'current_password' => ['required', 'current_password'],
         ]);
 
-        if ($request->user()->id === $user->id) {
+        if ($actingUser->id === $targetUser->id) {
             return back()->withErrors(['current_password' => 'You cannot delete your own account.']);
         }
 
-        // Fix: Use SUPPORTER instead of SUPPORT
-        if ($user->role === RoleEnum::SUPPORTER) {
-            $supportCount = User::where('role', RoleEnum::SUPPORTER)->count();
-            if ($supportCount <= 1) {
-                return back()->withErrors(['current_password' => 'Cannot delete the last support user.']);
+        // Safeguard to prevent deletion of the last system administrator
+        if ($targetUser->isAdmin()) {
+            $adminCount = User::where('role', RoleEnum::ADMIN->value)->count();
+            if ($adminCount <= 1) {
+                return back()->withErrors(['current_password' => 'Cannot delete the last administrator.']);
             }
         }
 
-        $user->delete();
+        $targetUser->delete();
 
         return redirect()->back()->with('success', 'User deleted successfully.');
     }
