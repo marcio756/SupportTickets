@@ -68,4 +68,37 @@ class TicketServiceTest extends TestCase
             'message' => 'Valid Message'
         ]);
     }
+
+    /**
+     * Test to ensure that a supporter with 5 active tickets is not automatically assigned.
+     */
+    public function test_supporter_is_not_assigned_more_than_five_active_tickets(): void
+    {
+        // Arrange
+        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER->value]);
+        
+        WorkSession::factory()->create([
+            'user_id' => $supporter->id,
+            'status' => WorkSessionStatusEnum::ACTIVE->value,
+        ]);
+
+        // Create 5 active tickets already assigned to this supporter
+        Ticket::factory()->count(5)->create([
+            'assigned_to' => $supporter->id,
+            'status' => TicketStatusEnum::IN_PROGRESS->value,
+        ]);
+
+        $ticketService = app(\App\Services\TicketService::class);
+        $customer = User::factory()->create(['role' => RoleEnum::CUSTOMER->value]);
+
+        // Act
+        $newTicket = $ticketService->createTicket($customer, [
+            'title' => 'Test Ticket',
+            'description' => 'Should not be assigned to the busy supporter',
+            'source' => 'web'
+        ]);
+
+        // Assert
+        $this->assertNull($newTicket->assigned_to, 'The ticket should remain unassigned because the supporter is at max capacity.');
+    }
 }

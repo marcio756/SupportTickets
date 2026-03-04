@@ -31,7 +31,10 @@ class TicketService
             if (isset($data['priority'])) $ticket->priority = $data['priority'];
             
             $ticket->status = TicketStatusEnum::OPEN->value;
-            $ticket->created_by = $creator ? $creator->id : null;
+            
+            // Assign the creator ID to the correct database column 'customer_id'
+            $ticket->customer_id = $creator ? $creator->id : null;
+            
             $ticket->source = $data['source'] ?? 'web';
             
             if (isset($data['sender_email'])) {
@@ -66,7 +69,7 @@ class TicketService
 
     public function sendMessage(?User $user, Ticket $ticket, array $data, $attachments = null): TicketMessage
     {
-        // Regra de Negócio: Bloquear clientes sem tempo de suporte
+        // Business Rule: Block customers with no available support time
         if ($user && $user->role === RoleEnum::CUSTOMER->value) {
             $supportTimeManager = app(\App\Services\SupportTimeManager::class);
             if (!$supportTimeManager->hasAvailableTime($user)) {
@@ -113,19 +116,33 @@ class TicketService
         return $ticket;
     }
 
+    /**
+     * Retrieves an available supporter prioritizing the one with the least active tickets.
+     * Uses database-agnostic constraints to guarantee correct filtering across any SQL driver.
+     *
+     * @return User|null
+     */
     private function findAvailableSupporter(): ?User
     {
         return User::where('role', RoleEnum::SUPPORTER->value)
             ->whereHas('workSessions', function ($query) {
                 $query->where('status', WorkSessionStatusEnum::ACTIVE->value);
             })
+            // Filters out any supporter that already has 5 or more active tickets.
+            // This natively executes a robust WHERE EXISTS statement compatible with strict engines like SQLite.
+            ->whereHas('assignedTickets', function ($query) {
+                $query->whereIn('status', [
+                    TicketStatusEnum::OPEN->value, 
+                    TicketStatusEnum::IN_PROGRESS->value
+                ]);
+            }, '<', 5)
+            // Adds the count projection merely to facilitate ascending sorting by workload.
             ->withCount(['assignedTickets as active_tickets_count' => function ($query) {
                 $query->whereIn('status', [
                     TicketStatusEnum::OPEN->value, 
                     TicketStatusEnum::IN_PROGRESS->value
                 ]);
             }])
-            ->having('active_tickets_count', '<', 5)
             ->orderBy('active_tickets_count', 'asc')
             ->first();
     }
