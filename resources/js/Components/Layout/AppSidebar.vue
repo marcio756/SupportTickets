@@ -34,55 +34,38 @@ import { computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 defineProps({
-  minimized: {
-    type: Boolean,
-    default: false,
-  },
+  minimized: { type: Boolean, default: false },
 });
 
 const page = usePage();
 
-/**
- * Extracts the reactive user role from the authenticated session.
- * Handles both string representations and Enum objects to prevent UI breakage.
- * @returns {string} The normalized role designation for display.
- */
 const displayRole = computed(() => {
     const user = page.props.auth?.user;
     if (!user) return 'Guest';
-    
     return typeof user.role === 'object' ? user.role.value : user.role;
 });
 
-/**
- * Dynamically builds the navigation menu based on user permissions.
- * Ensures administrative panels are strictly accessible by authorized roles.
- * @returns {Array<Object>} List of accessible navigation structures.
- */
 const navigationItems = computed(() => {
   const user = page.props.auth?.user;
+  if (!user) return [];
   
-  let role = null;
-  if (user && user.role) {
-    role = typeof user.role === 'object' ? user.role.value : user.role;
-    if (typeof role === 'string') {
-        role = role.toLowerCase(); 
-    }
-  }
+  const role = (typeof user.role === 'object' ? user.role.value : user.role).toLowerCase();
 
-  // Base items accessible by all authenticated users
   const items = [
     { title: 'Dashboard', icon: 'dashboard', route: 'dashboard' },
-    { title: 'Tickets', icon: 'confirmation_number', route: 'tickets.index' },
   ];
 
-  // Supporters and Admins can manage users and tags
+  // Admin does NOT see operational Tickets menu
+  if (role !== 'admin') {
+    items.push({ title: 'Tickets', icon: 'confirmation_number', route: 'tickets.index' });
+  }
+
+  // Staff (Supporter/Admin) can manage Users and Tags
   if (role === 'supporter' || role === 'admin') {
     items.push({ title: 'Users', icon: 'group', route: 'users.index' });
     items.push({ title: 'Manage Tags', icon: 'local_offer', route: 'tags.index' });
   }
 
-  // Activity Logs are strictly for system administrators
   if (role === 'admin') {
     items.push({ title: 'Activity Logs', icon: 'history', route: 'activity-logs.index' });
   }
@@ -90,36 +73,13 @@ const navigationItems = computed(() => {
   return items;
 });
 
-/**
- * Safely resolves the Ziggy route URL to prevent frontend crashes.
- * @param {string} routeName - The internal identifier for the route.
- * @returns {string} The formatted URL or a fallback hash.
- */
 const getRouteUrl = (routeName) => {
-    try {
-        return route(routeName);
-    } catch (error) {
-        console.error(`Ziggy Error: Route '${routeName}' is missing. Please clear route cache.`);
-        return '#'; 
-    }
+    try { return route(routeName); } catch { return '#'; }
 };
 
-/**
- * Determines if the sidebar item represents the currently active view.
- * @param {string} routeName - The internal identifier for the route.
- * @returns {boolean} True if the route is active, false otherwise.
- */
 const isCurrentRoute = (routeName) => {
   try {
     return route().current(routeName) || route().current(routeName.replace('.index', '.*'));
-  } catch (error) {
-    return false;
-  }
+  } catch { return false; }
 };
 </script>
-
-<style scoped>
-:deep(.va-sidebar__menu) {
-    background-color: transparent !important;
-}
-</style>

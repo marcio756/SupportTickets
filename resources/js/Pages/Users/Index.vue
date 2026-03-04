@@ -43,11 +43,7 @@
         </template>
 
         <template #cell(role)="{ rowData }">
-          <va-badge 
-            :color="rowData.role === 'support' || rowData.role === 'supporter' ? 'primary' : 'secondary'" 
-            :text="rowData.role.toUpperCase()" 
-            class="font-semibold"
-          />
+          <UserRoleBadge :role="rowData.role" />
         </template>
 
         <template #cell(actions)="{ rowData }">
@@ -81,6 +77,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
 import ResourceTable from '@/Components/Common/ResourceTable.vue';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
+import UserRoleBadge from '@/Components/Common/UserRoleBadge.vue';
 import UserFormModal from './Partials/UserFormModal.vue';
 import UserDeleteModal from './Partials/UserDeleteModal.vue';
 import WorkSessionBlocker from '@/Components/WorkSession/WorkSessionBlocker.vue';
@@ -93,10 +90,6 @@ const props = defineProps({
   workSessionStatus: { type: String, default: 'active' }
 });
 
-/**
- * Leverage the useFilters composable to synchronize route state with UI.
- * The role filter is only presented if the current user has access to multiple roles.
- */
 const { query, selectedRole, changePage } = useFilters(props.filters, 'users.index', props.users.current_page || 1);
 
 const isFormModalOpen = ref(false);
