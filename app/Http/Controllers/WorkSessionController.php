@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\WorkSessionService;
+use App\Models\WorkSession;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 
@@ -61,5 +62,25 @@ class WorkSessionController extends Controller
     {
         $this->workSessionService->endSession($request->user());
         return redirect()->back()->with('success', 'Work session ended.');
+    }
+
+    /**
+     * Permanently removes a work session. Authorized for administrators only.
+     *
+     * @param WorkSession $workSession
+     * @return RedirectResponse
+     */
+    public function destroy(WorkSession $workSession): RedirectResponse
+    {
+        /** * FIX: Use the model helper method instead of string comparison.
+         * Enums must be compared by value or using instance methods.
+         */
+        if (!auth()->user()->isAdmin()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $this->workSessionService->deleteSession($workSession);
+
+        return redirect()->back()->with('success', 'Work session successfully deleted.');
     }
 }

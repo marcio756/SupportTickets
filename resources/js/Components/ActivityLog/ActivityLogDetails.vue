@@ -25,19 +25,16 @@
               <span v-else class="text-xs text-gray-400 italic">None</span>
             </td>
             <td class="py-2 px-3">
-              <span class="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1 rounded font-medium">
+              <span v-if="change.new !== null" class="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1 rounded font-medium">
                 {{ resolveValue(change.new, change.key) }}
               </span>
+              <span v-else class="text-xs text-gray-400 italic">None</span>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div v-else-if="rawProperties" class="bg-gray-50 dark:bg-gray-800 p-3 rounded text-xs font-mono">
-        <pre>{{ JSON.stringify(rawProperties, null, 2) }}</pre>
-    </div>
-    
     <div v-else class="text-sm text-gray-400 italic">
       No detailed properties recorded.
     </div>
@@ -60,27 +57,37 @@ const props = defineProps({
   }
 });
 
-const rawProperties = computed(() => props.properties);
-
-const hasChanges = computed(() => {
-  return props.properties && (props.properties.attributes || props.properties.old);
-});
-
-const hasOldValues = computed(() => {
-  return !!props.properties?.old;
-});
-
 const formattedChanges = computed(() => {
-  if (!hasChanges.value) return [];
+  if (!props.properties || Object.keys(props.properties).length === 0) return [];
 
   const attributes = props.properties.attributes || {};
   const oldValues = props.properties.old || {};
   
-  return Object.keys(attributes).map(key => ({
+  // Handling custom logs (where it's neither inside 'attributes' nor 'old')
+  if (Object.keys(attributes).length === 0 && Object.keys(oldValues).length === 0) {
+      return Object.keys(props.properties).map(key => ({
+          key,
+          old: null,
+          new: props.properties[key]
+      }));
+  }
+
+  // Handling standard Spatie model logs
+  const keys = Array.from(new Set([...Object.keys(attributes), ...Object.keys(oldValues)]));
+  
+  return keys.map(key => ({
     key,
     old: oldValues[key] !== undefined ? oldValues[key] : null,
-    new: attributes[key]
+    new: attributes[key] !== undefined ? attributes[key] : null
   }));
+});
+
+const hasChanges = computed(() => {
+  return formattedChanges.value.length > 0;
+});
+
+const hasOldValues = computed(() => {
+  return formattedChanges.value.some(change => change.old !== null);
 });
 
 /**
@@ -112,7 +119,6 @@ const resolveValue = (value, key) => {
     if (user) {
       return user.name;
     }
-    // Fallback if user is not found in the options list
     return `#${value}`;
   }
 

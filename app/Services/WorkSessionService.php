@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\WorkSession;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Encapsulates the core business logic for time tracking and shift management.
@@ -16,24 +17,23 @@ class WorkSessionService
     /**
      * Starts a new work session for the given user.
      * Enforces the "One Shift Per Day" rule to give purpose to the Pause feature.
-     * * @param User $user
+     *
+     * @param User $user
      * @return WorkSession
      * @throws ValidationException
      */
     public function startSession(User $user): WorkSession
     {
-        // 1. Prevent concurrent open sessions
         $openSession = WorkSession::where('user_id', $user->id)
             ->whereIn('status', [WorkSessionStatusEnum::ACTIVE->value, WorkSessionStatusEnum::PAUSED->value])
             ->first();
 
         if ($openSession) {
             throw ValidationException::withMessages([
-                'status' => 'Já tem uma sessão de trabalho aberta.'
+                'status' => 'You already have an active work session.'
             ]);
         }
 
-        // 2. Enforce Daily Shift integrity
         $alreadyCompletedToday = WorkSession::where('user_id', $user->id)
             ->where('status', WorkSessionStatusEnum::COMPLETED->value)
             ->whereDate('started_at', Carbon::today())
@@ -41,7 +41,7 @@ class WorkSessionService
 
         if ($alreadyCompletedToday) {
             throw ValidationException::withMessages([
-                'status' => 'Já concluiu o seu turno de hoje. Para manter relatórios limpos, utilize a "Pausa" em vez de "Terminar" se pretender regressar no mesmo dia.'
+                'status' => 'You have already completed your shift for today. Please wait until tomorrow to start a new shift.'
             ]);
         }
 
@@ -54,13 +54,16 @@ class WorkSessionService
 
     /**
      * Pauses the currently active session.
+     *
+     * @param User $user
+     * @return WorkSession
      */
     public function pauseSession(User $user): WorkSession
     {
         $session = $this->getCurrentActiveSession($user);
 
         if ($session->status === WorkSessionStatusEnum::PAUSED) {
-            throw ValidationException::withMessages(['status' => 'A sessão já está em pausa.']);
+            throw ValidationException::withMessages(['status' => 'Your shift is already paused.']);
         }
 
         $session->update(['status' => WorkSessionStatusEnum::PAUSED]);
@@ -74,6 +77,9 @@ class WorkSessionService
 
     /**
      * Resumes a previously paused session.
+     *
+     * @param User $user
+     * @return WorkSession
      */
     public function resumeSession(User $user): WorkSession
     {
@@ -82,7 +88,7 @@ class WorkSessionService
             ->first();
 
         if (!$session) {
-            throw ValidationException::withMessages(['status' => 'Não foi encontrada nenhuma sessão em pausa para retomar.']);
+            throw ValidationException::withMessages(['status' => 'No paused session was found to resume.']);
         }
 
         $openPause = $session->pauses()->whereNull('ended_at')->latest('started_at')->first();
@@ -97,6 +103,9 @@ class WorkSessionService
 
     /**
      * Ends the current session and finalizes calculation.
+     *
+     * @param User $user
+     * @return WorkSession
      */
     public function endSession(User $user): WorkSession
     {
@@ -106,7 +115,7 @@ class WorkSessionService
             ->first();
 
         if (!$session) {
-            throw ValidationException::withMessages(['status' => 'Não existe um turno aberto para terminar.']);
+            throw ValidationException::withMessages(['status' => 'There is no active shift to end.']);
         }
 
         $now = now();
@@ -135,6 +144,39 @@ class WorkSessionService
         return $session;
     }
 
+    /**
+     * Deletes a work session and logs the administrative action for audit purposes.
+     *
+     * @param WorkSession $session
+     * @return void
+     */
+    public function deleteSession(WorkSession $session): void
+    {
+        DB::transaction(function () use ($session) {
+            if (function_exists('activity')) {
+                activity()
+                    ->performedOn($session)
+                    ->event('deleted') // Explicitly declare the event so it shows correctly in the UI badge
+                    ->withProperties([
+                        'old' => [ // Wrap in 'old' to simulate a standard Eloquent model deletion
+                            'user_name' => $session->user?->name,
+                            'started_at' => $session->started_at->toDateString(),
+                            'total_seconds' => $session->total_worked_seconds
+                        ]
+                    ])
+                    ->log("Work session manually deleted by administrator.");
+            }
+
+            $session->delete();
+        });
+    }
+
+    /**
+     * Retrieves the current open session for a user.
+     *
+     * @param User $user
+     * @return WorkSession
+     */
     private function getCurrentActiveSession(User $user): WorkSession
     {
         $session = WorkSession::where('user_id', $user->id)
@@ -142,7 +184,7 @@ class WorkSessionService
             ->first();
 
         if (!$session) {
-            throw ValidationException::withMessages(['status' => 'Não tem um turno de trabalho ativo.']);
+            throw ValidationException::withMessages(['status' => 'You do not have an active work shift.']);
         }
 
         return $session;

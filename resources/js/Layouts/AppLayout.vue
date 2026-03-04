@@ -3,6 +3,7 @@
  * Global Application Layout.
  * Manages independent scrolling, Sidebar persistence, and main navigation.
  * Delegates notification orchestration to useAppNotifications composable for SRP compliance.
+ * Includes a custom card modal to prevent logouts during active shifts.
  */
 import { ref, computed, onMounted } from 'vue';
 import { Head, Link, usePage, router } from '@inertiajs/vue3';
@@ -22,6 +23,8 @@ const { initTheme } = useTheme();
 useAppNotifications();
 
 const isSidebarMinimized = ref(false);
+const showLogoutBlocker = ref(false);
+const logoutErrorMessage = ref('');
 
 /**
  * Safely computes the authenticated user from Inertia page props.
@@ -30,23 +33,30 @@ const isSidebarMinimized = ref(false);
 const user = computed(() => usePage().props.auth?.user);
 
 /**
- * Handles the logout process.
- * Captures and displays validation errors from the server (e.g., active work session).
+ * Handles the logout process safely without triggering native browser alerts.
  */
 const handleLogout = () => {
+    // Proactive frontend check
+    const session = usePage().props.auth?.work_session;
+    if (session && (session.status === 'active' || session.status === 'paused')) {
+        logoutErrorMessage.value = "You cannot log out while having an open work session. Please clock out first to ensure your time is accurately logged.";
+        showLogoutBlocker.value = true;
+        return;
+    }
+
+    // Backend fallback check
     router.post(route('logout'), {}, {
         onError: (errors) => {
             if (errors.logout) {
-                // Displays the business rule violation message to the user
-                alert(errors.logout);
+                logoutErrorMessage.value = errors.logout;
+                showLogoutBlocker.value = true;
             }
         }
     });
 };
 
 /**
- * Toggles the sidebar state and persists it to localStorage to maintain state across page refreshes.
- * @returns {void}
+ * Toggles the sidebar state and persists it to localStorage.
  */
 const toggleSidebar = () => {
     isSidebarMinimized.value = !isSidebarMinimized.value;
@@ -112,7 +122,7 @@ onMounted(() => {
 
                                     <Link :href="route('profile.edit')" class="block w-full">
                                         <VaButton preset="plain" color="textPrimary" class="w-full justify-start mb-1" icon="person">
-                                            Perfil
+                                            Profile
                                         </VaButton>
                                     </Link>
                                     
@@ -124,7 +134,7 @@ onMounted(() => {
                                             icon="logout"
                                             @click="handleLogout"
                                         >
-                                            Sair
+                                            Logout
                                         </VaButton>
                                     </div>
                                 </VaDropdownContent>
@@ -151,6 +161,30 @@ onMounted(() => {
                 </div>
             </template>
         </VaLayout>
+
+        <VaModal
+            v-model="showLogoutBlocker"
+            title="Action Blocked"
+            hide-default-actions
+            size="small"
+        >
+            <div class="p-6 flex flex-col items-center text-center">
+                <div class="h-16 w-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+                    <VaIcon name="block" color="danger" size="2.5rem" />
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Logout Prevented</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ logoutErrorMessage }}
+                </p>
+            </div>
+            <template #footer>
+                <div class="w-full flex justify-center pb-2">
+                    <VaButton @click="showLogoutBlocker = false" color="danger" class="w-full max-w-[200px]">
+                        Understood
+                    </VaButton>
+                </div>
+            </template>
+        </VaModal>
     </div>
 </template>
 

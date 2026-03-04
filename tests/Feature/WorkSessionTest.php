@@ -104,4 +104,39 @@ class WorkSessionTest extends TestCase
             'status' => WorkSessionStatusEnum::COMPLETED->value,
         ]);
     }
+
+    /**
+     * @group deletion
+     */
+    public function test_admin_can_delete_work_session_and_it_is_logged(): void
+    {
+        $admin = User::factory()->create(['role' => RoleEnum::ADMIN->value]);
+        $session = WorkSession::factory()->create();
+
+        $response = $this->actingAs($admin)->delete(route('work-sessions.destroy', $session));
+
+        $response->assertRedirect();
+        $this->assertDatabaseMissing('work_sessions', ['id' => $session->id]);
+        
+        // Verify activity log entry exists for this specific deletion
+        $this->assertDatabaseHas('activity_log', [
+            'event' => 'deleted',
+            'subject_type' => WorkSession::class,
+            'causer_id' => $admin->id
+        ]);
+    }
+
+    /**
+     * @group deletion
+     */
+    public function test_supporter_cannot_delete_work_sessions(): void
+    {
+        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER->value]);
+        $session = WorkSession::factory()->create();
+
+        $response = $this->actingAs($supporter)->delete(route('work-sessions.destroy', $session));
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('work_sessions', ['id' => $session->id]);
+    }
 }

@@ -62,7 +62,7 @@ const handleLogout = () => {
     
     if (session && (session.status === 'active' || session.status === 'paused')) {
         init({
-            message: 'Antes de dar logout precisa de parar de trabalhar.',
+            message: 'You cannot log out while your shift is active. Please end your work session first.',
             color: 'danger',
             position: 'top-right',
             duration: 5000
