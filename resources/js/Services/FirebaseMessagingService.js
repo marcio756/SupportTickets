@@ -49,18 +49,22 @@ class FirebaseMessagingService {
             const permission = await Notification.requestPermission();
             
             if (permission === 'granted') {
-                // Generates the device specific token using the VAPID key
-                // Note: The vapidKey is optional but highly recommended for web push.
-                // For now, we fetch the default token.
-                const currentToken = await getToken(this.messaging, {
-                    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY || null
-                });
+                try {
+                    // Generates the device specific token using the VAPID key
+                    // Note: The vapidKey is optional but highly recommended for web push.
+                    const currentToken = await getToken(this.messaging, {
+                        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY || null
+                    });
 
-                if (currentToken) {
-                    await this.registerTokenWithBackend(currentToken);
-                    return currentToken;
-                } else {
-                    console.warn('No registration token available. Request permission to generate one.');
+                    if (currentToken) {
+                        await this.registerTokenWithBackend(currentToken);
+                        return currentToken;
+                    } else {
+                        console.warn('No registration token available. Request permission to generate one.');
+                        return null;
+                    }
+                } catch (tokenError) {
+                    console.warn('Firebase Messaging token registration suppressed/failed. This usually means notifications are blocked by the browser or there is a push service error.', tokenError);
                     return null;
                 }
             } else {
@@ -68,7 +72,7 @@ class FirebaseMessagingService {
                 return null;
             }
         } catch (error) {
-            console.error('An error occurred while retrieving token: ', error);
+            console.error('An error occurred while requesting permission: ', error);
             return null;
         }
     }
@@ -82,7 +86,6 @@ class FirebaseMessagingService {
      */
     async registerTokenWithBackend(token) {
         try {
-            // Removemos o /api/ para usar as rotas Web com autenticação baseada em Cookies
             await axios.post('/fcm-token', {
                 token: token,
                 device_type: 'web'

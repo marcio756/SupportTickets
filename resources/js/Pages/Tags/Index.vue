@@ -4,34 +4,45 @@
 
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">Category Tags</h1>
-            <va-button color="primary" icon="add" @click="openCreateModal">
+            <va-button 
+                v-if="workSessionStatus === 'active'" 
+                color="primary" 
+                icon="add" 
+                @click="openCreateModal"
+            >
                 Create New Tag
             </va-button>
         </div>
 
-        <ResourceFilter v-model:query="query" />
+        <template v-if="workSessionStatus !== 'active'">
+            <WorkSessionBlocker :session-status="workSessionStatus" />
+        </template>
 
-        <ResourceTable
-            :resource-data="tags"
-            :columns="tableColumns"
-            empty-message="No tags found matching your criteria."
-            @page-change="changePage"
-        >
-            <template #cell(preview)="{ rowData }">
-                <TagBadge :tag="rowData" />
-            </template>
+        <template v-else>
+            <ResourceFilter v-model:query="query" />
 
-            <template #cell(color)="{ rowData }">
-                <span class="font-mono text-sm text-gray-500">{{ rowData.color }}</span>
-            </template>
+            <ResourceTable
+                :resource-data="tags"
+                :columns="tableColumns"
+                empty-message="No tags found matching your criteria."
+                @page-change="changePage"
+            >
+                <template #cell(preview)="{ rowData }">
+                    <TagBadge :tag="rowData" />
+                </template>
 
-            <template #cell(actions)="{ rowData }">
-                <div class="flex justify-end gap-2">
-                    <va-button preset="plain" icon="edit" color="secondary" @click="openEditModal(rowData)" />
-                    <va-button preset="plain" icon="delete" color="danger" @click="confirmDelete(rowData)" />
-                </div>
-            </template>
-        </ResourceTable>
+                <template #cell(color)="{ rowData }">
+                    <span class="font-mono text-sm text-gray-500">{{ rowData.color }}</span>
+                </template>
+
+                <template #cell(actions)="{ rowData }">
+                    <div class="flex justify-end gap-2">
+                        <va-button preset="plain" icon="edit" color="secondary" @click="openEditModal(rowData)" />
+                        <va-button preset="plain" icon="delete" color="danger" @click="confirmDelete(rowData)" />
+                    </div>
+                </template>
+            </ResourceTable>
+        </template>
 
         <va-modal
             v-model="isModalOpen"
@@ -77,12 +88,13 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import TagBadge from '@/Components/Common/TagBadge.vue';
 import ResourceTable from '@/Components/Common/ResourceTable.vue';
 import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
+import WorkSessionBlocker from '@/Components/WorkSession/WorkSessionBlocker.vue';
 import { useFilters } from '@/Composables/useFilters.js';
-import { VaButton, VaModal, VaInput, VaColorInput } from 'vuestic-ui';
 
 const props = defineProps({
     tags: { type: Object, required: true },
-    filters: { type: Object, default: () => ({}) }
+    filters: { type: Object, default: () => ({}) },
+    workSessionStatus: { type: String, default: 'active' }
 });
 
 const isModalOpen = ref(false);
@@ -91,7 +103,7 @@ const editingTag = ref(null);
 const tagToDelete = ref(null);
 
 // Inject Centralized Filtering Logic
-const { query, changePage } = useFilters(props.filters, 'tags.index', props.tags.current_page);
+const { query, changePage } = useFilters(props.filters, 'tags.index', props.tags.current_page || 1);
 
 const tableColumns = [
     { key: 'preview', label: 'Preview' },

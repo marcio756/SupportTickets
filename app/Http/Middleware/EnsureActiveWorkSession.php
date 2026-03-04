@@ -33,7 +33,13 @@ class EnsureActiveWorkSession
                 ->exists();
 
             if (!$hasActiveSession) {
-                abort(403, 'You must have an active work session (clocked-in) to manage tickets.');
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'You must start your work session (clock in) to perform this action.'], 403);
+                }
+
+                // Instead of a hard 403, we gracefully redirect back with a flash message 
+                // that Inertia can catch and display as a nice notification.
+                return redirect()->back()->with('error', 'Action denied: You must start your work session (clock in) first.');
             }
         }
 

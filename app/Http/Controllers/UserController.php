@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\RoleEnum;
 use App\Models\User;
+use App\Traits\ChecksWorkSession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -14,10 +15,12 @@ use Illuminate\Http\RedirectResponse;
 
 class UserController extends Controller
 {
+    use ChecksWorkSession;
+
     /**
      * Display a listing of the resource.
      * Enforces hierarchy: Admins see all, Supporters see only customers.
-     * * @param Request $request
+     * @param Request $request
      * @return Response
      */
     public function index(Request $request): Response
@@ -40,6 +43,24 @@ class UserController extends Controller
             $availableRoles = [RoleEnum::CUSTOMER->value, RoleEnum::SUPPORTER->value, RoleEnum::ADMIN->value];
         }
 
+        $workSessionStatus = $this->getWorkSessionStatus($user);
+
+        // If supporter is not actively clocked-in, block access to data
+        if ($user->isSupporter() && $workSessionStatus !== \App\Enums\WorkSessionStatusEnum::ACTIVE->value) {
+            return Inertia::render('Users/Index', [
+                'users' => [
+                    'data' => [],
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => 10,
+                    'total' => 0,
+                ],
+                'filters' => $request->only(['query', 'role']),
+                'roles' => $availableRoles,
+                'workSessionStatus' => $workSessionStatus,
+            ]);
+        }
+
         if ($request->filled('query')) {
             $searchTerm = '%' . $request->input('query') . '%';
             $query->where(function ($q) use ($searchTerm) {
@@ -58,12 +79,13 @@ class UserController extends Controller
             'users' => $users,
             'filters' => $request->only(['query', 'role']),
             'roles' => $availableRoles,
+            'workSessionStatus' => $workSessionStatus,
         ]);
     }
 
     /**
      * Store a newly created resource in storage.
-     * * @param Request $request
+     * @param Request $request
      * @return RedirectResponse
      */
     public function store(Request $request): RedirectResponse
@@ -91,8 +113,8 @@ class UserController extends Controller
 
     /**
      * Update the specified resource in storage.
-     * * @param Request $request
-     * @param User $user
+     * @param Request $request
+     * @param User $targetUser
      * @return RedirectResponse
      */
     public function update(Request $request, User $targetUser): RedirectResponse
@@ -139,7 +161,7 @@ class UserController extends Controller
 
     /**
      * Remove the specified resource from storage.
-     * * @param Request $request
+     * @param Request $request
      * @param User $user
      * @return RedirectResponse
      */

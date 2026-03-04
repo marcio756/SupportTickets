@@ -4,90 +4,102 @@
 
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
       <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">Support Tickets</h1>
-      <va-button color="primary" icon="add" @click="openCreateModal">
+      
+      <va-button 
+        v-if="!isSupporter || workSessionStatus === 'active'" 
+        color="primary" 
+        icon="add" 
+        @click="openCreateModal"
+      >
         Open New Ticket
       </va-button>
     </div>
 
-    <ResourceFilter
-      v-model:query="query"
-      v-model:status="selectedStatus"
-      v-model:source="selectedSource"
-      v-model:customers="selectedCustomers"
-      v-model:assignees="selectedAssignees"
-      v-model:tags="selectedTags"
-      :status-options="statusOptions"
-      :source-options="sourceOptions"
-      :customer-options="customersList"
-      :assignee-options="assigneeOptions"
-      :available-tags="availableTags"
-      :is-supporter="isSupporter"
-    />
+    <template v-if="isSupporter && workSessionStatus !== 'active'">
+      <WorkSessionBlocker :session-status="workSessionStatus" />
+    </template>
 
-    <ResourceTable
-      :resource-data="tickets"
-      :columns="columns"
-      empty-message="No tickets found matching your filters."
-      :clickable="true"
-      @row:click="navigateToTicket"
-      @page-change="changePage"
-    >
-      <template #cell(id)="{ rowData }">
-        <span class="font-bold" style="color: var(--va-primary)">#{{ rowData.id }}</span>
-      </template>
+    <template v-else>
+      <ResourceFilter
+        v-model:query="query"
+        v-model:status="selectedStatus"
+        v-model:source="selectedSource"
+        v-model:customers="selectedCustomers"
+        v-model:assignees="selectedAssignees"
+        v-model:tags="selectedTags"
+        :status-options="statusOptions"
+        :source-options="sourceOptions"
+        :customer-options="customersList"
+        :assignee-options="assigneeOptions"
+        :available-tags="availableTags"
+        :is-supporter="isSupporter"
+      />
 
-      <template #cell(title)="{ rowData }">
-        <div class="flex items-center gap-2">
-          <span style="color: var(--va-text-primary)">{{ rowData.title }}</span>
-          <span v-if="rowData.source === 'email'"
-                class="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                title="Received via Email">
-            📧 Email
+      <ResourceTable
+        :resource-data="tickets"
+        :columns="columns"
+        empty-message="No tickets found matching your filters."
+        :clickable="true"
+        @row:click="navigateToTicket"
+        @page-change="changePage"
+      >
+        <template #cell(id)="{ rowData }">
+          <span class="font-bold" style="color: var(--va-primary)">#{{ rowData.id }}</span>
+        </template>
+
+        <template #cell(title)="{ rowData }">
+          <div class="flex items-center gap-2">
+            <span style="color: var(--va-text-primary)">{{ rowData.title }}</span>
+            <span v-if="rowData.source === 'email'"
+                  class="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  title="Received via Email">
+              📧 Email
+            </span>
+          </div>
+        </template>
+
+        <template #cell(tags)="{ rowData }">
+          <div class="flex flex-wrap gap-1 max-w-[200px]">
+            <TagBadge v-for="tag in rowData.tags" :key="tag.id" :tag="tag" />
+            <span v-if="!rowData.tags || rowData.tags.length === 0" class="text-xs text-gray-400">No tags</span>
+          </div>
+        </template>
+
+        <template #cell(status)="{ rowData }">
+          <TicketStatusBadge :status="rowData.status" />
+        </template>
+
+        <template #cell(created_at)="{ rowData }">
+          {{ formatDate(rowData.created_at) }}
+        </template>
+
+        <template #cell(customer)="{ rowData }">
+          <div class="flex items-center gap-2">
+            <template v-if="rowData.customer">
+              <UserAvatar :user="rowData.customer" size="36px" />
+              <span style="color: var(--va-text-primary)">{{ rowData.customer.name }}</span>
+            </template>
+            <template v-else>
+              <div class="flex items-center justify-center w-[36px] h-[36px] rounded-full bg-gray-200 text-gray-500" title="Unregistered user">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                  <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                </svg>
+              </div>
+              <span style="color: var(--va-text-primary)">{{ rowData.sender_email }}</span>
+            </template>
+          </div>
+        </template>
+
+        <template #cell(assignee)="{ rowData }">
+          <span v-if="rowData.assignee" class="text-sm flex items-center gap-2" style="color: var(--va-secondary)">
+            <UserAvatar :user="rowData.assignee" size="24px" />
+            {{ rowData.assignee.name }}
           </span>
-        </div>
-      </template>
-
-      <template #cell(tags)="{ rowData }">
-        <div class="flex flex-wrap gap-1 max-w-[200px]">
-          <TagBadge v-for="tag in rowData.tags" :key="tag.id" :tag="tag" />
-          <span v-if="!rowData.tags || rowData.tags.length === 0" class="text-xs text-gray-400">No tags</span>
-        </div>
-      </template>
-
-      <template #cell(status)="{ rowData }">
-        <TicketStatusBadge :status="rowData.status" />
-      </template>
-
-      <template #cell(created_at)="{ rowData }">
-        {{ formatDate(rowData.created_at) }}
-      </template>
-
-      <template #cell(customer)="{ rowData }">
-        <div class="flex items-center gap-2">
-          <template v-if="rowData.customer">
-            <UserAvatar :user="rowData.customer" size="36px" />
-            <span style="color: var(--va-text-primary)">{{ rowData.customer.name }}</span>
-          </template>
-          <template v-else>
-            <div class="flex items-center justify-center w-[36px] h-[36px] rounded-full bg-gray-200 text-gray-500" title="Utilizador não registado">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-              </svg>
-            </div>
-            <span style="color: var(--va-text-primary)">{{ rowData.sender_email }}</span>
-          </template>
-        </div>
-      </template>
-
-      <template #cell(assignee)="{ rowData }">
-        <span v-if="rowData.assignee" class="text-sm flex items-center gap-2" style="color: var(--va-secondary)">
-          <UserAvatar :user="rowData.assignee" size="24px" />
-          {{ rowData.assignee.name }}
-        </span>
-        <span v-else class="text-sm font-bold text-red-500">Unassigned</span>
-      </template>
-    </ResourceTable>
+          <span v-else class="text-sm font-bold text-red-500">Unassigned</span>
+        </template>
+      </ResourceTable>
+    </template>
 
     <TicketFormModal
       :show="isCreateModalOpen"
@@ -107,13 +119,15 @@ import TicketStatusBadge from '@/Components/Tickets/TicketStatusBadge.vue';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import TagBadge from '@/Components/Common/TagBadge.vue';
 import TicketFormModal from './Partials/TicketFormModal.vue';
+import WorkSessionBlocker from '@/Components/WorkSession/WorkSessionBlocker.vue';
 import { useFilters } from '@/Composables/useFilters';
 
 const props = defineProps({
   tickets: { type: Object, required: true },
   filters: { type: Object, default: () => ({}) },
   customersList: { type: Array, default: () => [] },
-  availableTags: { type: Array, default: () => [] }
+  availableTags: { type: Array, default: () => [] },
+  workSessionStatus: { type: String, default: 'active' }
 });
 
 const page = usePage();

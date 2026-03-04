@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Enums\RoleEnum;
 use App\Enums\TicketStatusEnum;
+use App\Enums\WorkSessionStatusEnum;
 use App\Models\Tag;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\SupportTimeManager;
 use App\Services\TicketService;
+use App\Traits\ChecksWorkSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +24,8 @@ use Illuminate\Validation\Rule;
  */
 class TicketController extends Controller
 {
+    use ChecksWorkSession;
+
     /**
      * @param TicketService $ticketService
      */
@@ -38,7 +42,25 @@ class TicketController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        
+        $workSessionStatus = $this->getWorkSessionStatus($user);
+
+        // If supporter is not actively clocked-in, block access to data
+        if ($user->isSupporter() && $workSessionStatus !== WorkSessionStatusEnum::ACTIVE->value) {
+            return Inertia::render('Tickets/Index', [
+                'tickets' => [
+                    'data' => [],
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => 10,
+                    'total' => 0,
+                ],
+                'filters' => $request->only(['search', 'status', 'source', 'customers', 'assignees', 'tags']),
+                'customersList' => [],
+                'availableTags' => [],
+                'workSessionStatus' => $workSessionStatus,
+            ]);
+        }
+
         $query = Ticket::with(['customer', 'assignee', 'tags']);
 
         if (! $user->isSupporter()) {
@@ -63,10 +85,10 @@ class TicketController extends Controller
 
         return Inertia::render('Tickets/Index', [
             'tickets' => $tickets,
-            // ADICIONADO: 'source' para os filtros manterem o estado
             'filters' => $request->only(['search', 'status', 'source', 'customers', 'assignees', 'tags']),
             'customersList' => $customersList,
             'availableTags' => $availableTags,
+            'workSessionStatus' => $workSessionStatus,
         ]);
     }
 
@@ -97,7 +119,6 @@ class TicketController extends Controller
             $query->where('status', $request->status);
         }
 
-        // ADICIONADO: Filtro pela origem
         if ($request->filled('source')) {
             $query->where('source', $request->source);
         }
@@ -186,18 +207,24 @@ class TicketController extends Controller
      *
      * @param Request $request
      * @param Ticket $ticket
-     * @return Response
+     * @return Response|RedirectResponse
      */
-    public function show(Request $request, Ticket $ticket): Response
+    public function show(Request $request, Ticket $ticket): Response|RedirectResponse
     {
-        if (! $request->user()->isSupporter() && $ticket->customer_id !== $request->user()->id) {
+        $user = $request->user();
+
+        if ($user->isSupporter()) {
+            if ($this->getWorkSessionStatus($user) !== WorkSessionStatusEnum::ACTIVE->value) {
+                return redirect()->route('tickets.index')->with('error', 'You must start your shift to view ticket details.');
+            }
+        } elseif ($ticket->customer_id !== $user->id) {
             abort(403, 'Unauthorized access to this ticket.');
         }
 
         $ticket->load(['customer', 'assignee', 'messages.sender', 'tags']);
 
         $availableTags = [];
-        if ($request->user()->isSupporter()) {
+        if ($user->isSupporter()) {
             $availableTags = Tag::select('id', 'name', 'color')->orderBy('name')->get();
         }
 

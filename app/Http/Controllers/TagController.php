@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tag;
+use App\Traits\ChecksWorkSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,6 +15,8 @@ use Inertia\Response;
  */
 class TagController extends Controller
 {
+    use ChecksWorkSession;
+
     /**
      * Display a listing of all available tags.
      * Includes search functionality and pagination.
@@ -23,8 +26,27 @@ class TagController extends Controller
      */
     public function index(Request $request): Response
     {
-        if (!$request->user()->isSupporter()) {
-            abort(403, 'Acesso restrito apenas a Supporters.');
+        $user = $request->user();
+
+        if (!$user->isSupporter()) {
+            abort(403, 'Restricted access to Supporters only.');
+        }
+
+        $workSessionStatus = $this->getWorkSessionStatus($user);
+
+        // Se o supporter não tiver a sessão ativa, não carregamos a listagem de tags
+        if ($workSessionStatus !== \App\Enums\WorkSessionStatusEnum::ACTIVE->value) {
+            return Inertia::render('Tags/Index', [
+                'tags' => [
+                    'data' => [],
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => 15,
+                    'total' => 0,
+                ],
+                'filters' => $request->only('search'),
+                'workSessionStatus' => $workSessionStatus,
+            ]);
         }
 
         $query = Tag::query();
@@ -38,6 +60,7 @@ class TagController extends Controller
         return Inertia::render('Tags/Index', [
             'tags' => $tags,
             'filters' => $request->only('search'),
+            'workSessionStatus' => $workSessionStatus,
         ]);
     }
 
@@ -50,7 +73,7 @@ class TagController extends Controller
     public function store(Request $request): RedirectResponse
     {
         if (!$request->user()->isSupporter()) {
-            abort(403, 'Acesso restrito apenas a Supporters.');
+            abort(403, 'Restricted access to Supporters only.');
         }
 
         $validated = $request->validate([
@@ -60,7 +83,7 @@ class TagController extends Controller
 
         Tag::create($validated);
 
-        return redirect()->back()->with('success', 'Tag criada com sucesso.');
+        return redirect()->back()->with('success', 'Tag created successfully.');
     }
 
     /**
@@ -73,7 +96,7 @@ class TagController extends Controller
     public function update(Request $request, Tag $tag): RedirectResponse
     {
         if (!$request->user()->isSupporter()) {
-            abort(403, 'Acesso restrito apenas a Supporters.');
+            abort(403, 'Restricted access to Supporters only.');
         }
 
         $validated = $request->validate([
@@ -83,7 +106,7 @@ class TagController extends Controller
 
         $tag->update($validated);
 
-        return redirect()->back()->with('success', 'Tag atualizada com sucesso.');
+        return redirect()->back()->with('success', 'Tag updated successfully.');
     }
 
     /**
@@ -96,11 +119,11 @@ class TagController extends Controller
     public function destroy(Request $request, Tag $tag): RedirectResponse
     {
         if (!$request->user()->isSupporter()) {
-            abort(403, 'Acesso restrito apenas a Supporters.');
+            abort(403, 'Restricted access to Supporters only.');
         }
 
         $tag->delete();
 
-        return redirect()->back()->with('success', 'Tag eliminada com sucesso.');
+        return redirect()->back()->with('success', 'Tag deleted successfully.');
     }
 }
