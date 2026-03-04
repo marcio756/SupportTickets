@@ -65,18 +65,16 @@ class TicketChannelTest extends TestCase
      */
     public function test_supporter_can_access_any_ticket_channel(): void
     {
-        // Correção: Passar a instância do Enum em vez da string (->value) para garantir o casting correto
-        $owner = User::factory()->create(['role' => RoleEnum::CUSTOMER]);
-        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER]);
+        $owner = User::factory()->create(['role' => \App\Enums\RoleEnum::CUSTOMER->value]);
+        $supporter = User::factory()->create(['role' => \App\Enums\RoleEnum::SUPPORTER->value]);
         
         $ticket = Ticket::factory()->create([
             'customer_id' => $owner->id,
             'title' => 'My Private Issue',
-            'status' => TicketStatusEnum::OPEN,
+            'status' => \App\Enums\TicketStatusEnum::OPEN->value,
         ]);
 
-        // Refresh para garantir que o $user->role é um objeto Enum e passa na verificação estrita ===
-        $supporter->refresh();
+        $supporter->refresh(); 
         $this->actingAs($supporter);
 
         $response = $this->postJson('/broadcasting/auth', [

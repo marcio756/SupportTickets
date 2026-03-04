@@ -35,10 +35,11 @@ class TicketNotification extends Notification implements ShouldQueue
         $messageId = "<ticket-{$this->ticket->id}@{$domain}>";
 
         return (new MailMessage)
-            ->subject("Re: [{$this->ticket->id}] New ticket created")
+            ->subject("Re: " . $this->ticket->title)
             ->greeting(" ")    // Removes automatic "Hello"
             ->salutation(" ")  // Removes automatic "Regards"
-            ->line($this->content)
+            ->line($this->content) // <-- Corrigido aqui (estava $this->replyMessage)
+            ->action('View Ticket', route('tickets.show', $this->ticket))
             ->line("________________________________")
             ->line("Reply above this line to continue the conversation in the ticket. Do not change the subject.")
             ->withSymfonyMessage(function (Email $message) use ($messageId) {

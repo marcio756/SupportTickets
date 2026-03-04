@@ -143,12 +143,12 @@ class UserController extends Controller
      * @param User $user
      * @return RedirectResponse
      */
-    public function destroy(Request $request, User $targetUser): RedirectResponse
+    public function destroy(Request $request, User $user): RedirectResponse
     {
         $actingUser = $request->user();
 
         // Prevent supporters from deleting admins or other supporters
-        if ($actingUser->isSupporter() && $targetUser->role !== RoleEnum::CUSTOMER) {
+        if ($actingUser->isSupporter() && $user->role !== RoleEnum::CUSTOMER) {
             abort(403, 'You can only delete customer accounts.');
         }
 
@@ -156,19 +156,20 @@ class UserController extends Controller
             'current_password' => ['required', 'current_password'],
         ]);
 
-        if ($actingUser->id === $targetUser->id) {
+        if ($actingUser->id === $user->id) {
             return back()->withErrors(['current_password' => 'You cannot delete your own account.']);
         }
 
         // Safeguard to prevent deletion of the last system administrator
-        if ($targetUser->isAdmin()) {
+        if ($user->isAdmin()) {
             $adminCount = User::where('role', RoleEnum::ADMIN->value)->count();
             if ($adminCount <= 1) {
+                // Must return specifically on 'current_password' as expected by the inertia modal/test
                 return back()->withErrors(['current_password' => 'Cannot delete the last administrator.']);
             }
         }
 
-        $targetUser->delete();
+        $user->delete();
 
         return redirect()->back()->with('success', 'User deleted successfully.');
     }

@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Mail\TicketCreatedAutoReply;
 use App\Models\Ticket;
 use App\Notifications\TicketNotification;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -12,6 +13,8 @@ use Symfony\Component\Mime\Email;
 
 class EmailThreadingTest extends TestCase
 {
+    use RefreshDatabase;
+
     /**
      * Verifies if the auto-reply mailable generates the correct deterministic Message-ID.
      *
@@ -21,12 +24,14 @@ class EmailThreadingTest extends TestCase
     {
         Config::set('app.url', 'http://support.example.com');
 
-        $ticket = new Ticket(['id' => 123]);
+        // USE THE FACTORY TO PERSIST TO DB
+        $ticket = Ticket::factory()->create();
+        
         $mailable = new TicketCreatedAutoReply($ticket);
 
         $headers = $mailable->headers();
 
-        $this->assertEquals('ticket-123@support.example.com', $headers->messageId);
+        $this->assertEquals("ticket-{$ticket->id}@support.example.com", $headers->messageId);
     }
 
     /**
@@ -38,7 +43,9 @@ class EmailThreadingTest extends TestCase
     {
         Config::set('app.url', 'http://support.example.com');
 
-        $ticket = new Ticket(['id' => 123]);
+        // USE THE FACTORY TO PERSIST TO DB
+        $ticket = Ticket::factory()->create();
+        
         $notification = new TicketNotification($ticket, 'Test reply message');
 
         /** @var MailMessage $mailMessage */
@@ -54,9 +61,9 @@ class EmailThreadingTest extends TestCase
         $headers = $symfonyMessage->getHeaders();
 
         $this->assertTrue($headers->has('In-Reply-To'));
-        $this->assertEquals('<ticket-123@support.example.com>', $headers->get('In-Reply-To')->getBodyAsString());
+        $this->assertEquals("<ticket-{$ticket->id}@support.example.com>", $headers->get('In-Reply-To')->getBodyAsString());
 
         $this->assertTrue($headers->has('References'));
-        $this->assertEquals('<ticket-123@support.example.com>', $headers->get('References')->getBodyAsString());
+        $this->assertEquals("<ticket-{$ticket->id}@support.example.com>", $headers->get('References')->getBodyAsString());
     }
 }

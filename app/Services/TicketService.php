@@ -84,7 +84,9 @@ class TicketService
     /**
      * Finds the most eligible online supporter for a new ticket.
      * Must have an ACTIVE work session and less than 5 OPEN/IN_PROGRESS tickets.
-     * * @return int|null The User ID of the optimal supporter, or null if none available.
+     * Compatible with strict SQL dialects like SQLite.
+     *
+     * @return int|null The User ID of the optimal supporter, or null if none available.
      */
     private function determineOptimalAssignee(): ?int
     {
@@ -97,13 +99,18 @@ class TicketService
 
         $eligibleSupporter = User::whereIn('id', $activeSupporterIds)
             ->where('role', RoleEnum::SUPPORTER->value)
+            ->whereHas('assignedTickets', function ($query) {
+                $query->whereIn('status', [
+                    TicketStatusEnum::OPEN->value,
+                    TicketStatusEnum::IN_PROGRESS->value
+                ]);
+            }, '<', 5) // Enforces the max 5 tickets rule
             ->withCount(['assignedTickets' => function ($query) {
                 $query->whereIn('status', [
                     TicketStatusEnum::OPEN->value,
                     TicketStatusEnum::IN_PROGRESS->value
                 ]);
             }])
-            ->having('assigned_tickets_count', '<', 5)
             ->orderBy('assigned_tickets_count', 'asc') // Distribute evenly
             ->first();
 

@@ -74,7 +74,7 @@ class FirebaseService
      *
      * @return string|null
      */
-    private function getAccessToken(): ?string
+    protected function getAccessToken(): ?string
     {
         try {
             $credentialsPath = storage_path('app/firebase-credentials.json');

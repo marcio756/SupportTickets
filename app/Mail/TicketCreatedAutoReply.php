@@ -7,40 +7,56 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Mail\Mailables\Headers;
 
 class TicketCreatedAutoReply extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Ticket $ticket) {}
+    public Ticket $ticket;
 
-    public function envelope(): Envelope
+    /**
+     * Create a new message instance.
+     */
+    public function __construct(Ticket $ticket)
     {
-        // Aqui formatamos o Assunto (Subject) exigido pelo professor
-        return new Envelope(
-            subject: '[' . $this->ticket->id . '] New ticket created',
-        );
+        $this->ticket = $ticket;
     }
 
-    public function content(): Content
+    /**
+     * Get the message envelope.
+     */
+    public function envelope(): Envelope
     {
-        return new Content(
-            view: 'emails.ticket_created_auto_reply',
+        return new Envelope(
+            subject: 'We received your ticket: ' . $this->ticket->title,
         );
     }
 
     /**
-     * Defines custom headers for the message, generating a deterministic Message-ID.
-     * This acts as the anchor for all future replies to thread properly in email clients.
+     * Get the message content definition.
+     */
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.ticket_created_auto_reply',
+            with: [
+                'ticketId' => $this->ticket->id,
+                'ticketTitle' => $this->ticket->title,
+            ]
+        );
+    }
+
+    /**
+     * Add deterministic Message-ID to allow proper email threading.
      *
      * @return Headers
      */
     public function headers(): Headers
     {
         $domain = parse_url(config('app.url'), PHP_URL_HOST) ?? 'localhost';
-
+        
         return new Headers(
             messageId: "ticket-{$this->ticket->id}@{$domain}",
         );

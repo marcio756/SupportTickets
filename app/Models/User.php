@@ -52,14 +52,14 @@ class User extends Authenticatable
         ];
     }
 
-    /**
+/**
      * Check if the user is an administrator.
      *
      * @return bool
      */
     public function isAdmin(): bool
     {
-        return $this->role === RoleEnum::ADMIN;
+        return $this->role === RoleEnum::ADMIN || $this->role === RoleEnum::ADMIN->value;
     }
 
     /**
@@ -69,7 +69,7 @@ class User extends Authenticatable
      */
     public function isSupporter(): bool
     {
-        return $this->role === RoleEnum::SUPPORTER;
+        return $this->role === RoleEnum::SUPPORTER || $this->role === RoleEnum::SUPPORTER->value;
     }
 
     /**
@@ -79,7 +79,7 @@ class User extends Authenticatable
      */
     public function isCustomer(): bool
     {
-        return $this->role === RoleEnum::CUSTOMER;
+        return $this->role === RoleEnum::CUSTOMER || $this->role === RoleEnum::CUSTOMER->value;
     }
 
     /**

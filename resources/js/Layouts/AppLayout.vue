@@ -12,6 +12,7 @@ import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import ThemeButton from '@/Components/navbar/ThemeButton.vue';
 import NotificationDropdown from '@/Components/Layout/NotificationDropdown.vue';
 import AppSidebar from '@/Components/Layout/AppSidebar.vue';
+import TimerWidget from '@/Components/WorkSession/TimerWidget.vue';
 
 defineProps({
     title: String,
@@ -75,6 +76,8 @@ onMounted(() => {
 
                     <template #right>
                         <div class="flex items-center gap-2 sm:gap-4">
+                            
+                            <TimerWidget />
                             
                             <NotificationDropdown />
 

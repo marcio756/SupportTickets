@@ -20,6 +20,13 @@ class TicketTagTest extends TestCase
     public function test_supporter_can_sync_tags_to_ticket(): void
     {
         $supporter = User::factory()->create(['role' => 'supporter']);
+        
+        \App\Models\WorkSession::create([
+            'user_id' => $supporter->id,
+            'status' => \App\Enums\WorkSessionStatusEnum::ACTIVE->value,
+            'started_at' => now(),
+        ]);
+
         $ticket = Ticket::factory()->create();
         
         $tag1 = Tag::create(['name' => 'Urgent', 'color' => '#ff0000']);

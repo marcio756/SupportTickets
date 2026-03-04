@@ -10,6 +10,7 @@ use App\Http\Controllers\TagController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\WorkSessionController;
 use App\Http\Middleware\EnsureActiveWorkSession;
+use App\Http\Controllers\WorkSessionReportController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -41,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/work-sessions/pause', [WorkSessionController::class, 'pause'])->name('work-sessions.pause');
     Route::post('/work-sessions/resume', [WorkSessionController::class, 'resume'])->name('work-sessions.resume');
     Route::post('/work-sessions/end', [WorkSessionController::class, 'end'])->name('work-sessions.end');
+    Route::get('/work-sessions/reports', [WorkSessionReportController::class, 'index'])->name('work-sessions.index');
 
     /**
      * Base ticket read endpoints. Open for active viewing without session lock.

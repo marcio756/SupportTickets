@@ -27,12 +27,21 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
-    public function share(Request $request): array
+public function share(Request $request): array
     {
+        // Descobre se existe uma sessão de trabalho aberta para o supporter
+        $activeSession = null;
+        if ($request->user() && $request->user()->isSupporter()) {
+            $activeSession = \App\Models\WorkSession::where('user_id', $request->user()->id)
+                ->whereIn('status', [\App\Enums\WorkSessionStatusEnum::ACTIVE->value, \App\Enums\WorkSessionStatusEnum::PAUSED->value])
+                ->first();
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
+                'work_session' => $activeSession, 
             ],
         ];
     }

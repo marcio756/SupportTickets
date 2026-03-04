@@ -43,6 +43,12 @@ class SupportTimeTest extends TestCase
         $assignedSupporter = User::factory()->create(['role' => 'supporter']);
         $noseySupporter = User::factory()->create(['role' => 'supporter']);
 
+        \App\Models\WorkSession::create([
+            'user_id' => $noseySupporter->id,
+            'status' => \App\Enums\WorkSessionStatusEnum::ACTIVE->value,
+            'started_at' => now(),
+        ]);
+
         $ticket = Ticket::factory()->create([
             'customer_id' => $customer->id,
             'assigned_to' => $assignedSupporter->id,
