@@ -1,12 +1,22 @@
 <script setup>
+/**
+ * Professional Login Page for SupportTickets.
+ * Integrated with BrandTitle component and optimized for visual consistency.
+ */
 import Checkbox from '@/Components/Checkbox.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import BrandTitle from '@/Components/Common/BrandTitle.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
+/**
+ * @typedef {Object} Props
+ * @property {boolean} canResetPassword - Determines if the forgot password link should be shown.
+ * @property {string} [status] - Session status message.
+ */
 defineProps({
     canResetPassword: {
         type: Boolean,
@@ -16,12 +26,17 @@ defineProps({
     },
 });
 
+// Form state management
 const form = useForm({
     email: '',
     password: '',
     remember: false,
 });
 
+/**
+ * Handles the login form submission.
+ * Resets the password field on failure to ensure security.
+ */
 const submit = () => {
     form.post(route('login'), {
         onFinish: () => form.reset('password'),
@@ -32,6 +47,10 @@ const submit = () => {
 <template>
     <GuestLayout>
         <Head title="Log in" />
+
+        <div class="mb-6 text-center">
+            <BrandTitle />
+        </div>
 
         <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
             {{ status }}
@@ -49,6 +68,7 @@ const submit = () => {
                     required
                     autofocus
                     autocomplete="username"
+                    placeholder="your@email.com"
                 />
 
                 <InputError class="mt-2" :message="form.errors.email" />
@@ -64,6 +84,7 @@ const submit = () => {
                     v-model="form.password"
                     required
                     autocomplete="current-password"
+                    placeholder="••••••••"
                 />
 
                 <InputError class="mt-2" :message="form.errors.password" />

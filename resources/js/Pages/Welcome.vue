@@ -7,6 +7,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import FeatureCard from '@/Components/Welcome/FeatureCard.vue';
+import BrandTitle from '@/Components/Common/BrandTitle.vue';
 
 defineProps({
     canLogin: Boolean,
@@ -20,9 +21,7 @@ defineProps({
     <GuestLayout>
         <div class="text-center py-4">
             <div class="mb-10">
-                <h1 class="text-4xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
-                    Support<span class="text-yellow-500">Tickets</span>
-                </h1>
+                <BrandTitle />
                 <p class="mt-4 text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
                     The centralized platform for all your technical support needs. 
                     Manage tickets, track progress, and communicate with ease.
