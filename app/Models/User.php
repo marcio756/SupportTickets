@@ -52,61 +52,58 @@ class User extends Authenticatable
         ];
     }
 
-/**
-     * Check if the user is an administrator.
-     *
-     * @return bool
+    // --- Accessors for API Resources ---
+
+    /**
+     * Total chat time limit in seconds (formatted for Resource).
      */
+    public function getMaxChatTimeAttribute(): int
+    {
+        return 1800; // 30 minutes daily limit
+    }
+
+    /**
+     * Remaining chat time in seconds.
+     */
+    public function getRemainingChatTimeAttribute(): int
+    {
+        return $this->daily_support_seconds ?? 0;
+    }
+
+    // --- Role Checks ---
+
     public function isAdmin(): bool
     {
         return $this->role === RoleEnum::ADMIN || $this->role === RoleEnum::ADMIN->value;
     }
 
-    /**
-     * Check if the user is a supporter.
-     *
-     * @return bool
-     */
     public function isSupporter(): bool
     {
         return $this->role === RoleEnum::SUPPORTER || $this->role === RoleEnum::SUPPORTER->value;
     }
 
-    /**
-     * Check if the user is a customer.
-     *
-     * @return bool
-     */
     public function isCustomer(): bool
     {
         return $this->role === RoleEnum::CUSTOMER || $this->role === RoleEnum::CUSTOMER->value;
     }
 
-    /**
-     * Retrieves all tickets created by this user (if acting as a customer).
-     *
-     * @return HasMany
-     */
+    // --- Relationships ---
+
     public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'customer_id');
     }
 
-    /**
-     * Retrieves all tickets assigned to this user (if acting as a supporter).
-     *
-     * @return HasMany
-     */
     public function assignedTickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'assigned_to');
     }
 
-    /**
-     * Retrieves all FCM tokens associated with this user for push notifications.
-     *
-     * @return HasMany
-     */
+    public function workSessions(): HasMany
+    {
+        return $this->hasMany(WorkSession::class);
+    }
+
     public function fcmTokens(): HasMany
     {
         return $this->hasMany(FcmToken::class);

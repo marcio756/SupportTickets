@@ -5,32 +5,43 @@ namespace App\Services;
 use App\Enums\WorkSessionStatusEnum;
 use App\Models\User;
 use App\Models\WorkSession;
-use App\Models\WorkSessionPause;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 /**
  * Encapsulates the core business logic for time tracking and shift management.
- * Keeps controllers clean and ensures database state remains valid during transitions.
  */
 class WorkSessionService
 {
     /**
      * Starts a new work session for the given user.
-     * Prevents overlapping open sessions.
-     *
-     * @param User $user
+     * Enforces the "One Shift Per Day" rule to give purpose to the Pause feature.
+     * * @param User $user
      * @return WorkSession
      * @throws ValidationException
      */
     public function startSession(User $user): WorkSession
     {
+        // 1. Prevent concurrent open sessions
         $openSession = WorkSession::where('user_id', $user->id)
             ->whereIn('status', [WorkSessionStatusEnum::ACTIVE->value, WorkSessionStatusEnum::PAUSED->value])
             ->first();
 
         if ($openSession) {
             throw ValidationException::withMessages([
-                'status' => 'You already have an open work session. Please end it first.'
+                'status' => 'Já tem uma sessão de trabalho aberta.'
+            ]);
+        }
+
+        // 2. Enforce Daily Shift integrity
+        $alreadyCompletedToday = WorkSession::where('user_id', $user->id)
+            ->where('status', WorkSessionStatusEnum::COMPLETED->value)
+            ->whereDate('started_at', Carbon::today())
+            ->exists();
+
+        if ($alreadyCompletedToday) {
+            throw ValidationException::withMessages([
+                'status' => 'Já concluiu o seu turno de hoje. Para manter relatórios limpos, utilize a "Pausa" em vez de "Terminar" se pretender regressar no mesmo dia.'
             ]);
         }
 
@@ -43,17 +54,13 @@ class WorkSessionService
 
     /**
      * Pauses the currently active session.
-     *
-     * @param User $user
-     * @return WorkSession
-     * @throws ValidationException
      */
     public function pauseSession(User $user): WorkSession
     {
         $session = $this->getCurrentActiveSession($user);
 
         if ($session->status === WorkSessionStatusEnum::PAUSED) {
-            throw ValidationException::withMessages(['status' => 'Session is already paused.']);
+            throw ValidationException::withMessages(['status' => 'A sessão já está em pausa.']);
         }
 
         $session->update(['status' => WorkSessionStatusEnum::PAUSED]);
@@ -67,10 +74,6 @@ class WorkSessionService
 
     /**
      * Resumes a previously paused session.
-     *
-     * @param User $user
-     * @return WorkSession
-     * @throws ValidationException
      */
     public function resumeSession(User $user): WorkSession
     {
@@ -79,10 +82,9 @@ class WorkSessionService
             ->first();
 
         if (!$session) {
-            throw ValidationException::withMessages(['status' => 'No paused session found to resume.']);
+            throw ValidationException::withMessages(['status' => 'Não foi encontrada nenhuma sessão em pausa para retomar.']);
         }
 
-        // Close the open pause record
         $openPause = $session->pauses()->whereNull('ended_at')->latest('started_at')->first();
         if ($openPause) {
             $openPause->update(['ended_at' => now()]);
@@ -94,11 +96,7 @@ class WorkSessionService
     }
 
     /**
-     * Ends the current open session and calculates the true worked time.
-     *
-     * @param User $user
-     * @return WorkSession
-     * @throws ValidationException
+     * Ends the current session and finalizes calculation.
      */
     public function endSession(User $user): WorkSession
     {
@@ -108,12 +106,11 @@ class WorkSessionService
             ->first();
 
         if (!$session) {
-            throw ValidationException::withMessages(['status' => 'No open session found to end.']);
+            throw ValidationException::withMessages(['status' => 'Não existe um turno aberto para terminar.']);
         }
 
         $now = now();
 
-        // If ending while paused, close the pending pause first
         if ($session->status === WorkSessionStatusEnum::PAUSED) {
             $openPause = $session->pauses()->whereNull('ended_at')->latest('started_at')->first();
             if ($openPause) {
@@ -121,13 +118,11 @@ class WorkSessionService
             }
         }
 
-        // Calculate total pause time in seconds
         $totalPauseSeconds = $session->pauses->sum(function ($pause) use ($now) {
             $end = $pause->ended_at ?? $now;
             return $pause->started_at->diffInSeconds($end);
         });
 
-        // Calculate total active time
         $grossSeconds = $session->started_at->diffInSeconds($now);
         $netSeconds = max(0, $grossSeconds - $totalPauseSeconds);
 
@@ -140,9 +135,6 @@ class WorkSessionService
         return $session;
     }
 
-    /**
-     * Helper to reliably fetch the user's active session.
-     */
     private function getCurrentActiveSession(User $user): WorkSession
     {
         $session = WorkSession::where('user_id', $user->id)
@@ -150,7 +142,7 @@ class WorkSessionService
             ->first();
 
         if (!$session) {
-            throw ValidationException::withMessages(['status' => 'No active work session found.']);
+            throw ValidationException::withMessages(['status' => 'Não tem um turno de trabalho ativo.']);
         }
 
         return $session;

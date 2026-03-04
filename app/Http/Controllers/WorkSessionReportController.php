@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\RoleEnum;
+use App\Enums\WorkSessionStatusEnum;
 use App\Models\User;
 use App\Models\WorkSession;
 use Illuminate\Http\Request;
@@ -12,16 +13,16 @@ use Inertia\Response;
 class WorkSessionReportController extends Controller
 {
     /**
-     * Display a calendar/list view of work sessions.
-     * Supporters see their own, Admins can filter by supporter.
-     *
-     * @param Request $request
+     * Renders the work session log with summary statistics.
+     * Implements strict role-based data isolation and filtering.
+     * * @param Request $request
      * @return Response
      */
     public function index(Request $request): Response
     {
         $user = $request->user();
 
+        // Security gate: Customers should not see work logs
         if ($user->isCustomer()) {
             abort(403, 'Unauthorized access.');
         }
@@ -30,23 +31,30 @@ class WorkSessionReportController extends Controller
             ->withCount('pauses')
             ->latest('started_at');
 
-        // Isolation: Supporters can only see themselves
+        // Isolation Logic: Supporters only see their data
         if ($user->isSupporter()) {
             $query->where('user_id', $user->id);
         }
 
-        // Admin filters
+        // Admin Filter Logic
         if ($user->isAdmin() && $request->filled('user_id')) {
             $query->where('user_id', $request->input('user_id'));
         }
 
+        // Date Filter Logic
         if ($request->filled('date')) {
             $query->whereDate('started_at', $request->input('date'));
         }
 
+        // Calculate aggregate summary for the filtered period
+        // We clone the query to calculate totals without pagination limits
+        $totalSeconds = (clone $query)
+            ->where('status', WorkSessionStatusEnum::COMPLETED)
+            ->sum('total_worked_seconds');
+        
         $sessions = $query->paginate(15)->withQueryString();
 
-        // Map data to display hours and format naturally for the frontend
+        // Transform data for presentation
         $sessions->getCollection()->transform(function ($session) {
             $hours = $session->total_worked_seconds ? floor($session->total_worked_seconds / 3600) : 0;
             $minutes = $session->total_worked_seconds ? floor(($session->total_worked_seconds % 3600) / 60) : 0;
@@ -63,7 +71,7 @@ class WorkSessionReportController extends Controller
             ];
         });
 
-        // Provide a list of supporters if the user is an admin (for the filter dropdown)
+        // Provide list of supporters to Admin for filtering
         $usersList = [];
         if ($user->isAdmin()) {
             $usersList = User::whereIn('role', [RoleEnum::SUPPORTER->value, RoleEnum::ADMIN->value])
@@ -76,6 +84,10 @@ class WorkSessionReportController extends Controller
             'sessions' => $sessions,
             'users' => $usersList,
             'filters' => $request->only(['user_id', 'date']),
+            'summary' => [
+                'total_hours' => floor($totalSeconds / 3600),
+                'total_minutes' => floor(($totalSeconds % 3600) / 60),
+            ]
         ]);
     }
 }

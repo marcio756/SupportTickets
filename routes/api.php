@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\WorkSessionController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -19,47 +20,62 @@ Route::post('/login', [AuthController::class, 'login'])->name('api.login');
 Route::middleware('auth:sanctum')->name('api.')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     
-    // Profile
+    // Profile Management
     Route::get('/me', [ProfileController::class, 'show'])->name('me.show');
     Route::put('/me', [ProfileController::class, 'update'])->name('me.update');
+    Route::put('/me/password', [ProfileController::class, 'updatePassword'])->name('me.password');
 
-    // Dashboard
+    // Dashboard Statistics
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
-    // Notifications
+    // Notifications System
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
     Route::post('/notifications/clear', [NotificationController::class, 'destroyAll'])->name('notifications.clear');
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
-    // FCM Tokens Route
+    // FCM Tokens (Push Notifications)
     Route::post('/fcm-token', [FcmTokenController::class, 'store'])->name('fcm-token.store');
 
+    // Discovery Endpoints for UI Selection
     Route::get('/customers', function () {
         $customers = User::where('role', RoleEnum::CUSTOMER->value)->select('id', 'name', 'email')->get();
         return response()->json(['data' => $customers]);
     })->name('customers.index');
 
-    // Users (User Management)
+    Route::get('/supporters', function () {
+        $supporters = User::where('role', RoleEnum::SUPPORTER->value)->select('id', 'name', 'email')->get();
+        return response()->json(['data' => $supporters]);
+    })->name('supporters.index');
+
+    // Work Sessions (Attendance Tracking)
+    Route::prefix('work-sessions')->name('work-sessions.')->group(function () {
+        Route::get('/', [WorkSessionController::class, 'index'])->name('index');
+        Route::get('/current', [WorkSessionController::class, 'current'])->name('current');
+        Route::post('/start', [WorkSessionController::class, 'start'])->name('start');
+        Route::post('/stop', [WorkSessionController::class, 'stop'])->name('stop');
+        Route::post('/pause', [WorkSessionController::class, 'pause'])->name('pause');
+        Route::post('/resume', [WorkSessionController::class, 'resume'])->name('resume');
+    });
+
+    // Administrative User Management
     Route::apiResource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
 
-    // Activity Logs
+    // System Activity Logs
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
 
-    // Tags Management
+    // Tag Taxonomy Management
     Route::apiResource('tags', TagController::class)->except(['create', 'show', 'edit']);
 
-    // Emails Sync (For Mobile App Pull-to-Refresh)
+    // Email Synchronization Service
     Route::post('/emails/fetch', [EmailController::class, 'fetch'])->name('emails.fetch');
 
-    // Tickets
+    // Core Ticket Operations
     Route::apiResource('tickets', TicketController::class)->only(['index', 'store', 'show', 'destroy']);
     Route::post('/tickets/{ticket}/assign', [TicketController::class, 'assign'])->name('tickets.assign');
     Route::patch('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])->name('tickets.updateStatus');
     Route::post('/tickets/{ticket}/messages', [TicketController::class, 'sendMessage'])->name('tickets.messages');
     Route::post('/tickets/{ticket}/tick', [TicketController::class, 'tickTime'])->name('tickets.tickTime');
-    
-    // Ticket Tags System
     Route::put('/tickets/{ticket}/tags', [TicketController::class, 'syncTags'])->name('tickets.tags.sync');
 });

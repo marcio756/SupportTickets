@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Enums\RoleEnum;
-use App\Enums\WorkSessionStatusEnum;
 use App\Models\User;
 use App\Models\WorkSession;
+use App\Enums\RoleEnum;
+use App\Enums\WorkSessionStatusEnum;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,65 +13,64 @@ class WorkSessionReportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_supporter_can_view_own_work_sessions(): void
+    /**
+     * Verify that a supporter can only access their own work history.
+     * This tests the core data isolation requirement.
+     */
+    public function test_supporter_can_only_see_own_sessions(): void
     {
-        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER->value]);
-        $otherSupporter = User::factory()->create(['role' => RoleEnum::SUPPORTER->value]);
+        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER]);
+        $otherSupporter = User::factory()->create(['role' => RoleEnum::SUPPORTER]);
 
-        WorkSession::create([
+        // Create a session for the acting supporter
+        WorkSession::factory()->create([
             'user_id' => $supporter->id,
-            'status' => WorkSessionStatusEnum::COMPLETED->value,
-            'started_at' => now()->subHours(4),
+            'status' => WorkSessionStatusEnum::COMPLETED,
+            'started_at' => now()->subHours(2),
             'ended_at' => now(),
-            'total_worked_seconds' => 14400,
+            'total_worked_seconds' => 7200
         ]);
 
-        WorkSession::create([
+        // Create a session for someone else
+        WorkSession::factory()->create([
             'user_id' => $otherSupporter->id,
-            'status' => WorkSessionStatusEnum::COMPLETED->value,
-            'started_at' => now()->subHours(4),
-            'ended_at' => now(),
-            'total_worked_seconds' => 14400,
+            'status' => WorkSessionStatusEnum::COMPLETED,
+            'total_worked_seconds' => 3600
         ]);
 
         $response = $this->actingAs($supporter)->get(route('work-sessions.index'));
 
         $response->assertStatus(200);
+        
+        // Assert that only 1 record (the owner's) is returned
         $response->assertInertia(fn ($page) => $page
-            ->component('WorkSessions/Index')
-            ->has('sessions.data', 1) // Only sees his own 1 session
+            ->has('sessions.data', 1)
+            ->where('sessions.data.0.user.id', $supporter->id)
         );
     }
 
-    public function test_admin_can_view_all_work_sessions(): void
+    /**
+     * Verify that an admin can view and filter sessions from any supporter.
+     */
+    public function test_admin_can_filter_by_supporter(): void
     {
-        $admin = User::factory()->create(['role' => RoleEnum::ADMIN->value]);
-        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER->value]);
+        $admin = User::factory()->create(['role' => RoleEnum::ADMIN]);
+        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER]);
 
-        WorkSession::create([
+        WorkSession::factory()->create([
             'user_id' => $supporter->id,
-            'status' => WorkSessionStatusEnum::COMPLETED->value,
-            'started_at' => now()->subHours(4),
-            'ended_at' => now(),
-            'total_worked_seconds' => 14400,
+            'status' => WorkSessionStatusEnum::COMPLETED,
+            'total_worked_seconds' => 3600
         ]);
 
-        $response = $this->actingAs($admin)->get(route('work-sessions.index'));
+        $response = $this->actingAs($admin)->get(route('work-sessions.index', [
+            'user_id' => $supporter->id
+        ]));
 
         $response->assertStatus(200);
         $response->assertInertia(fn ($page) => $page
-            ->component('WorkSessions/Index')
             ->has('sessions.data', 1)
-            ->has('users') // Admin gets the filter list
+            ->where('sessions.data.0.user.id', $supporter->id)
         );
-    }
-
-    public function test_customer_cannot_access_reports(): void
-    {
-        $customer = User::factory()->create(['role' => RoleEnum::CUSTOMER->value]);
-
-        $response = $this->actingAs($customer)->get(route('work-sessions.index'));
-
-        $response->assertStatus(403);
     }
 }

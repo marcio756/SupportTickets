@@ -5,7 +5,7 @@
  * Delegates notification orchestration to useAppNotifications composable for SRP compliance.
  */
 import { ref, computed, onMounted } from 'vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, Link, usePage, router } from '@inertiajs/vue3';
 import { useTheme } from '@/Composables/useTheme';
 import { useAppNotifications } from '@/Composables/useAppNotifications';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
@@ -28,6 +28,21 @@ const isSidebarMinimized = ref(false);
  * @returns {Object|undefined} The user object.
  */
 const user = computed(() => usePage().props.auth?.user);
+
+/**
+ * Handles the logout process.
+ * Captures and displays validation errors from the server (e.g., active work session).
+ */
+const handleLogout = () => {
+    router.post(route('logout'), {}, {
+        onError: (errors) => {
+            if (errors.logout) {
+                // Displays the business rule violation message to the user
+                alert(errors.logout);
+            }
+        }
+    });
+};
 
 /**
  * Toggles the sidebar state and persists it to localStorage to maintain state across page refreshes.
@@ -101,11 +116,17 @@ onMounted(() => {
                                         </VaButton>
                                     </Link>
                                     
-                                    <Link :href="route('logout')" method="post" as="button" class="block w-full">
-                                        <VaButton preset="plain" color="danger" class="w-full justify-start" icon="logout">
+                                    <div class="block w-full">
+                                        <VaButton 
+                                            preset="plain" 
+                                            color="danger" 
+                                            class="w-full justify-start" 
+                                            icon="logout"
+                                            @click="handleLogout"
+                                        >
                                             Sair
                                         </VaButton>
-                                    </Link>
+                                    </div>
                                 </VaDropdownContent>
                             </VaDropdown>
                         </div>

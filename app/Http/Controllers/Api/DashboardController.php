@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Models\WorkSession;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 /**
  * Provides metrics and statistics for the mobile application dashboard
@@ -26,17 +28,18 @@ class DashboardController extends Controller
 
         if ($user->isSupporter()) {
             // Fetch top 5 customers with the highest number of tickets
-            // Note: This assumes you have a 'tickets' relationship defined in your User model.
             $topClients = User::where('role', 'customer')
                 ->withCount('tickets')
                 ->orderByDesc('tickets_count')
                 ->take(5)
                 ->get(['id', 'name', 'email']);
 
-            // Fetch actual Time Spent Today. 
-            // Assuming time tracked in seconds across tickets, converted to hours.
-            // If you don't have this tracked yet in the DB, replace with your actual query or keep as a placeholder.
-            $timeSpentToday = 0.0; 
+            // Calculate actual Time Spent Today in hours
+            $secondsWorkedToday = WorkSession::where('user_id', $user->id)
+                ->whereDate('started_at', Carbon::today())
+                ->sum('total_worked_seconds');
+            
+            $timeSpentToday = round($secondsWorkedToday / 3600, 2); 
             
             $metrics = [
                 'active_tickets' => Ticket::whereNotIn('status', ['closed', 'resolved'])->count(),
@@ -50,7 +53,7 @@ class DashboardController extends Controller
                     ->whereNotIn('status', ['closed', 'resolved'])->count(),
                 'resolved_tickets' => Ticket::where('customer_id', $user->id)
                     ->whereIn('status', ['closed', 'resolved'])->count(),
-                'remaining_seconds' => $user->daily_support_seconds,
+                'remaining_seconds' => $user->daily_support_seconds, // From User Model
                 'total_daily_limit' => 1800,
             ];
         }

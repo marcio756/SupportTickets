@@ -23,7 +23,7 @@
 
     <div v-if="!minimized" class="p-4 mt-auto border-t border-gray-200 dark:border-gray-800">
        <span class="text-xs text-gray-500 font-mono font-bold uppercase">
-         Role: {{ displayRole }}
+          Role: {{ displayRole }}
        </span>
     </div>
   </va-sidebar>
@@ -54,6 +54,15 @@ const navigationItems = computed(() => {
   const items = [
     { title: 'Dashboard', icon: 'dashboard', route: 'dashboard' },
   ];
+
+  // Time Tracking is available for Staff (Supporters and Admins)
+  if (role !== 'customer') {
+    items.push({ 
+        title: 'Time Tracking', 
+        icon: 'schedule', 
+        route: 'work-sessions.index' 
+    });
+  }
 
   // Admin does NOT see operational Tickets menu
   if (role !== 'admin') {

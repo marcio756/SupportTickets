@@ -42,18 +42,7 @@ class DatabaseSeeder extends Seeder
         }
 
         /**
-         * 2. Create the specific testing Admin
-         * This ensures there is always at least one administrator available upon seeding.
-         */
-        $testAdmin = User::factory()->create([
-            'name' => 'Admin Demo',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('123'),
-            'role' => RoleEnum::ADMIN,
-        ]);
-
-        /**
-         * 3. Create the specific testing Customer
+         * 2. Create the specific testing Customer
          */
         $testCustomer = User::factory()->create([
             'name' => 'Customer Demo',
@@ -63,7 +52,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         /**
-         * 4. Create the specific testing Supporter
+         * 3. Create the specific testing Supporter
          */
         $testSupporter = User::factory()->create([
             'name' => 'Support Demo',
@@ -73,21 +62,21 @@ class DatabaseSeeder extends Seeder
         ]);
 
         /**
-         * 5. Create 10 random Customers
+         * 4. Create 10 random Customers
          */
         $randomCustomers = User::factory(10)->create([
             'role' => RoleEnum::CUSTOMER,
         ]);
 
         /**
-         * 6. Create 5 random Supporters
+         * 5. Create 5 random Supporters
          */
         $randomSupporters = User::factory(5)->create([
             'role' => RoleEnum::SUPPORTER,
         ]);
 
         /**
-         * 7. Generate mock tickets to populate the UI tables
+         * 6. Generate mock tickets to populate the UI tables
          */
         Ticket::factory(3)->create([
             'customer_id' => $testCustomer->id,
@@ -114,7 +103,7 @@ class DatabaseSeeder extends Seeder
         }
 
         /**
-         * 8. Attach random tags to generated tickets
+         * 7. Attach random tags to generated tickets
          * We iterate over all tickets and randomly assign between 1 to 3 tags to ~80% of them.
          */
         $allTickets = Ticket::all();
