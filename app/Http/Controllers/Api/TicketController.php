@@ -242,13 +242,13 @@ class TicketController extends Controller
     }
 
     /**
-     * Send a message and deduct time if necessary
+     * Store a new message on the ticket thread and deduct time if necessary
      *
      * @param Request $request
      * @param Ticket $ticket
      * @return JsonResponse
      */
-    public function sendMessage(Request $request, Ticket $ticket): JsonResponse
+    public function storeMessage(Request $request, Ticket $ticket): JsonResponse
     {
         Gate::authorize('update', $ticket);
 

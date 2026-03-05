@@ -18,27 +18,41 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'login'])->name('api.login');
 
 Route::middleware('auth:sanctum')->name('api.')->group(function () {
+    /**
+     * Authentication & Session Management
+     */
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     
-    // Profile Management
+    /**
+     * Profile Management & Account Deletion
+     */
     Route::get('/me', [ProfileController::class, 'show'])->name('me.show');
     Route::put('/me', [ProfileController::class, 'update'])->name('me.update');
     Route::put('/me/password', [ProfileController::class, 'updatePassword'])->name('me.password');
+    Route::delete('/me', [ProfileController::class, 'destroy'])->name('me.destroy');
 
-    // Dashboard Statistics
+    /**
+     * Dashboard Statistics
+     */
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
-    // Notifications System
+    /**
+     * Notifications System
+     */
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
+    Route::post('/notifications/read-bulk', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
     Route::post('/notifications/clear', [NotificationController::class, 'destroyAll'])->name('notifications.clear');
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 
-    // FCM Tokens (Push Notifications)
+    /**
+     * FCM Tokens (Push Notifications)
+     */
     Route::post('/fcm-token', [FcmTokenController::class, 'store'])->name('fcm-token.store');
 
-    // Discovery Endpoints for UI Selection
+    /**
+     * Discovery Endpoints for UI Selection
+     */
     Route::get('/customers', function () {
         $customers = User::where('role', RoleEnum::CUSTOMER->value)->select('id', 'name', 'email')->get();
         return response()->json(['data' => $customers]);
@@ -49,33 +63,47 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
         return response()->json(['data' => $supporters]);
     })->name('supporters.index');
 
-    // Work Sessions (Attendance Tracking)
+    /**
+     * Work Sessions (Attendance Tracking & Reports)
+     */
     Route::prefix('work-sessions')->name('work-sessions.')->group(function () {
         Route::get('/', [WorkSessionController::class, 'index'])->name('index');
+        Route::get('/reports', [WorkSessionController::class, 'reports'])->name('reports');
         Route::get('/current', [WorkSessionController::class, 'current'])->name('current');
         Route::post('/start', [WorkSessionController::class, 'start'])->name('start');
-        Route::post('/stop', [WorkSessionController::class, 'stop'])->name('stop');
+        Route::post('/end', [WorkSessionController::class, 'end'])->name('end');
         Route::post('/pause', [WorkSessionController::class, 'pause'])->name('pause');
         Route::post('/resume', [WorkSessionController::class, 'resume'])->name('resume');
+        Route::delete('/{workSession}', [WorkSessionController::class, 'destroy'])->name('destroy');
     });
 
-    // Administrative User Management
+    /**
+     * Administrative User Management
+     */
     Route::apiResource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
 
-    // System Activity Logs
+    /**
+     * System Activity Logs
+     */
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
 
-    // Tag Taxonomy Management
+    /**
+     * Tag Taxonomy Management
+     */
     Route::apiResource('tags', TagController::class)->except(['create', 'show', 'edit']);
 
-    // Email Synchronization Service
+    /**
+     * Email Synchronization Service
+     */
     Route::post('/emails/fetch', [EmailController::class, 'fetch'])->name('emails.fetch');
 
-    // Core Ticket Operations
+    /**
+     * Core Ticket Operations & State Management
+     */
     Route::apiResource('tickets', TicketController::class)->only(['index', 'store', 'show', 'destroy']);
-    Route::post('/tickets/{ticket}/assign', [TicketController::class, 'assign'])->name('tickets.assign');
+    Route::patch('/tickets/{ticket}/assign', [TicketController::class, 'assign'])->name('tickets.assign');
     Route::patch('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])->name('tickets.updateStatus');
-    Route::post('/tickets/{ticket}/messages', [TicketController::class, 'sendMessage'])->name('tickets.messages');
-    Route::post('/tickets/{ticket}/tick', [TicketController::class, 'tickTime'])->name('tickets.tickTime');
+    Route::post('/tickets/{ticket}/messages', [TicketController::class, 'storeMessage'])->name('tickets.messages.store');
+    Route::post('/tickets/{ticket}/tick-time', [TicketController::class, 'tickTime'])->name('tickets.tickTime');
     Route::put('/tickets/{ticket}/tags', [TicketController::class, 'syncTags'])->name('tickets.tags.sync');
 });

@@ -67,4 +67,27 @@ class ProfileController extends Controller
 
         return $this->successResponse(null, 'Password alterada com sucesso.');
     }
+
+    /**
+     * Delete the authenticated user's account and revoke active tokens.
+     * Requires the current password for security validation.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function destroy(Request $request): JsonResponse
+    {
+        $request->validate([
+            'password' => ['required', 'current_password'],
+        ]);
+
+        $user = $request->user();
+
+        // Revoke all Sanctum tokens before deleting to log out from all devices
+        $user->tokens()->delete();
+        
+        $user->delete();
+
+        return $this->successResponse(null, 'Conta eliminada com sucesso.');
+    }
 }
