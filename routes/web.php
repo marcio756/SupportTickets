@@ -77,7 +77,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifications/read-bulk', [NotificationController::class, 'markBulkAsRead'])->name('notifications.read-bulk');
     Route::post('/notifications/clear', [NotificationController::class, 'destroyAll'])->name('notifications.clear');
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    
+    // User management routes including the new restoration endpoint
     Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::patch('users/{user}/restore', [UserController::class, 'restore'])->name('users.restore')->withTrashed();
+    
     Route::post('/fcm-token', [FcmTokenController::class, 'store'])->name('web.fcm-token.store');
 });
 

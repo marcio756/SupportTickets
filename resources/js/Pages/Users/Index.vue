@@ -32,24 +32,47 @@
           @page-change="changePage"
       >
         <template #cell(name)="{ rowData }">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2" :class="{ 'opacity-50': rowData.deleted_at }">
             <UserAvatar :user="rowData" size="36px" />
-            <span class="font-bold" style="color: var(--va-text-primary)">{{ rowData.name }}</span>
+            <div class="flex flex-col">
+              <span class="font-bold" style="color: var(--va-text-primary)">
+                <s v-if="rowData.deleted_at">{{ rowData.name }}</s>
+                <span v-else>{{ rowData.name }}</span>
+              </span>
+              <va-badge v-if="rowData.deleted_at" text="Deactivated" color="danger" size="small" class="mt-1 w-max" />
+            </div>
           </div>
         </template>
 
         <template #cell(email)="{ rowData }">
-          <span style="color: var(--va-secondary)">{{ rowData.email }}</span>
+          <span style="color: var(--va-secondary)" :class="{ 'opacity-50': rowData.deleted_at }">
+            {{ rowData.email }}
+          </span>
         </template>
 
         <template #cell(role)="{ rowData }">
-          <UserRoleBadge :role="rowData.role" />
+          <div :class="{ 'opacity-50': rowData.deleted_at }">
+            <UserRoleBadge :role="rowData.role" />
+          </div>
         </template>
 
         <template #cell(actions)="{ rowData }">
           <div class="flex gap-2 justify-end">
-            <va-button preset="plain" icon="edit" color="info" @click="openEditModal(rowData)" />
-            <va-button preset="plain" icon="delete" color="danger" @click="openDeleteModal(rowData)" />
+            <template v-if="rowData.deleted_at">
+              <va-button 
+                v-if="currentUserIsAdmin"
+                preset="plain" 
+                icon="restore" 
+                color="success" 
+                title="Restore User"
+                @click="restoreUser(rowData)" 
+              />
+            </template>
+
+            <template v-else>
+              <va-button preset="plain" icon="edit" color="info" title="Edit User" @click="openEditModal(rowData)" />
+              <va-button preset="plain" icon="block" color="danger" title="Deactivate User" @click="openDeleteModal(rowData)" />
+            </template>
           </div>
         </template>
       </ResourceTable>
@@ -72,7 +95,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
 import ResourceTable from '@/Components/Common/ResourceTable.vue';
@@ -90,11 +113,19 @@ const props = defineProps({
   workSessionStatus: { type: String, default: 'active' }
 });
 
+const page = usePage();
+const currentUserIsAdmin = computed(() => {
+  const user = page.props.auth?.user;
+  return user && user.role === 'admin';
+});
+
 const { query, selectedRole, changePage } = useFilters(props.filters, 'users.index', props.users.current_page || 1);
 
 const isFormModalOpen = ref(false);
 const isDeleteModalOpen = ref(false);
 const selectedUser = ref(null);
+
+const restoreUserForm = useForm({});
 
 const roleOptions = computed(() => {
   return props.roles.map(role => ({
@@ -110,18 +141,41 @@ const columns = [
   { key: 'actions', label: 'Actions', sortable: false, align: 'right' },
 ];
 
+/**
+ * Open modal to create a new user.
+ */
 const openCreateModal = () => {
   selectedUser.value = null;
   isFormModalOpen.value = true;
 };
 
+/**
+ * Open modal to edit an existing user.
+ * @param {Object} user 
+ */
 const openEditModal = (user) => {
   selectedUser.value = user;
   isFormModalOpen.value = true;
 };
 
+/**
+ * Open modal to deactivate an existing user.
+ * @param {Object} user 
+ */
 const openDeleteModal = (user) => {
   selectedUser.value = user;
   isDeleteModalOpen.value = true;
+};
+
+/**
+ * Send a PATCH request to restore a soft-deleted user.
+ * @param {Object} user 
+ */
+const restoreUser = (user) => {
+  if (confirm(`Are you sure you want to reactivate the account for ${user.name}?`)) {
+    restoreUserForm.patch(route('users.restore', user.id), {
+      preserveScroll: true,
+    });
+  }
 };
 </script>

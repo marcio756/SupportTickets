@@ -19,7 +19,8 @@ class UserController extends Controller
 
     /**
      * Display a listing of the resource.
-     * Enforces hierarchy: Admins see all, Supporters see only customers.
+     * Enforces hierarchy: Admins see all (including inactive), Supporters see only active customers.
+     *
      * @param Request $request
      * @return Response
      */
@@ -27,25 +28,23 @@ class UserController extends Controller
     {
         $user = $request->user();
 
-        // Only Admins and Supporters can access the user management panel
         if (!$user->isAdmin() && !$user->isSupporter()) {
             abort(403, 'Unauthorized access.');
         }
 
         $query = User::query();
 
-        // Restrict supporters to only view and manage customers
         if ($user->isSupporter()) {
             $query->where('role', RoleEnum::CUSTOMER->value);
             $availableRoles = [RoleEnum::CUSTOMER->value];
         } else {
-            // Admins can manage all roles
             $availableRoles = [RoleEnum::CUSTOMER->value, RoleEnum::SUPPORTER->value, RoleEnum::ADMIN->value];
+            // Admins need to see deactivated accounts to manage them
+            $query->withTrashed();
         }
 
         $workSessionStatus = $this->getWorkSessionStatus($user);
 
-        // If supporter is not actively clocked-in, block access to data
         if ($user->isSupporter() && $workSessionStatus !== \App\Enums\WorkSessionStatusEnum::ACTIVE->value) {
             return Inertia::render('Users/Index', [
                 'users' => [
@@ -85,6 +84,7 @@ class UserController extends Controller
 
     /**
      * Store a newly created resource in storage.
+     *
      * @param Request $request
      * @return RedirectResponse
      */
@@ -113,15 +113,18 @@ class UserController extends Controller
 
     /**
      * Update the specified resource in storage.
+     *
      * @param Request $request
-     * @param User $targetUser
+     * @param int $id
      * @return RedirectResponse
      */
-    public function update(Request $request, User $targetUser): RedirectResponse
+    public function update(Request $request, int $id): RedirectResponse
     {
         $actingUser = $request->user();
+        
+        // Target user might be soft deleted, so we find with trashed
+        $targetUser = User::withTrashed()->findOrFail($id);
 
-        // Prevent supporters from updating admins or other supporters
         if ($actingUser->isSupporter() && $targetUser->role !== RoleEnum::CUSTOMER) {
             abort(403, 'You can only edit customer accounts.');
         }
@@ -138,7 +141,6 @@ class UserController extends Controller
             'password' => ['nullable', 'confirmed', Password::defaults()],
         ]);
 
-        // Prevent downgrading the last admin
         if ($targetUser->isAdmin() && $request->role !== RoleEnum::ADMIN->value) {
             $adminCount = User::where('role', RoleEnum::ADMIN->value)->count();
             if ($adminCount <= 1) {
@@ -160,16 +162,17 @@ class UserController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Deactivate (soft delete) the specified user account.
+     *
      * @param Request $request
-     * @param User $user
+     * @param int $id
      * @return RedirectResponse
      */
-    public function destroy(Request $request, User $user): RedirectResponse
+    public function destroy(Request $request, int $id): RedirectResponse
     {
         $actingUser = $request->user();
+        $user = User::findOrFail($id);
 
-        // Prevent supporters from deleting admins or other supporters
         if ($actingUser->isSupporter() && $user->role !== RoleEnum::CUSTOMER) {
             abort(403, 'You can only delete customer accounts.');
         }
@@ -182,17 +185,38 @@ class UserController extends Controller
             return back()->withErrors(['current_password' => 'You cannot delete your own account.']);
         }
 
-        // Safeguard to prevent deletion of the last system administrator
         if ($user->isAdmin()) {
             $adminCount = User::where('role', RoleEnum::ADMIN->value)->count();
             if ($adminCount <= 1) {
-                // Must return specifically on 'current_password' as expected by the inertia modal/test
                 return back()->withErrors(['current_password' => 'Cannot delete the last administrator.']);
             }
         }
 
+        // With the SoftDeletes trait, this safely deactivates the account without destroying relational data.
         $user->delete();
 
-        return redirect()->back()->with('success', 'User deleted successfully.');
+        return redirect()->back()->with('success', 'User deactivated successfully.');
+    }
+
+    /**
+     * Restore a deactivated (soft deleted) user account.
+     * Only system administrators are granted permission for this action.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return RedirectResponse
+     */
+    public function restore(Request $request, int $id): RedirectResponse
+    {
+        $actingUser = $request->user();
+
+        if (!$actingUser->isAdmin()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+
+        return redirect()->back()->with('success', 'User reactivated successfully.');
     }
 }
