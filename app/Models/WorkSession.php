@@ -31,6 +31,36 @@ class WorkSession extends Model
     }
 
     /**
+     * By appending this, the JSON response will always include the dynamically 
+     * calculated 'total_duration_seconds' so the Flutter app can resume its timer accurately.
+     */
+    protected $appends = ['total_duration_seconds'];
+
+    /**
+     * Calculates the real-time active duration dynamically.
+     *
+     * @return int
+     */
+    public function getTotalDurationSecondsAttribute(): int
+    {
+        // If it's finished, simply return the database recorded total.
+        if ($this->status === WorkSessionStatusEnum::COMPLETED) {
+            return $this->total_worked_seconds ?? 0;
+        }
+
+        $now = now();
+        $pauses = $this->pauses; 
+        
+        $totalPauseSeconds = $pauses->sum(function ($pause) use ($now) {
+            $end = $pause->ended_at ?? $now;
+            return $pause->started_at->diffInSeconds($end);
+        });
+
+        $grossSeconds = $this->started_at->diffInSeconds($now);
+        return max(0, $grossSeconds - $totalPauseSeconds);
+    }
+
+    /**
      * The supporter this session belongs to.
      *
      * @return BelongsTo

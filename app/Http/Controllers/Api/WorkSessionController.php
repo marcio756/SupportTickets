@@ -57,7 +57,6 @@ class WorkSessionController extends Controller
     {
         $user = $request->user();
 
-        // Security gate: Customers should not see work logs
         if ($user->isCustomer()) {
             return $this->errorResponse('Unauthorized access.', 403);
         }
@@ -66,29 +65,24 @@ class WorkSessionController extends Controller
             ->withCount('pauses')
             ->latest('started_at');
 
-        // Isolation Logic: Supporters only see their data
         if ($user->isSupporter()) {
             $query->where('user_id', $user->id);
         }
 
-        // Admin Filter Logic
         if ($user->isAdmin() && $request->filled('user_id')) {
             $query->where('user_id', $request->input('user_id'));
         }
 
-        // Date Filter Logic
         if ($request->filled('date')) {
             $query->whereDate('started_at', $request->input('date'));
         }
 
-        // Calculate aggregate summary for the filtered period without pagination limits
         $totalSeconds = (clone $query)
             ->where('status', WorkSessionStatusEnum::COMPLETED->value)
             ->sum('total_worked_seconds');
         
         $sessions = $query->paginate(15);
 
-        // Transform collection to match frontend expectations
         $sessions->getCollection()->transform(function ($session) {
             $hours = $session->total_worked_seconds ? floor($session->total_worked_seconds / 3600) : 0;
             $minutes = $session->total_worked_seconds ? floor(($session->total_worked_seconds % 3600) / 60) : 0;
@@ -105,7 +99,6 @@ class WorkSessionController extends Controller
             ];
         });
 
-        // Provide list of supporters to Admin for filtering capabilities
         $usersList = [];
         if ($user->isAdmin()) {
             $usersList = User::whereIn('role', [RoleEnum::SUPPORTER->value, RoleEnum::ADMIN->value])
@@ -127,7 +120,8 @@ class WorkSessionController extends Controller
 
     /**
      * Retrieve the current open work session.
-     * * @param Request $request
+     *
+     * @param Request $request
      * @return JsonResponse
      */
     public function current(Request $request): JsonResponse
@@ -140,7 +134,7 @@ class WorkSessionController extends Controller
 
         $session = $user->workSessions()
             ->whereIn('status', ['active', 'paused'])
-            ->with('pauses')
+            ->with('pauses') // Crucial for dynamic accessor calculation
             ->first();
 
         return $this->successResponse($session, 'Sessão atual carregada.');
@@ -148,7 +142,8 @@ class WorkSessionController extends Controller
 
     /**
      * Start a new work session.
-     * * @param Request $request
+     *
+     * @param Request $request
      * @return JsonResponse
      */
     public function start(Request $request): JsonResponse
@@ -159,6 +154,7 @@ class WorkSessionController extends Controller
 
         try {
             $session = $this->workSessionService->startSession($request->user());
+            $session->load('pauses'); // Load relation so dynamic time calculation succeeds
             return $this->successResponse($session, 'Sessão iniciada com sucesso.', 201);
         } catch (\Exception $e) {
             return $this->errorResponse($e->getMessage(), 422);
@@ -167,13 +163,15 @@ class WorkSessionController extends Controller
 
     /**
      * Pause the current active session.
-     * * @param Request $request
+     *
+     * @param Request $request
      * @return JsonResponse
      */
     public function pause(Request $request): JsonResponse
     {
         try {
             $session = $this->workSessionService->pauseSession($request->user());
+            $session->load('pauses'); // Refresh to include the new pause
             return $this->successResponse($session, 'Sessão pausada.');
         } catch (\Exception $e) {
             return $this->errorResponse($e->getMessage(), 422);
@@ -182,13 +180,15 @@ class WorkSessionController extends Controller
 
     /**
      * Resume a previously paused session.
-     * * @param Request $request
+     *
+     * @param Request $request
      * @return JsonResponse
      */
     public function resume(Request $request): JsonResponse
     {
         try {
             $session = $this->workSessionService->resumeSession($request->user());
+            $session->load('pauses'); // Refresh to close the pause
             return $this->successResponse($session, 'Sessão retomada.');
         } catch (\Exception $e) {
             return $this->errorResponse($e->getMessage(), 422);
@@ -197,13 +197,15 @@ class WorkSessionController extends Controller
 
     /**
      * End the current work session.
-     * * @param Request $request
+     *
+     * @param Request $request
      * @return JsonResponse
      */
     public function end(Request $request): JsonResponse
     {
         try {
             $session = $this->workSessionService->endSession($request->user());
+            $session->load('pauses');
             return $this->successResponse($session, 'Sessão terminada com sucesso.');
         } catch (\Exception $e) {
             return $this->errorResponse($e->getMessage(), 422);
