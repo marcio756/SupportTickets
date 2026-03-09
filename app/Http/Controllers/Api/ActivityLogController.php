@@ -11,7 +11,7 @@ use App\Models\User;
 
 /**
  * Handles the retrieval of system-wide activity logs via API.
- * Restricted to users with supporter privileges.
+ * Restricted to users with admin or supporter privileges.
  */
 class ActivityLogController extends Controller
 {
@@ -25,7 +25,12 @@ class ActivityLogController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        if (! $request->user()->isSupporter()) {
+        /**
+         * Check if the user has the required permissions.
+         * We use the built-in helper methods since 'role' is cast to a RoleEnum object.
+         */
+        $user = $request->user();
+        if (!$user->isAdmin() && !$user->isSupporter()) {
             return $this->errorResponse('Unauthorized access to activity logs.', 403);
         }
 

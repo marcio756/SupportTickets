@@ -55,10 +55,16 @@ class FetchSupportEmails extends Command
                 // Extracts plain text body; falls back to HTML if plain text is unavailable
                 $body = $message->getTextBody() ?? $message->getHTMLBody() ?? '';
                 
+                // Fetch RFC 2822 threading headers safely
+                $inReplyTo = $message->getInReplyTo();
+                $references = $message->getReferences();
+                
                 $emailData = [
-                    'subject'    => $message->getSubject()[0] ?? 'No Subject',
-                    'body'       => trim($body),
-                    'from_email' => $message->getFrom()[0]->mail ?? null,
+                    'subject'     => $message->getSubject()[0] ?? 'No Subject',
+                    'body'        => trim($body),
+                    'from_email'  => $message->getFrom()[0]->mail ?? null,
+                    'in_reply_to' => is_iterable($inReplyTo) ? implode(' ', $inReplyTo->toArray()) : (string) $inReplyTo,
+                    'references'  => is_iterable($references) ? implode(' ', $references->toArray()) : (string) $references,
                 ];
 
                 if ($emailData['from_email']) {

@@ -61,6 +61,13 @@ class DatabaseSeeder extends Seeder
             'role' => RoleEnum::SUPPORTER,
         ]);
 
+        $testAdmin = User::factory()->create([
+            'name' => 'Admin Demo',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('123'),
+            'role' => RoleEnum::ADMIN,
+        ]);
+
         /**
          * 4. Create 10 random Customers
          */
