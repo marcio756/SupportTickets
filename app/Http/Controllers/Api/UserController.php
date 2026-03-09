@@ -11,19 +11,25 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
+/**
+ * Handles user management operations including listing, creating,
+ * updating, soft-deleting, and restoring users.
+ */
 class UserController extends Controller
 {
     /**
      * Display a listing of the resource.
      * Includes basic filtering by name/email and role.
+     * Supporters and Admins can view this list.
      */
     public function index(Request $request): JsonResponse
     {
-        if (!$request->user()->isSupporter()) {
+        if (!$request->user()->isSupporter() && !$request->user()->isAdmin()) {
             return response()->json(['message' => 'Unauthorized access.'], 403);
         }
 
-        $query = User::query();
+        // Include soft-deleted users so the frontend can display and restore them
+        $query = User::withTrashed();
 
         if ($request->filled('query')) {
             $searchTerm = '%' . $request->input('query') . '%';
@@ -44,10 +50,11 @@ class UserController extends Controller
 
     /**
      * Store a newly created resource in storage.
+     * Strictly limited to administrators.
      */
     public function store(Request $request): JsonResponse
     {
-        if (!$request->user()->isSupporter()) {
+        if (!$request->user()->isAdmin()) {
             return response()->json(['message' => 'Unauthorized access.'], 403);
         }
 
@@ -70,10 +77,11 @@ class UserController extends Controller
 
     /**
      * Update the specified resource in storage.
+     * Strictly limited to administrators.
      */
     public function update(Request $request, User $user): JsonResponse
     {
-        if (!$request->user()->isSupporter()) {
+        if (!$request->user()->isAdmin()) {
             return response()->json(['message' => 'Unauthorized access.'], 403);
         }
 
@@ -84,10 +92,11 @@ class UserController extends Controller
             'password' => ['nullable', Password::defaults()],
         ]);
 
-        if ($user->role === RoleEnum::SUPPORTER && $request->role !== RoleEnum::SUPPORTER->value) {
-            $supportCount = User::where('role', RoleEnum::SUPPORTER)->count();
-            if ($supportCount <= 1) {
-                return response()->json(['message' => 'Cannot change the role of the last support user.'], 422);
+        // Prevent changing the role of the last remaining admin
+        if ($user->role === RoleEnum::ADMIN->value && $request->role !== RoleEnum::ADMIN->value) {
+            $adminCount = User::where('role', RoleEnum::ADMIN->value)->count();
+            if ($adminCount <= 1) {
+                return response()->json(['message' => 'Cannot change the role of the last admin user.'], 422);
             }
         }
 
@@ -105,27 +114,45 @@ class UserController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove (deactivate) the specified resource from storage.
+     * Strictly limited to administrators.
      */
     public function destroy(Request $request, User $user): JsonResponse
     {
-        if (!$request->user()->isSupporter()) {
+        if (!$request->user()->isAdmin()) {
             return response()->json(['message' => 'Unauthorized access.'], 403);
         }
 
-        if ($request->user()->id === $user->id) {
-            return response()->json(['message' => 'You cannot delete your own account.'], 422);
-        }
-
-        if ($user->role === RoleEnum::SUPPORTER) {
-            $supportCount = User::where('role', RoleEnum::SUPPORTER)->count();
-            if ($supportCount <= 1) {
-                return response()->json(['message' => 'Cannot delete the last support user.'], 422);
+        // Prevent an admin from deleting the last admin in the system
+        if ($user->role === RoleEnum::ADMIN->value) {
+            $adminCount = User::where('role', RoleEnum::ADMIN->value)->count();
+            if ($adminCount <= 1) {
+                return response()->json(['message' => 'Cannot deactivate the last admin user.'], 422);
             }
         }
 
         $user->delete();
 
-        return response()->json(['message' => 'User deleted successfully.']);
+        return response()->json(['message' => 'User deactivated successfully.']);
+    }
+
+    /**
+     * Restore a previously deactivated user account.
+     * Strictly limited to administrators.
+     *
+     * @param Request $request
+     * @param int|string $id The ID of the soft-deleted user
+     */
+    public function restore(Request $request, $id): JsonResponse
+    {
+        if (!$request->user()->isAdmin()) {
+            return response()->json(['message' => 'Unauthorized access.'], 403);
+        }
+
+        // Retrieve the user even if they are soft-deleted
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+
+        return response()->json(['message' => 'User restored successfully.', 'data' => $user]);
     }
 }

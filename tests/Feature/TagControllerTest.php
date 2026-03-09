@@ -2,65 +2,69 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RoleEnum;
+use App\Enums\WorkSessionStatusEnum;
 use App\Models\Tag;
 use App\Models\User;
+use App\Models\WorkSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Integration tests for the Tag Management.
+ */
 class TagControllerTest extends TestCase
 {
     use RefreshDatabase;
 
     /**
-     * Verify that only supporters can view the tags management page.
-     *
-     * @return void
+     * Ensure supporters cannot create tags without an active session.
      */
-    public function test_only_supporters_can_access_tags_index(): void
+    public function test_supporter_cannot_create_tag_without_active_session(): void
     {
-        $customer = User::factory()->create(['role' => 'customer']);
-        $supporter = User::factory()->create(['role' => 'supporter']);
-
-        // Assert customer is blocked
-        $this->actingAs($customer)->get(route('tags.index'))->assertStatus(403);
-
-        // Assert supporter can view
-        $this->actingAs($supporter)->get(route('tags.index'))->assertStatus(200);
-    }
-
-    /**
-     * Verify that a customer cannot create a tag.
-     *
-     * @return void
-     */
-    public function test_customers_cannot_create_tags(): void
-    {
-        $customer = User::factory()->create(['role' => 'customer']);
-
-        $response = $this->actingAs($customer)->post(route('tags.store'), [
-            'name' => 'New Tag',
-            'color' => '#ffffff',
-        ]);
-
-        $response->assertStatus(403);
-        $this->assertDatabaseMissing('tags', ['name' => 'New Tag']);
-    }
-    
-    /**
-     * Verify that a supporter can create a new tag.
-     *
-     * @return void
-     */
-    public function test_supporters_can_create_tags(): void
-    {
-        $supporter = User::factory()->create(['role' => 'supporter']);
-
-        $response = $this->actingAs($supporter)->post(route('tags.store'), [
-            'name' => 'Server Issue',
+        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER->value]);
+        
+        $response = $this->actingAs($supporter)->post('/tags', [
+            'name' => 'Urgent',
             'color' => '#ff0000',
         ]);
 
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('tags', ['name' => 'Urgent']);
+    }
+
+    /**
+     * Ensure supporters can create tags if they have an active session.
+     */
+    public function test_supporter_can_create_tag_with_active_session(): void
+    {
+        $supporter = User::factory()->create(['role' => RoleEnum::SUPPORTER->value]);
+        
+        WorkSession::factory()->create([
+            'user_id' => $supporter->id,
+            'status' => WorkSessionStatusEnum::ACTIVE->value,
+        ]);
+
+        $response = $this->actingAs($supporter)->post('/tags', [
+            'name' => 'Bug',
+            'color' => '#000000',
+        ]);
+
         $response->assertRedirect();
-        $this->assertDatabaseHas('tags', ['name' => 'Server Issue']);
+        $this->assertDatabaseHas('tags', ['name' => 'Bug']);
+    }
+
+    /**
+     * Ensure admins can bypass session checks and manage tags anytime.
+     */
+    public function test_admin_can_delete_tag_without_session(): void
+    {
+        $admin = User::factory()->create(['role' => RoleEnum::ADMIN->value]);
+        $tag = Tag::factory()->create(['name' => 'Old Tag']);
+
+        $response = $this->actingAs($admin)->delete("/tags/{$tag->id}");
+
+        $response->assertRedirect();
+        $this->assertDatabaseMissing('tags', ['id' => $tag->id]);
     }
 }

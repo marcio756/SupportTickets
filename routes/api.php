@@ -81,6 +81,7 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
      * Administrative User Management
      */
     Route::apiResource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::patch('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
 
     /**
      * System Activity Logs

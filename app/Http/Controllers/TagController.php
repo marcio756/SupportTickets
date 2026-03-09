@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tag;
+use App\Models\User;
 use App\Traits\ChecksWorkSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,14 +29,12 @@ class TagController extends Controller
     {
         $user = $request->user();
 
-        // Allow both Admin and Supporter
         if (!$user->isSupporter() && !$user->isAdmin()) {
             abort(403, 'Restricted access to Staff only.');
         }
 
         $workSessionStatus = $this->getWorkSessionStatus($user);
 
-        // Admins can always manage tags. Supporters must have an active session.
         if (!$user->isAdmin() && $workSessionStatus !== WorkSessionStatusEnum::ACTIVE->value) {
             return Inertia::render('Tags/Index', [
                 'tags' => [
@@ -73,9 +72,7 @@ class TagController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (!$request->user()->isSupporter() && !$request->user()->isAdmin()) {
-            abort(403, 'Restricted access to Staff only.');
-        }
+        $this->authorizeAction($request->user());
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:tags,name'],
@@ -96,9 +93,7 @@ class TagController extends Controller
      */
     public function update(Request $request, Tag $tag): RedirectResponse
     {
-        if (!$request->user()->isSupporter() && !$request->user()->isAdmin()) {
-            abort(403, 'Restricted access to Staff only.');
-        }
+        $this->authorizeAction($request->user());
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:tags,name,' . $tag->id],
@@ -119,12 +114,27 @@ class TagController extends Controller
      */
     public function destroy(Request $request, Tag $tag): RedirectResponse
     {
-        if (!$request->user()->isSupporter() && !$request->user()->isAdmin()) {
-            abort(403, 'Restricted access to Staff only.');
-        }
+        $this->authorizeAction($request->user());
 
         $tag->delete();
 
         return redirect()->back()->with('success', 'Tag deleted successfully.');
+    }
+
+    /**
+     * Ensure the user has permission to modify tags.
+     * Admins are always allowed. Supporters require an active work session.
+     * * @param User $user
+     * @return void
+     */
+    private function authorizeAction(User $user): void
+    {
+        if (!$user->isSupporter() && !$user->isAdmin()) {
+            abort(403, 'Restricted access to Staff only.');
+        }
+
+        if (!$user->isAdmin() && $this->getWorkSessionStatus($user) !== WorkSessionStatusEnum::ACTIVE->value) {
+            abort(403, 'Action requires an active work session.');
+        }
     }
 }
