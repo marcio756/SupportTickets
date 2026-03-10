@@ -10,7 +10,13 @@
     </template>
 
     <template #right>
-      <div class="right-section">
+      <div class="right-section flex items-center gap-4">
+        
+        <SessionStatusBadge 
+            v-if="activeSession" 
+            :session="activeSession" 
+        />
+
         <NotificationDropdown />
         <va-dropdown placement="bottom-end">
           <template #anchor>
@@ -38,6 +44,7 @@ import { computed } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import { useColors, useToast } from 'vuestic-ui';
 import NotificationDropdown from './NotificationDropdown.vue';
+import SessionStatusBadge from '@/Components/WorkSession/SessionStatusBadge.vue';
 
 defineEmits(['toggle-sidebar']);
 
@@ -52,6 +59,12 @@ const userInitials = computed(() => {
   const user = page.props.auth.user;
   return user?.name ? user.name.substring(0, 2).toUpperCase() : 'U';
 });
+
+/**
+ * Retrieves the currently active or paused work session from shared Inertia props.
+ * This powers the SessionStatusBadge component reactively.
+ */
+const activeSession = computed(() => page.props.auth?.work_session);
 
 /**
  * Prevents logout if a work session is currently active or paused.

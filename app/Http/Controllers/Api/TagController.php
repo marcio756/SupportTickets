@@ -10,11 +10,28 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * Handles the CRUD operations for Tags via API.
- * Exclusively restricted to users with supporter privileges.
+ * Exclusively restricted to users with admin or supporter privileges.
  */
 class TagController extends Controller
 {
     use ApiResponser;
+
+    /**
+     * Helper method to centralize the authorization logic (DRY principle).
+     * Checks if the user is a Supporter or an Admin.
+     * * @param Request $request
+     * @return bool
+     */
+    private function _canManageTags(Request $request): bool
+    {
+        $user = $request->user();
+        
+        // Assumindo que a tua model User tem o método isAdmin(). 
+        // Caso não tenha, faz fallback seguro para a verificação direta do atributo 'role'.
+        $isAdmin = method_exists($user, 'isAdmin') ? $user->isAdmin() : $user->role === 'admin';
+        
+        return $user->isSupporter() || $isAdmin;
+    }
 
     /**
      * Display a listing of all available tags.
@@ -25,8 +42,8 @@ class TagController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        if (!$request->user()->isSupporter()) {
-            return $this->errorResponse('Acesso restrito apenas a Supporters.', 403);
+        if (!$this->_canManageTags($request)) {
+            return $this->errorResponse('Acesso restrito apenas a Admins e Supporters.', 403);
         }
 
         $query = Tag::query();
@@ -48,8 +65,8 @@ class TagController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        if (!$request->user()->isSupporter()) {
-            return $this->errorResponse('Acesso restrito apenas a Supporters.', 403);
+        if (!$this->_canManageTags($request)) {
+            return $this->errorResponse('Acesso restrito apenas a Admins e Supporters.', 403);
         }
 
         $validated = $request->validate([
@@ -71,8 +88,8 @@ class TagController extends Controller
      */
     public function update(Request $request, Tag $tag): JsonResponse
     {
-        if (!$request->user()->isSupporter()) {
-            return $this->errorResponse('Acesso restrito apenas a Supporters.', 403);
+        if (!$this->_canManageTags($request)) {
+            return $this->errorResponse('Acesso restrito apenas a Admins e Supporters.', 403);
         }
 
         $validated = $request->validate([
@@ -94,8 +111,8 @@ class TagController extends Controller
      */
     public function destroy(Request $request, Tag $tag): JsonResponse
     {
-        if (!$request->user()->isSupporter()) {
-            return $this->errorResponse('Acesso restrito apenas a Supporters.', 403);
+        if (!$this->_canManageTags($request)) {
+            return $this->errorResponse('Acesso restrito apenas a Admins e Supporters.', 403);
         }
 
         $tag->delete();

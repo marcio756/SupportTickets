@@ -7,13 +7,14 @@ use App\Enums\WorkSessionStatusEnum;
 use App\Models\User;
 use App\Models\WorkSession;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class WorkSessionReportController extends Controller
 {
     /**
-     * Renders the work session log with summary statistics.
+     * Renders the work session log with summary statistics for a weekly calendar view.
      * Implements strict role-based data isolation and filtering.
      * * @param Request $request
      * @return Response
@@ -27,8 +28,18 @@ class WorkSessionReportController extends Controller
             abort(403, 'Unauthorized access.');
         }
 
-        $query = WorkSession::with('user:id,name,email')
-            ->withCount('pauses')
+        // Determine the requested week or default to the current week
+        $weekStartInput = $request->input('week_start', Carbon::now()->startOfWeek()->toDateString());
+        $weekStart = Carbon::parse($weekStartInput)->startOfDay();
+        $weekEnd = clone $weekStart->endOfWeek()->endOfDay();
+
+        $query = WorkSession::with([
+                'user:id,name,email', 
+                'pauses' => function($q) {
+                    $q->orderBy('started_at', 'asc');
+                }
+            ])
+            ->whereBetween('started_at', [$weekStart, $weekEnd])
             ->latest('started_at');
 
         // Isolation Logic: Supporters only see their data
@@ -41,33 +52,33 @@ class WorkSessionReportController extends Controller
             $query->where('user_id', $request->input('user_id'));
         }
 
-        // Date Filter Logic
-        if ($request->filled('date')) {
-            $query->whereDate('started_at', $request->input('date'));
-        }
+        $sessionsData = $query->get();
 
         // Calculate aggregate summary for the filtered period
-        // We clone the query to calculate totals without pagination limits
-        $totalSeconds = (clone $query)
+        $totalSeconds = $sessionsData
             ->where('status', WorkSessionStatusEnum::COMPLETED)
             ->sum('total_worked_seconds');
-        
-        $sessions = $query->paginate(15)->withQueryString();
 
-        // Transform data for presentation
-        $sessions->getCollection()->transform(function ($session) {
+        // Transform data for the calendar presentation
+        $transformedSessions = $sessionsData->map(function ($session) {
             $hours = $session->total_worked_seconds ? floor($session->total_worked_seconds / 3600) : 0;
             $minutes = $session->total_worked_seconds ? floor(($session->total_worked_seconds % 3600) / 60) : 0;
             
             return [
                 'id' => $session->id,
                 'user' => $session->user,
-                'status' => $session->status,
-                'date' => $session->started_at->format('Y-m-d'),
-                'started_at' => $session->started_at->format('H:i'),
-                'ended_at' => $session->ended_at ? $session->ended_at->format('H:i') : null,
-                'pauses_count' => $session->pauses_count,
+                'status' => $session->status->value,
+                // We send exact ISO strings so the frontend can plot them on the calendar accurately
+                'started_at_iso' => $session->started_at->toIso8601String(),
+                'ended_at_iso' => $session->ended_at ? $session->ended_at->toIso8601String() : null,
                 'total_time_formatted' => $session->total_worked_seconds ? "{$hours}h {$minutes}m" : '-',
+                'pauses' => $session->pauses->map(function ($pause) {
+                    return [
+                        'id' => $pause->id,
+                        'started_at_iso' => $pause->started_at->toIso8601String(),
+                        'ended_at_iso' => $pause->ended_at ? $pause->ended_at->toIso8601String() : null,
+                    ];
+                }),
             ];
         });
 
@@ -81,9 +92,12 @@ class WorkSessionReportController extends Controller
         }
 
         return Inertia::render('WorkSessions/Index', [
-            'sessions' => $sessions,
+            'sessions' => $transformedSessions,
             'users' => $usersList,
-            'filters' => $request->only(['user_id', 'date']),
+            'filters' => [
+                'user_id' => $request->input('user_id'),
+                'week_start' => $weekStart->toDateString()
+            ],
             'summary' => [
                 'total_hours' => floor($totalSeconds / 3600),
                 'total_minutes' => floor(($totalSeconds % 3600) / 60),
