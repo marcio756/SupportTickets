@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\RoleEnum;
 use App\Enums\WorkSessionStatusEnum;
 use App\Models\User;
 use App\Models\WorkSession;
@@ -10,7 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Encapsulates the core business logic for time tracking and shift management.
+ * Encapsulates the core business logic for time tracking, shift management and reporting.
  */
 class WorkSessionService
 {
@@ -145,6 +146,76 @@ class WorkSessionService
     }
 
     /**
+     * Retrieves and formats work session reports based on user permissions and filters.
+     * Maintains strict role-based data isolation.
+     *
+     * @param User $user
+     * @param array $filters
+     * @return array
+     */
+    public function getReportsData(User $user, array $filters): array
+    {
+        $query = WorkSession::with('user:id,name,email')
+            ->withCount('pauses')
+            ->latest('started_at');
+
+        if ($user->isSupporter()) {
+            $query->where('user_id', $user->id);
+        }
+
+        if ($user->isAdmin() && !empty($filters['user_id'])) {
+            $query->where('user_id', $filters['user_id']);
+        }
+
+        if (!empty($filters['date'])) {
+            $query->whereDate('started_at', $filters['date']);
+        }
+
+        $totalSeconds = (clone $query)
+            ->where('status', WorkSessionStatusEnum::COMPLETED->value)
+            ->sum('total_worked_seconds');
+        
+        $sessions = $query->paginate(15);
+
+        $sessions->getCollection()->transform(function ($session) {
+            $hours = $session->total_worked_seconds ? floor($session->total_worked_seconds / 3600) : 0;
+            $minutes = $session->total_worked_seconds ? floor(($session->total_worked_seconds % 3600) / 60) : 0;
+            
+            return [
+                'id' => $session->id,
+                'user' => $session->user,
+                'status' => $session->status,
+                'date' => $session->started_at->format('Y-m-d'),
+                'started_at' => $session->started_at->format('H:i'),
+                'ended_at' => $session->ended_at ? $session->ended_at->format('H:i') : null,
+                'pauses_count' => $session->pauses_count,
+                'total_time_formatted' => $session->total_worked_seconds ? "{$hours}h {$minutes}m" : '-',
+            ];
+        });
+
+        $usersList = [];
+        if ($user->isAdmin()) {
+            $usersList = User::whereIn('role', [RoleEnum::SUPPORTER->value, RoleEnum::ADMIN->value])
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+        }
+
+        return [
+            'sessions' => $sessions,
+            'users' => $usersList,
+            'filters' => [
+                'user_id' => $filters['user_id'] ?? null,
+                'date' => $filters['date'] ?? null,
+            ],
+            'summary' => [
+                'total_hours' => floor($totalSeconds / 3600),
+                'total_minutes' => floor(($totalSeconds % 3600) / 60),
+            ]
+        ];
+    }
+
+    /**
      * Deletes a work session and logs the administrative action for audit purposes.
      *
      * @param WorkSession $session
@@ -156,9 +227,9 @@ class WorkSessionService
             if (function_exists('activity')) {
                 activity()
                     ->performedOn($session)
-                    ->event('deleted') // Explicitly declare the event so it shows correctly in the UI badge
+                    ->event('deleted')
                     ->withProperties([
-                        'old' => [ // Wrap in 'old' to simulate a standard Eloquent model deletion
+                        'old' => [
                             'user_name' => $session->user?->name,
                             'started_at' => $session->started_at->toDateString(),
                             'total_seconds' => $session->total_worked_seconds
