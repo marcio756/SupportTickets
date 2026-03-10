@@ -31,7 +31,9 @@ class WorkSessionReportController extends Controller
         // Determine the requested week or default to the current week
         $weekStartInput = $request->input('week_start', Carbon::now()->startOfWeek()->toDateString());
         $weekStart = Carbon::parse($weekStartInput)->startOfDay();
-        $weekEnd = clone $weekStart->endOfWeek()->endOfDay();
+        
+        // CORREÇÃO: Utilizar copy() para criar uma nova instância e evitar mutar o $weekStart original
+        $weekEnd = $weekStart->copy()->endOfWeek()->endOfDay();
 
         $query = WorkSession::with([
                 'user:id,name,email', 
@@ -60,20 +62,20 @@ class WorkSessionReportController extends Controller
         $totalSeconds = 0;
 
         foreach ($sessionsData as $session) {
-            if ($session->status === WorkSessionStatusEnum::COMPLETED && $session->total_worked_seconds) {
+            if ($session->status === WorkSessionStatusEnum::COMPLETED && $session->total_worked_seconds !== null) {
                 $totalSeconds += $session->total_worked_seconds;
             } else {
                 // Cálculo dinâmico para sessões em curso (Ativa/Pausada)
                 $start = Carbon::parse($session->started_at);
                 $end = $session->ended_at ? Carbon::parse($session->ended_at) : Carbon::now();
-                $elapsed = $end->diffInSeconds($start);
+                $elapsed = $start->diffInSeconds($end);
 
                 $pauseSeconds = 0;
                 if ($session->pauses) {
                     foreach ($session->pauses as $pause) {
                         $pStart = Carbon::parse($pause->started_at);
                         $pEnd = $pause->ended_at ? Carbon::parse($pause->ended_at) : Carbon::now();
-                        $pauseSeconds += $pEnd->diffInSeconds($pStart);
+                        $pauseSeconds += $pStart->diffInSeconds($pEnd);
                     }
                 }
 
@@ -84,19 +86,19 @@ class WorkSessionReportController extends Controller
         // Transform data for the calendar presentation
         $transformedSessions = $sessionsData->map(function ($session) {
             // Replicar o cálculo para o próprio bloco do evento (caso o frontend precise)
-            if ($session->status === WorkSessionStatusEnum::COMPLETED) {
-                $secs = $session->total_worked_seconds ?: 0;
+            if ($session->status === WorkSessionStatusEnum::COMPLETED && $session->total_worked_seconds !== null) {
+                $secs = $session->total_worked_seconds;
             } else {
                 $start = Carbon::parse($session->started_at);
                 $end = $session->ended_at ? Carbon::parse($session->ended_at) : Carbon::now();
-                $el = $end->diffInSeconds($start);
+                $el = $start->diffInSeconds($end);
                 
                 $pSecs = 0;
                 if ($session->pauses) {
                     foreach ($session->pauses as $p) {
                         $pS = Carbon::parse($p->started_at);
                         $pE = $p->ended_at ? Carbon::parse($p->ended_at) : Carbon::now();
-                        $pSecs += $pE->diffInSeconds($pS);
+                        $pSecs += $pS->diffInSeconds($pE);
                     }
                 }
                 $secs = max(0, $el - $pSecs);

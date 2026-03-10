@@ -1,8 +1,8 @@
 <script setup>
 /**
  * WeeklyCalendar Component
- * Includes advanced parsing for strict Timezone matching and imperative API logic (.update())
- * to ensure that active events render perfectly regardless of local browser times.
+ * Includes strict chronological splitting to guarantee zero overlaps.
+ * Work sessions are sliced mathematically around pauses.
  */
 import { ref, watch, reactive, onMounted } from 'vue';
 import { DayPilot, DayPilotCalendar, DayPilotNavigator } from '@daypilot/daypilot-lite-vue';
@@ -23,19 +23,20 @@ const emit = defineEmits(['update:weekStartDate']);
 const calendarRef = ref(null);
 
 /**
- * CONVERSOR ESTRITO DE FUSO HORÁRIO
- * Força a string ISO de servidor a ser processada pelo objeto Date do Javascript local
- * e recria um formato string que o DayPilot lê como "A Hora Visual Exata" atual, evintando atrasos.
+ * CONVERSOR ESTRITO DE FUSO HORÁRIO COM PRECISÃO DE MILISSEGUNDOS
+ * Preserva a ordem cronológica exata para o layout engine do DayPilot não sobrepor blocos.
  */
 const getLocalDayPilotTime = (dateStr) => {
     if (!dateStr) return null;
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return null;
     const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    const padMs = (n) => String(n).padStart(3, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${padMs(d.getMilliseconds())}`;
 };
 
 const getDurationText = (diffMins) => {
+    if (diffMins <= 0) return `0 min`;
     if (diffMins < 60) return `${diffMins} min`;
     const h = Math.floor(diffMins / 60);
     const m = diffMins % 60;
@@ -61,6 +62,9 @@ const calendarConfig = reactive({
     eventMoveHandling: "Disabled",
     eventResizeHandling: "Disabled",
     timeRangeSelectedHandling: "Disabled",
+    // Configurações para garantir largura máxima caso haja conflitos não previstos
+    eventArrangement: "Full", 
+    allowEventOverlap: false,
     events: [],
     onBeforeEventRender: (args) => {
         args.data.fontColor = '#ffffff';
@@ -72,7 +76,8 @@ const calendarConfig = reactive({
 });
 
 /**
- * Lógica principal para processamento matemático e montagem visual dos blocos.
+ * LÓGICA DE FATIAMENTO LINEAR
+ * Garante que os eventos são puramente adjacentes, sem NENHUMA sobreposição temporal.
  */
 const processEvents = () => {
     const mappedEvents = [];
@@ -82,99 +87,111 @@ const processEvents = () => {
     }
 
     props.sessions.forEach(session => {
-        const startLiteral = getLocalDayPilotTime(session.started_at_iso || session.started_at);
-        if (!startLiteral) return;
+        const sStartLiteral = getLocalDayPilotTime(session.started_at_iso || session.started_at);
+        if (!sStartLiteral) return;
 
-        const dpStart = new DayPilot.Date(startLiteral);
-        const isOngoing = !(session.ended_at_iso || session.ended_at);
-        
-        // Usa as horas e minutos precisos (locais) do exato momento se a sessão for ativa
-        const dpEnd = isOngoing 
+        const dpSessionStart = new DayPilot.Date(sStartLiteral);
+        const isSessionOngoing = !(session.ended_at_iso || session.ended_at);
+        const dpSessionEnd = isSessionOngoing 
             ? new DayPilot.Date() 
             : new DayPilot.Date(getLocalDayPilotTime(session.ended_at_iso || session.ended_at));
 
-        // Impede durações negativas resultantes de diferenças de segundos de CPU
-        const diffMins = Math.max(1, Math.round((dpEnd.getTime() - dpStart.getTime()) / 60000));
-        
-        let visualEnd = dpEnd;
-        if (diffMins < 60) {
-            visualEnd = dpStart.addMinutes(60); 
-        }
-
-        let backColor = '#4f46e5'; 
-        let borderColor = '#3730a3';
-        
-        if (session.status === 'active') {
-            backColor = '#16a34a';
-            borderColor = '#15803d';
-        } else if (session.status === 'paused') {
-            backColor = '#ca8a04';
-            borderColor = '#a16207';
-        }
-
         const sessionTitle = session.user?.name ? `${session.user.name}` : 'Session';
-        const displayDuration = getDurationText(diffMins);
-        const timeRangeText = `${dpStart.toString('HH:mm')} - ${isOngoing ? 'Active' : dpEnd.toString('HH:mm')}`;
+        let cursor = dpSessionStart; // O cursor viaja no tempo sem nunca recuar
 
-        mappedEvents.push({
-            id: `session_${session.id}`,
-            start: dpStart.toString(),
-            end: visualEnd.toString(),
-            html: `
-                <div style="padding: 2px 4px; display: flex; flex-direction: column; gap: 2px;">
-                    <div style="font-weight: 800; font-size: 11px;">${sessionTitle}</div>
-                    <div style="font-size: 10px; opacity: 0.9;">${timeRangeText}</div>
-                    <div>
-                        <span style="font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; color: white;">
-                            ⏱ ${displayDuration}
-                        </span>
-                    </div>
-                </div>
-            `,
-            toolTip: `Supporter: ${sessionTitle}\nStatus: ${session.status.toUpperCase()}\nReal Time: ${timeRangeText}\nWorked: ${displayDuration}`,
-            backColor: backColor,
-            borderColor: borderColor,
-            tags: { type: 'session' }
-        });
+        // Função geradora de blocos individuais na linha do tempo
+        const pushBlock = (start, end, type, pauseData = null) => {
+            if (start.getTime() >= end.getTime()) return; // Ignora blocos com duração zero ou negativa
 
-        if (session.pauses && session.pauses.length > 0) {
-            session.pauses.forEach(pause => {
-                const pStartLiteral = getLocalDayPilotTime(pause.started_at_iso || pause.started_at);
-                if (!pStartLiteral) return;
+            const diffMins = Math.round((end.getTime() - start.getTime()) / 60000);
+            if (diffMins < 1 && type === 'work') return; // Ignora micro-trabalhos de segundos para limpeza visual
 
-                const dpPauseStart = new DayPilot.Date(pStartLiteral);
-                const pOngoing = !(pause.ended_at_iso || pause.ended_at);
+            const displayDuration = getDurationText(Math.max(1, diffMins));
+            const timeRangeText = `${start.toString('HH:mm')} - ${end.toString('HH:mm')}`;
+
+            if (type === 'work') {
+                const isFinalBlock = end.getTime() === dpSessionEnd.getTime();
+                const isBlockActive = isSessionOngoing && isFinalBlock && session.status !== 'paused';
                 
-                const dpPauseEnd = pOngoing 
-                    ? new DayPilot.Date() 
-                    : new DayPilot.Date(getLocalDayPilotTime(pause.ended_at_iso || pause.ended_at));
-
-                const pDiffMins = Math.max(1, Math.round((dpPauseEnd.getTime() - dpPauseStart.getTime()) / 60000));
-                
-                let pVisualEnd = dpPauseEnd;
-                if (pDiffMins < 15) {
-                    pVisualEnd = dpPauseStart.addMinutes(15);
-                }
+                const backColor = isBlockActive ? '#16a34a' : '#4f46e5';
+                const borderColor = isBlockActive ? '#15803d' : '#3730a3';
+                const statusText = isBlockActive ? 'ACTIVE' : 'COMPLETED';
 
                 mappedEvents.push({
-                    id: `pause_${pause.id}`,
-                    start: dpPauseStart.toString(),
-                    end: pVisualEnd.toString(),
-                    html: `<div style="text-align:center; font-weight:bold; font-size:9px; margin-top:2px; color:white;">PAUSE (${getDurationText(pDiffMins)})</div>`,
-                    toolTip: `PAUSE\nDuration: ${getDurationText(pDiffMins)}`,
+                    id: `work_${session.id}_${start.getTime()}`,
+                    start: start.toString(),
+                    end: end.toString(),
+                    html: `
+                        <div style="padding: 4px; display: flex; flex-direction: column; gap: 2px;">
+                            <div style="font-weight: 800; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sessionTitle}</div>
+                            <div style="font-size: 10px; opacity: 0.9;">${isBlockActive ? start.toString('HH:mm') + ' - Active' : timeRangeText}</div>
+                            <div>
+                                <span style="font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; color: white;">
+                                    ⏱ ${displayDuration}
+                                </span>
+                            </div>
+                        </div>
+                    `,
+                    toolTip: `Supporter: ${sessionTitle}\nStatus: ${statusText}\nTime: ${timeRangeText}\nWorked: ${displayDuration}`,
+                    backColor: backColor,
+                    borderColor: borderColor,
+                    tags: { type: 'session' }
+                });
+            } else if (type === 'pause') {
+                mappedEvents.push({
+                    id: `pause_${pauseData.id}_${start.getTime()}`,
+                    start: start.toString(),
+                    end: end.toString(),
+                    html: `<div style="text-align:center; font-weight:bold; font-size:9px; margin-top:2px; color:white;">PAUSE<br/>${displayDuration}</div>`,
+                    toolTip: `PAUSE\nTime: ${timeRangeText}\nDuration: ${displayDuration}`,
                     backColor: '#ea580c',
                     borderColor: '#c2410c',
                     tags: { type: 'pause' }
                 });
+            }
+        };
+
+        // Extrai e ordena as pausas cronologicamente
+        if (session.pauses && session.pauses.length > 0) {
+            const sortedPauses = [...session.pauses].sort((a, b) => {
+                return new Date(a.started_at_iso || a.started_at).getTime() - new Date(b.started_at_iso || b.started_at).getTime();
+            });
+
+            sortedPauses.forEach(pause => {
+                const pStartLiteral = getLocalDayPilotTime(pause.started_at_iso || pause.started_at);
+                if (!pStartLiteral) return;
+
+                let dpPauseStart = new DayPilot.Date(pStartLiteral);
+                const pOngoing = !(pause.ended_at_iso || pause.ended_at);
+                let dpPauseEnd = pOngoing 
+                    ? new DayPilot.Date() 
+                    : new DayPilot.Date(getLocalDayPilotTime(pause.ended_at_iso || pause.ended_at));
+
+                // Validação estrita para impedir corrupção temporal
+                if (dpPauseStart.getTime() < cursor.getTime()) dpPauseStart = cursor;
+                if (dpPauseEnd.getTime() < dpPauseStart.getTime()) dpPauseEnd = dpPauseStart;
+                if (dpPauseEnd.getTime() > dpSessionEnd.getTime()) dpPauseEnd = dpSessionEnd;
+
+                // 1. Cria o bloco de trabalho que aconteceu ANTES desta pausa
+                pushBlock(cursor, dpPauseStart, 'work');
+
+                // 2. Cria o bloco da pausa exata
+                pushBlock(dpPauseStart, dpPauseEnd, 'pause', pause);
+
+                // 3. Atualiza o cursor do tempo para o fim da pausa
+                cursor = dpPauseEnd;
             });
         }
+
+        // Cria o bloco final de trabalho (após a última pausa até ao fim da sessão)
+        pushBlock(cursor, dpSessionEnd, 'work');
     });
 
     return mappedEvents;
 };
 
 // ==========================================
-// FORÇA O REFRESH IMPERATIVO DO DAYPILOT
+// REATIVIDADE E ATUALIZAÇÃO DO DAYPILOT
 // ==========================================
 
 watch(() => props.weekStartDate, (newDate) => {
@@ -182,7 +199,6 @@ watch(() => props.weekStartDate, (newDate) => {
     navigatorConfig.selectionDay = newDate;
 });
 
-// Solução Infalível: Quando os dados mudam, empurramos diretamente pela API nativa
 watch(() => props.sessions, () => {
     const newEvents = processEvents();
     if (calendarRef.value && calendarRef.value.control) {
@@ -192,7 +208,6 @@ watch(() => props.sessions, () => {
     }
 }, { immediate: true, deep: true });
 
-// Backup de segurança para quando a página é carregada por completo a 1ª vez
 onMounted(() => {
     setTimeout(() => {
         if (calendarRef.value && calendarRef.value.control) {
@@ -220,10 +235,6 @@ onMounted(() => {
                     <div class="w-3 h-3 rounded-full bg-[#16a34a]"></div>
                     <span class="text-xs text-gray-600 dark:text-gray-300 font-medium">Active Session</span>
                 </div>
-                <div class="flex items-center gap-3">
-                    <div class="w-3 h-3 rounded-full bg-[#ca8a04]"></div>
-                    <span class="text-xs text-gray-600 dark:text-gray-300 font-medium">Paused Session</span>
-                </div>
                 <div class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <div class="w-3 h-3 rounded-sm bg-[#ea580c]"></div>
                     <span class="text-xs text-gray-600 dark:text-gray-300 font-bold">Pause (Block)</span>
@@ -239,7 +250,12 @@ onMounted(() => {
 </template>
 
 <style>
-/* Global custom styling for the injected DayPilot events */
+/* Forçar ocupação horizontal completa por segurança */
+.calendar_default_event {
+    left: 0 !important;
+    width: 100% !important;
+}
+
 .dp-custom-pause {
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -248,61 +264,25 @@ onMounted(() => {
 
 .calendar_default_event_inner {
     border-radius: 6px !important;
-    padding: 4px !important;
+    padding: 2px !important;
     box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
     overflow: hidden !important;
 }
 
-/* =========================================================
-   DARK MODE OVERRIDES FOR DAYPILOT LITE VUE
-   ========================================================= */
-
-.dark .calendar_default_main {
-    border-color: #374151 !important;
-}
+/* DARK MODE OVERRIDES */
+.dark .calendar_default_main { border-color: #374151 !important; }
 .dark .calendar_default_rowheader,
 .dark .calendar_default_colheader,
-.dark .calendar_default_corner {
-    background-color: #111827 !important;
-    color: #e5e7eb !important;
-    border-color: #374151 !important;
-}
-.dark .calendar_default_cell {
-    background-color: #1f2937 !important;
-    border-color: #374151 !important; 
-}
-.dark .calendar_default_cell_business {
-    background-color: #1f2937 !important;
-}
-.dark .calendar_default_allday {
-    background-color: #111827 !important;
-    border-color: #374151 !important;
-}
-.dark .calendar_default_scroll {
-    background-color: #1f2937 !important;
-}
-
-.dark .navigator_default_main {
-    border-color: transparent !important;
-    background-color: transparent !important;
-}
-.dark .navigator_default_month {
-    color: #e5e7eb !important;
-}
-.dark .navigator_default_day {
-    color: #d1d5db !important;
-}
-.dark .navigator_default_day_other {
-    color: #4b5563 !important;
-}
-.dark .navigator_default_dayheader {
-    color: #9ca3af !important;
-}
-.dark .navigator_default_todaybox {
-    border-color: #4f46e5 !important;
-}
-.dark .navigator_default_select .navigator_default_day {
-    background-color: #374151 !important;
-    color: #ffffff !important;
-}
+.dark .calendar_default_corner { background-color: #111827 !important; color: #e5e7eb !important; border-color: #374151 !important; }
+.dark .calendar_default_cell { background-color: #1f2937 !important; border-color: #374151 !important; }
+.dark .calendar_default_cell_business { background-color: #1f2937 !important; }
+.dark .calendar_default_allday { background-color: #111827 !important; border-color: #374151 !important; }
+.dark .calendar_default_scroll { background-color: #1f2937 !important; }
+.dark .navigator_default_main { border-color: transparent !important; background-color: transparent !important; }
+.dark .navigator_default_month { color: #e5e7eb !important; }
+.dark .navigator_default_day { color: #d1d5db !important; }
+.dark .navigator_default_day_other { color: #4b5563 !important; }
+.dark .navigator_default_dayheader { color: #9ca3af !important; }
+.dark .navigator_default_todaybox { border-color: #4f46e5 !important; }
+.dark .navigator_default_select .navigator_default_day { background-color: #374151 !important; color: #ffffff !important; }
 </style>
