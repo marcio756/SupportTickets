@@ -1,10 +1,10 @@
 <script setup>
 /**
  * WeeklyCalendar Component
- * Utiliza o padrão de reatividade oficial (config) do DayPilot Lite Vue.
- * Garante a renderização absoluta dos eventos eliminando conflitos de timezone.
+ * Includes advanced parsing for strict Timezone matching and imperative API logic (.update())
+ * to ensure that active events render perfectly regardless of local browser times.
  */
-import { ref, watch, reactive } from 'vue';
+import { ref, watch, reactive, onMounted } from 'vue';
 import { DayPilot, DayPilotCalendar, DayPilotNavigator } from '@daypilot/daypilot-lite-vue';
 
 const props = defineProps({
@@ -23,12 +23,16 @@ const emit = defineEmits(['update:weekStartDate']);
 const calendarRef = ref(null);
 
 /**
- * Utilitário crucial: Remove as timezones (+00:00, Z) geradas pelo backend.
- * Garante que "10:00" no Laravel é lido exatamente como "10:00" na grelha do calendário, sem conversões fantasma.
+ * CONVERSOR ESTRITO DE FUSO HORÁRIO
+ * Força a string ISO de servidor a ser processada pelo objeto Date do Javascript local
+ * e recria um formato string que o DayPilot lê como "A Hora Visual Exata" atual, evintando atrasos.
  */
-const getLiteralTime = (isoString) => {
-    if (!isoString) return null;
-    return isoString.split('+')[0].split('Z')[0].split('.')[0].replace(' ', 'T');
+const getLocalDayPilotTime = (dateStr) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
 const getDurationText = (diffMins) => {
@@ -37,10 +41,6 @@ const getDurationText = (diffMins) => {
     const m = diffMins % 60;
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
 };
-
-// ==========================================
-// CONFIGURAÇÕES REATIVAS DO DAYPILOT (Vue 3)
-// ==========================================
 
 const navigatorConfig = reactive({
     selectMode: "Week",
@@ -62,8 +62,6 @@ const calendarConfig = reactive({
     eventResizeHandling: "Disabled",
     timeRangeSelectedHandling: "Disabled",
     events: [],
-    
-    // Intercetação visual
     onBeforeEventRender: (args) => {
         args.data.fontColor = '#ffffff';
         args.data.backColor += 'e6'; 
@@ -73,40 +71,31 @@ const calendarConfig = reactive({
     }
 });
 
-// ==========================================
-// OBSERVADORES DE ESTADO (Atualização Dinâmica)
-// ==========================================
-
-// Atualiza o dia selecionado se mudar nos filtros
-watch(() => props.weekStartDate, (newDate) => {
-    calendarConfig.startDate = newDate;
-    navigatorConfig.selectionDay = newDate;
-});
-
-// Observa ativamente as sessões recebidas do backend e recalcula a grelha instantaneamente
-watch(() => props.sessions, (newSessions) => {
+/**
+ * Lógica principal para processamento matemático e montagem visual dos blocos.
+ */
+const processEvents = () => {
     const mappedEvents = [];
 
-    if (!newSessions || !Array.isArray(newSessions)) {
-        calendarConfig.events = [];
-        return;
+    if (!props.sessions || !Array.isArray(props.sessions)) {
+        return mappedEvents;
     }
 
-    newSessions.forEach(session => {
-        const startLiteral = getLiteralTime(session.started_at_iso || session.started_at);
+    props.sessions.forEach(session => {
+        const startLiteral = getLocalDayPilotTime(session.started_at_iso || session.started_at);
         if (!startLiteral) return;
 
         const dpStart = new DayPilot.Date(startLiteral);
         const isOngoing = !(session.ended_at_iso || session.ended_at);
         
-        // Se estiver ativo, usamos a hora literal local exata atual
+        // Usa as horas e minutos precisos (locais) do exato momento se a sessão for ativa
         const dpEnd = isOngoing 
             ? new DayPilot.Date() 
-            : new DayPilot.Date(getLiteralTime(session.ended_at_iso || session.ended_at));
+            : new DayPilot.Date(getLocalDayPilotTime(session.ended_at_iso || session.ended_at));
 
+        // Impede durações negativas resultantes de diferenças de segundos de CPU
         const diffMins = Math.max(1, Math.round((dpEnd.getTime() - dpStart.getTime()) / 60000));
         
-        // Regra Visual: Expandir blocos muito curtos para, no mínimo, 60 minutos
         let visualEnd = dpEnd;
         if (diffMins < 60) {
             visualEnd = dpStart.addMinutes(60); 
@@ -150,7 +139,7 @@ watch(() => props.sessions, (newSessions) => {
 
         if (session.pauses && session.pauses.length > 0) {
             session.pauses.forEach(pause => {
-                const pStartLiteral = getLiteralTime(pause.started_at_iso || pause.started_at);
+                const pStartLiteral = getLocalDayPilotTime(pause.started_at_iso || pause.started_at);
                 if (!pStartLiteral) return;
 
                 const dpPauseStart = new DayPilot.Date(pStartLiteral);
@@ -158,7 +147,7 @@ watch(() => props.sessions, (newSessions) => {
                 
                 const dpPauseEnd = pOngoing 
                     ? new DayPilot.Date() 
-                    : new DayPilot.Date(getLiteralTime(pause.ended_at_iso || pause.ended_at));
+                    : new DayPilot.Date(getLocalDayPilotTime(pause.ended_at_iso || pause.ended_at));
 
                 const pDiffMins = Math.max(1, Math.round((dpPauseEnd.getTime() - dpPauseStart.getTime()) / 60000));
                 
@@ -181,9 +170,36 @@ watch(() => props.sessions, (newSessions) => {
         }
     });
 
-    calendarConfig.events = mappedEvents;
+    return mappedEvents;
+};
+
+// ==========================================
+// FORÇA O REFRESH IMPERATIVO DO DAYPILOT
+// ==========================================
+
+watch(() => props.weekStartDate, (newDate) => {
+    calendarConfig.startDate = newDate;
+    navigatorConfig.selectionDay = newDate;
+});
+
+// Solução Infalível: Quando os dados mudam, empurramos diretamente pela API nativa
+watch(() => props.sessions, () => {
+    const newEvents = processEvents();
+    if (calendarRef.value && calendarRef.value.control) {
+        calendarRef.value.control.update({ events: newEvents });
+    } else {
+        calendarConfig.events = newEvents;
+    }
 }, { immediate: true, deep: true });
 
+// Backup de segurança para quando a página é carregada por completo a 1ª vez
+onMounted(() => {
+    setTimeout(() => {
+        if (calendarRef.value && calendarRef.value.control) {
+            calendarRef.value.control.update({ events: processEvents() });
+        }
+    }, 150);
+});
 </script>
 
 <template>
@@ -237,7 +253,10 @@ watch(() => props.sessions, (newSessions) => {
     overflow: hidden !important;
 }
 
-/* Main Calendar Dark Mode */
+/* =========================================================
+   DARK MODE OVERRIDES FOR DAYPILOT LITE VUE
+   ========================================================= */
+
 .dark .calendar_default_main {
     border-color: #374151 !important;
 }
@@ -263,7 +282,6 @@ watch(() => props.sessions, (newSessions) => {
     background-color: #1f2937 !important;
 }
 
-/* Navigator (Mini Calendar) Dark Mode */
 .dark .navigator_default_main {
     border-color: transparent !important;
     background-color: transparent !important;

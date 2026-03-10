@@ -15,7 +15,7 @@ class WorkSessionReportController extends Controller
 {
     /**
      * Renders the work session log with summary statistics for a weekly calendar view.
-     * Implements strict role-based data isolation and filtering.
+     * Calculates dynamically both COMPLETED and ACTIVE sessions.
      * * @param Request $request
      * @return Response
      */
@@ -54,24 +54,64 @@ class WorkSessionReportController extends Controller
 
         $sessionsData = $query->get();
 
-        // Calculate aggregate summary for the filtered period
-        $totalSeconds = $sessionsData
-            ->where('status', WorkSessionStatusEnum::COMPLETED)
-            ->sum('total_worked_seconds');
+        // ==========================================
+        // CÁLCULO MATEMÁTICO AVANÇADO (INCLUI SESSÕES ATIVAS)
+        // ==========================================
+        $totalSeconds = 0;
+
+        foreach ($sessionsData as $session) {
+            if ($session->status === WorkSessionStatusEnum::COMPLETED && $session->total_worked_seconds) {
+                $totalSeconds += $session->total_worked_seconds;
+            } else {
+                // Cálculo dinâmico para sessões em curso (Ativa/Pausada)
+                $start = Carbon::parse($session->started_at);
+                $end = $session->ended_at ? Carbon::parse($session->ended_at) : Carbon::now();
+                $elapsed = $end->diffInSeconds($start);
+
+                $pauseSeconds = 0;
+                if ($session->pauses) {
+                    foreach ($session->pauses as $pause) {
+                        $pStart = Carbon::parse($pause->started_at);
+                        $pEnd = $pause->ended_at ? Carbon::parse($pause->ended_at) : Carbon::now();
+                        $pauseSeconds += $pEnd->diffInSeconds($pStart);
+                    }
+                }
+
+                $totalSeconds += max(0, $elapsed - $pauseSeconds);
+            }
+        }
 
         // Transform data for the calendar presentation
         $transformedSessions = $sessionsData->map(function ($session) {
-            $hours = $session->total_worked_seconds ? floor($session->total_worked_seconds / 3600) : 0;
-            $minutes = $session->total_worked_seconds ? floor(($session->total_worked_seconds % 3600) / 60) : 0;
+            // Replicar o cálculo para o próprio bloco do evento (caso o frontend precise)
+            if ($session->status === WorkSessionStatusEnum::COMPLETED) {
+                $secs = $session->total_worked_seconds ?: 0;
+            } else {
+                $start = Carbon::parse($session->started_at);
+                $end = $session->ended_at ? Carbon::parse($session->ended_at) : Carbon::now();
+                $el = $end->diffInSeconds($start);
+                
+                $pSecs = 0;
+                if ($session->pauses) {
+                    foreach ($session->pauses as $p) {
+                        $pS = Carbon::parse($p->started_at);
+                        $pE = $p->ended_at ? Carbon::parse($p->ended_at) : Carbon::now();
+                        $pSecs += $pE->diffInSeconds($pS);
+                    }
+                }
+                $secs = max(0, $el - $pSecs);
+            }
+
+            $hours = floor($secs / 3600);
+            $minutes = floor(($secs % 3600) / 60);
             
             return [
                 'id' => $session->id,
                 'user' => $session->user,
                 'status' => $session->status->value,
-                // We send exact ISO strings so the frontend can plot them on the calendar accurately
                 'started_at_iso' => $session->started_at->toIso8601String(),
                 'ended_at_iso' => $session->ended_at ? $session->ended_at->toIso8601String() : null,
-                'total_time_formatted' => $session->total_worked_seconds ? "{$hours}h {$minutes}m" : '-',
+                'total_time_formatted' => $secs > 0 ? "{$hours}h {$minutes}m" : '-',
                 'pauses' => $session->pauses->map(function ($pause) {
                     return [
                         'id' => $pause->id,
