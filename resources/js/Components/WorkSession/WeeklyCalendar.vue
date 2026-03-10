@@ -1,11 +1,10 @@
 <script setup>
 /**
  * WeeklyCalendar Component
- * Wrapper for DayPilot Lite Vue Calendar.
- * Maps backend WorkSession and Pause data into DayPilot events.
- * Enforces a minimum visual height of 60 minutes for visibility, while retaining actual duration text.
+ * Utiliza o padrão de reatividade oficial (config) do DayPilot Lite Vue.
+ * Garante a renderização absoluta dos eventos eliminando conflitos de timezone.
  */
-import { ref, computed } from 'vue';
+import { ref, watch, reactive } from 'vue';
 import { DayPilot, DayPilotCalendar, DayPilotNavigator } from '@daypilot/daypilot-lite-vue';
 
 const props = defineProps({
@@ -24,15 +23,14 @@ const emit = defineEmits(['update:weekStartDate']);
 const calendarRef = ref(null);
 
 /**
- * Formats a JS Date object to HH:mm.
+ * Utilitário crucial: Remove as timezones (+00:00, Z) geradas pelo backend.
+ * Garante que "10:00" no Laravel é lido exatamente como "10:00" na grelha do calendário, sem conversões fantasma.
  */
-const formatTime = (dateObj) => {
-    return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+const getLiteralTime = (isoString) => {
+    if (!isoString) return null;
+    return isoString.split('+')[0].split('Z')[0].split('.')[0].replace(' ', 'T');
 };
 
-/**
- * Converts minutes into a readable string (e.g., "1 min", "1h 15m").
- */
 const getDurationText = (diffMins) => {
     if (diffMins < 60) return `${diffMins} min`;
     const h = Math.floor(diffMins / 60);
@@ -40,31 +38,80 @@ const getDurationText = (diffMins) => {
     return m > 0 ? `${h}h ${m}m` : `${h}h`;
 };
 
-/**
- * Transforms the API sessions into DayPilot events with minimum visual block heights.
- */
-const mappedEvents = computed(() => {
-    const events = [];
+// ==========================================
+// CONFIGURAÇÕES REATIVAS DO DAYPILOT (Vue 3)
+// ==========================================
+
+const navigatorConfig = reactive({
+    selectMode: "Week",
+    showMonths: 1,
+    skipMonths: 1,
+    selectionDay: props.weekStartDate,
+    onTimeRangeSelected: (args) => {
+        emit('update:weekStartDate', args.day.toString('yyyy-MM-dd'));
+    }
+});
+
+const calendarConfig = reactive({
+    viewType: "Week",
+    startDate: props.weekStartDate,
+    durationBarVisible: false,
+    headerHeight: 50,
+    hourWidth: 60,
+    eventMoveHandling: "Disabled",
+    eventResizeHandling: "Disabled",
+    timeRangeSelectedHandling: "Disabled",
+    events: [],
     
-    props.sessions.forEach(session => {
-        const startObj = new Date(session.started_at_iso);
-        const isOngoing = !session.ended_at_iso;
-        const endObj = new Date(session.ended_at_iso || new Date().toISOString());
+    // Intercetação visual
+    onBeforeEventRender: (args) => {
+        args.data.fontColor = '#ffffff';
+        args.data.backColor += 'e6'; 
+        if (args.data.tags && args.data.tags.type === 'pause') {
+            args.data.cssClass = 'dp-custom-pause';
+        }
+    }
+});
+
+// ==========================================
+// OBSERVADORES DE ESTADO (Atualização Dinâmica)
+// ==========================================
+
+// Atualiza o dia selecionado se mudar nos filtros
+watch(() => props.weekStartDate, (newDate) => {
+    calendarConfig.startDate = newDate;
+    navigatorConfig.selectionDay = newDate;
+});
+
+// Observa ativamente as sessões recebidas do backend e recalcula a grelha instantaneamente
+watch(() => props.sessions, (newSessions) => {
+    const mappedEvents = [];
+
+    if (!newSessions || !Array.isArray(newSessions)) {
+        calendarConfig.events = [];
+        return;
+    }
+
+    newSessions.forEach(session => {
+        const startLiteral = getLiteralTime(session.started_at_iso || session.started_at);
+        if (!startLiteral) return;
+
+        const dpStart = new DayPilot.Date(startLiteral);
+        const isOngoing = !(session.ended_at_iso || session.ended_at);
         
-        // Calculate real duration in minutes
-        const diffMs = endObj.getTime() - startObj.getTime();
-        const diffMins = Math.max(1, Math.round(diffMs / 60000)); // Enforce at least 1 min mathematically
+        // Se estiver ativo, usamos a hora literal local exata atual
+        const dpEnd = isOngoing 
+            ? new DayPilot.Date() 
+            : new DayPilot.Date(getLiteralTime(session.ended_at_iso || session.ended_at));
+
+        const diffMins = Math.max(1, Math.round((dpEnd.getTime() - dpStart.getTime()) / 60000));
         
-        const displayDuration = getDurationText(diffMins);
-        const timeRangeText = `${formatTime(startObj)} - ${isOngoing ? 'Active' : formatTime(endObj)}`;
-        
-        // ARCHITECTURE RULE: Visual Minimum of 60 minutes for Work Sessions
-        let visualEndObj = new Date(endObj.getTime());
+        // Regra Visual: Expandir blocos muito curtos para, no mínimo, 60 minutos
+        let visualEnd = dpEnd;
         if (diffMins < 60) {
-            visualEndObj = new Date(startObj.getTime() + 60 * 60000); // Add 60 mins to the visual block
+            visualEnd = dpStart.addMinutes(60); 
         }
 
-        // Base styling for Work Session
         let backColor = '#4f46e5'; 
         let borderColor = '#3730a3';
         
@@ -77,55 +124,55 @@ const mappedEvents = computed(() => {
         }
 
         const sessionTitle = session.user?.name ? `${session.user.name}` : 'Session';
+        const displayDuration = getDurationText(diffMins);
+        const timeRangeText = `${dpStart.toString('HH:mm')} - ${isOngoing ? 'Active' : dpEnd.toString('HH:mm')}`;
 
-        // Advanced HTML injected directly into the calendar block
-        const htmlContent = `
-            <div style="padding: 2px 4px; display: flex; flex-direction: column; gap: 2px;">
-                <div style="font-weight: 800; font-size: 11px;">${sessionTitle}</div>
-                <div style="font-size: 10px; opacity: 0.9;">${timeRangeText}</div>
-                <div>
-                    <span style="font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px;">
-                        ⏱ ${displayDuration}
-                    </span>
-                </div>
-            </div>
-        `;
-
-        // Tooltip shown when the user hovers over the block
-        const toolTipText = `Supporter: ${sessionTitle}\nStatus: ${session.status.toUpperCase()}\nReal Time: ${timeRangeText}\nTotal Worked: ${displayDuration}`;
-
-        // Add Main Work Session Event
-        events.push({
+        mappedEvents.push({
             id: `session_${session.id}`,
-            start: startObj.toISOString(),
-            end: visualEndObj.toISOString(), // The artificially expanded visual end time
-            html: htmlContent, // Overrides 'text'
-            toolTip: toolTipText,
+            start: dpStart.toString(),
+            end: visualEnd.toString(),
+            html: `
+                <div style="padding: 2px 4px; display: flex; flex-direction: column; gap: 2px;">
+                    <div style="font-weight: 800; font-size: 11px;">${sessionTitle}</div>
+                    <div style="font-size: 10px; opacity: 0.9;">${timeRangeText}</div>
+                    <div>
+                        <span style="font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; color: white;">
+                            ⏱ ${displayDuration}
+                        </span>
+                    </div>
+                </div>
+            `,
+            toolTip: `Supporter: ${sessionTitle}\nStatus: ${session.status.toUpperCase()}\nReal Time: ${timeRangeText}\nWorked: ${displayDuration}`,
             backColor: backColor,
             borderColor: borderColor,
             tags: { type: 'session' }
         });
 
-        // Add Pauses (We enforce a smaller minimum of 15 mins for visual harmony inside the expanded session)
         if (session.pauses && session.pauses.length > 0) {
             session.pauses.forEach(pause => {
-                const pStart = new Date(pause.started_at_iso);
-                const pEnd = new Date(pause.ended_at_iso || new Date().toISOString());
-                const pDiffMins = Math.max(1, Math.round((pEnd.getTime() - pStart.getTime()) / 60000));
+                const pStartLiteral = getLiteralTime(pause.started_at_iso || pause.started_at);
+                if (!pStartLiteral) return;
+
+                const dpPauseStart = new DayPilot.Date(pStartLiteral);
+                const pOngoing = !(pause.ended_at_iso || pause.ended_at);
                 
-                let pVisualEnd = new Date(pEnd.getTime());
+                const dpPauseEnd = pOngoing 
+                    ? new DayPilot.Date() 
+                    : new DayPilot.Date(getLiteralTime(pause.ended_at_iso || pause.ended_at));
+
+                const pDiffMins = Math.max(1, Math.round((dpPauseEnd.getTime() - dpPauseStart.getTime()) / 60000));
+                
+                let pVisualEnd = dpPauseEnd;
                 if (pDiffMins < 15) {
-                    pVisualEnd = new Date(pStart.getTime() + 15 * 60000); // 15 mins visual minimum
+                    pVisualEnd = dpPauseStart.addMinutes(15);
                 }
 
-                const pauseHover = `PAUSE\nReal Time: ${formatTime(pStart)} - ${pause.ended_at_iso ? formatTime(pEnd) : 'Active'}\nDuration: ${getDurationText(pDiffMins)}`;
-
-                events.push({
+                mappedEvents.push({
                     id: `pause_${pause.id}`,
-                    start: pStart.toISOString(),
-                    end: pVisualEnd.toISOString(),
-                    html: `<div style="text-align:center; font-weight:bold; font-size:9px; margin-top:2px;">PAUSE (${getDurationText(pDiffMins)})</div>`,
-                    toolTip: pauseHover,
+                    start: dpPauseStart.toString(),
+                    end: pVisualEnd.toString(),
+                    html: `<div style="text-align:center; font-weight:bold; font-size:9px; margin-top:2px; color:white;">PAUSE (${getDurationText(pDiffMins)})</div>`,
+                    toolTip: `PAUSE\nDuration: ${getDurationText(pDiffMins)}`,
                     backColor: '#ea580c',
                     borderColor: '#c2410c',
                     tags: { type: 'pause' }
@@ -133,29 +180,10 @@ const mappedEvents = computed(() => {
             });
         }
     });
-    
-    return events;
-});
 
-/**
- * Emits the date change event to the parent when user clicks the mini-calendar.
- */
-const onNavTimeRangeSelected = (args) => {
-    emit('update:weekStartDate', args.day.toString('yyyy-MM-dd'));
-};
+    calendarConfig.events = mappedEvents;
+}, { immediate: true, deep: true });
 
-/**
- * Intercepts event rendering to inject custom styling.
- */
-const onBeforeEventRender = (args) => {
-    args.data.fontColor = '#ffffff';
-    args.data.backColor += 'e6'; // Adds slight transparency
-    
-    // Distinct styling for Pause blocks
-    if (args.data.tags && args.data.tags.type === 'pause') {
-        args.data.cssClass = 'dp-custom-pause';
-    }
-};
 </script>
 
 <template>
@@ -163,13 +191,7 @@ const onBeforeEventRender = (args) => {
         
         <div class="w-full md:w-64 flex-shrink-0">
             <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-2 border border-gray-100 dark:border-gray-700 transition-colors duration-200">
-                <DayPilotNavigator
-                    selectMode="Week"
-                    :showMonths="1"
-                    :skipMonths="1"
-                    :selectionDay="weekStartDate"
-                    @timeRangeSelected="onNavTimeRangeSelected"
-                />
+                <DayPilotNavigator :config="navigatorConfig" />
             </div>
             
             <div class="mt-6 px-2 space-y-3">
@@ -194,19 +216,7 @@ const onBeforeEventRender = (args) => {
         </div>
 
         <div class="flex-1 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 relative z-0">
-            <DayPilotCalendar
-                ref="calendarRef"
-                viewType="Week"
-                :startDate="weekStartDate"
-                :events="mappedEvents"
-                :durationBarVisible="false"
-                :headerHeight="50"
-                :hourWidth="60"
-                eventMoveHandling="Disabled"
-                eventResizeHandling="Disabled"
-                timeRangeSelectedHandling="Disabled"
-                @beforeEventRender="onBeforeEventRender"
-            />
+            <DayPilotCalendar ref="calendarRef" :config="calendarConfig" />
         </div>
 
     </div>
@@ -227,10 +237,6 @@ const onBeforeEventRender = (args) => {
     overflow: hidden !important;
 }
 
-/* =========================================================
-   DARK MODE OVERRIDES FOR DAYPILOT LITE VUE
-   ========================================================= */
-
 /* Main Calendar Dark Mode */
 .dark .calendar_default_main {
     border-color: #374151 !important;
@@ -238,12 +244,12 @@ const onBeforeEventRender = (args) => {
 .dark .calendar_default_rowheader,
 .dark .calendar_default_colheader,
 .dark .calendar_default_corner {
-    background-color: #111827 !important; /* Tailwind gray-900 */
-    color: #e5e7eb !important; /* Tailwind gray-200 */
-    border-color: #374151 !important; /* Tailwind gray-700 */
+    background-color: #111827 !important;
+    color: #e5e7eb !important;
+    border-color: #374151 !important;
 }
 .dark .calendar_default_cell {
-    background-color: #1f2937 !important; /* Tailwind gray-800 */
+    background-color: #1f2937 !important;
     border-color: #374151 !important; 
 }
 .dark .calendar_default_cell_business {
@@ -275,7 +281,7 @@ const onBeforeEventRender = (args) => {
     color: #9ca3af !important;
 }
 .dark .navigator_default_todaybox {
-    border-color: #4f46e5 !important; /* Tailwind indigo-600 */
+    border-color: #4f46e5 !important;
 }
 .dark .navigator_default_select .navigator_default_day {
     background-color: #374151 !important;

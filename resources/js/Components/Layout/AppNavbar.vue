@@ -20,18 +20,18 @@
         <NotificationDropdown />
         <va-dropdown placement="bottom-end">
           <template #anchor>
-            <va-avatar size="small" color="warning" class="user-avatar">
+            <va-avatar size="small" color="warning" class="user-avatar cursor-pointer">
               {{ userInitials }}
             </va-avatar>
           </template>
           <va-dropdown-content class="user-dropdown">
-            <div class="dropdown-item theme-item" @click="toggleTheme">
+            <div class="dropdown-item theme-item cursor-pointer" @click="toggleTheme">
               <va-icon :name="isDark ? 'light_mode' : 'dark_mode'" size="small" class="mr-2" />
               <span>{{ isDark ? 'Light Mode' : 'Dark Mode' }}</span>
             </div>
             <va-divider class="m-0" />
             <Link href="/profile" class="dropdown-item">Profile</Link>
-            <div @click="handleLogout" class="dropdown-item text-danger">Logout</div>
+            <div @click="handleLogout" class="dropdown-item text-danger cursor-pointer">Logout</div>
           </va-dropdown-content>
         </va-dropdown>
       </div>
@@ -61,17 +61,23 @@ const userInitials = computed(() => {
 });
 
 /**
- * Retrieves the currently active or paused work session from shared Inertia props.
- * This powers the SessionStatusBadge component reactively.
+ * Lógica robusta para encontrar a sessão de trabalho ativa enviada pelo Laravel.
+ * Verifica as várias nomenclaturas possíveis no teu HandleInertiaRequests.
  */
-const activeSession = computed(() => page.props.auth?.work_session);
+const activeSession = computed(() => {
+    const props = page.props;
+    return props.auth?.active_session 
+        || props.auth?.work_session 
+        || props.active_session 
+        || props.work_session 
+        || null;
+});
 
 /**
- * Prevents logout if a work session is currently active or paused.
- * Uses shared auth data from HandleInertiaRequests middleware.
+ * Previne o logout se o turno estiver ativo.
  */
 const handleLogout = () => {
-    const session = page.props.auth?.work_session;
+    const session = activeSession.value;
     
     if (session && (session.status === 'active' || session.status === 'paused')) {
         init({
@@ -86,3 +92,12 @@ const handleLogout = () => {
     router.post(route('logout'));
 };
 </script>
+
+<style scoped>
+/* Garante que a secção direita mantém os elementos visíveis e alinhados */
+.right-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+</style>
