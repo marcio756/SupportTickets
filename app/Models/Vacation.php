@@ -10,24 +10,15 @@ class Vacation extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'supporter_id',
         'start_date',
         'end_date',
         'total_days',
         'year',
+        'status', // Adicionado
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -38,10 +29,6 @@ class Vacation extends Model
         ];
     }
 
-    /**
-     * Get the supporter that owns the vacation.
-     * * @return BelongsTo
-     */
     public function supporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'supporter_id');

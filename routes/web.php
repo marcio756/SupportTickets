@@ -50,12 +50,13 @@ Route::middleware('auth')->group(function () {
     /**
      * Admin: Teams Management
      */
-    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
+    Route::resource('teams', TeamController::class)->except(['create', 'show', 'edit']);
 
     /**
      * Supporters/Admin: Vacations Map
      */
-    Route::get('/vacations', [VacationController::class, 'index'])->name('vacations.index');
+    Route::resource('vacations', VacationController::class)->except(['create', 'show', 'edit']);
+    Route::patch('/vacations/{vacation}/status', [VacationController::class, 'updateStatus'])->name('vacations.status');
 
     /**
      * Ticket Viewing.

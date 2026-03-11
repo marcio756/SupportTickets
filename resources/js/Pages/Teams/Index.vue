@@ -1,109 +1,158 @@
 <template>
-    <AppLayout title="Teams Management">
-        <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                Teams Management
-            </h2>
-        </template>
+  <AppLayout title="Teams Management">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">Teams Management</h1>
+      <va-button color="primary" icon="add" @click="openCreateModal">
+        Add New Team
+      </va-button>
+    </div>
 
-        <div class="py-12">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-                <div class="bg-white dark:bg-background-secondary overflow-hidden shadow-sm sm:rounded-lg p-6 border dark:border-gray-800">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">List of Teams</h3>
-                        <PrimaryButton @click="openCreateModal">
-                            Add New Team
-                        </PrimaryButton>
-                    </div>
-
-                    <div v-if="isLoading" class="text-center py-4 text-gray-500 dark:text-gray-400">
-                        Loading teams...
-                    </div>
-
-                    <div v-else-if="errors" class="text-red-500 mb-4">
-                        {{ errors }}
-                    </div>
-
-                    <div v-else class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-800/50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Shift</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Supporters</th>
-                                    <th scope="col" class="relative px-6 py-3">
-                                        <span class="sr-only">Actions</span>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-background-secondary divide-y divide-gray-200 dark:divide-gray-700">
-                                <tr v-for="team in teams" :key="team.id" class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">#{{ team.id }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ team.name }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">{{ team.shift }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                        {{ team.supporters ? team.supporters.length : 0 }} Members
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button @click="deleteTeam(team.id)" class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 transition-colors">Delete</button>
-                                    </td>
-                                </tr>
-                                <tr v-if="teams.length === 0">
-                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                                        No teams found. Create one above!
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+    <div class="p-6 rounded-lg border border-solid overflow-x-auto" style="background-color: var(--va-background-secondary); border-color: var(--va-background-border);">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--va-background-border);">
+            <th class="py-3 px-4 font-semibold text-sm uppercase tracking-wider" style="color: var(--va-secondary)">ID</th>
+            <th class="py-3 px-4 font-semibold text-sm uppercase tracking-wider" style="color: var(--va-secondary)">Name</th>
+            <th class="py-3 px-4 font-semibold text-sm uppercase tracking-wider" style="color: var(--va-secondary)">Shift</th>
+            <th class="py-3 px-4 font-semibold text-sm uppercase tracking-wider" style="color: var(--va-secondary)">Members</th>
+            <th class="py-3 px-4 text-right font-semibold text-sm uppercase tracking-wider" style="color: var(--va-secondary)">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="team in teams" :key="team.id" style="border-bottom: 1px solid var(--va-background-border);">
+            <td class="py-3 px-4" style="color: var(--va-text-primary)">#{{ team.id }}</td>
+            <td class="py-3 px-4 font-medium" style="color: var(--va-text-primary)">{{ team.name }}</td>
+            <td class="py-3 px-4 capitalize" style="color: var(--va-secondary)">
+                <va-badge :text="team.shift" color="info" size="small" />
+            </td>
+            <td class="py-3 px-4" style="color: var(--va-secondary)">
+                <div class="flex items-center gap-2">
+                    <va-icon name="group" size="small" color="secondary" />
+                    <span>{{ team.supporters ? team.supporters.length : 0 }} Assigned</span>
                 </div>
-            </div>
+            </td>
+            <td class="py-3 px-4 text-right space-x-2">
+              <va-button preset="plain" icon="edit" color="info" @click="openEditModal(team)" title="Edit & Manage Members" />
+              <va-button preset="plain" icon="delete" color="danger" @click="deleteTeam(team.id)" title="Delete Team" />
+            </td>
+          </tr>
+          <tr v-if="teams.length === 0">
+            <td colspan="5" class="py-6 text-center" style="color: var(--va-secondary)">No teams found. Create one above!</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <va-modal v-model="showModal" hide-default-actions size="small">
+      <h3 class="va-h5 mb-6" style="color: var(--va-text-primary)">
+          {{ isEditing ? 'Edit Team & Members' : 'Create New Team' }}
+      </h3>
+      <form @submit.prevent="submitTeam" class="flex flex-col gap-4">
+        
+        <va-input 
+            v-model="form.name" 
+            label="Team Name" 
+            :error="!!form.errors.name" 
+            :error-messages="form.errors.name" 
+            required 
+        />
+        
+        <va-select 
+            v-model="form.shift" 
+            :options="['morning', 'afternoon', 'night']" 
+            label="Shift" 
+            :error="!!form.errors.shift" 
+            :error-messages="form.errors.shift" 
+            required 
+        />
+
+        <va-select 
+            v-model="form.supporter_ids" 
+            :options="supporterOptions" 
+            label="Assign Supporters" 
+            multiple
+            value-by="value"
+            text-by="text"
+            clearable
+            :error="!!form.errors.supporter_ids" 
+            :error-messages="form.errors.supporter_ids" 
+        >
+            <template #prependInner>
+                <va-icon name="person_add" size="small" color="secondary" class="mr-2" />
+            </template>
+        </va-select>
+
+        <div class="flex justify-end gap-3 mt-4">
+          <va-button preset="secondary" @click="showModal = false">Cancel</va-button>
+          <va-button type="submit" :loading="form.processing">Save Changes</va-button>
         </div>
-    </AppLayout>
+      </form>
+    </va-modal>
+  </AppLayout>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import { ref, computed } from 'vue';
+import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
 
-const teams = ref([]);
-const isLoading = ref(true);
-const errors = ref(null);
+const props = defineProps({ 
+    teams: Array,
+    supporters: Array,
+});
 
-/**
- * Fetch all teams from our API endpoint
- */
-const fetchTeams = async () => {
-    isLoading.value = true;
-    try {
-        const response = await axios.get('/api/teams');
-        teams.value = response.data.data;
-    } catch (error) {
-        errors.value = 'Failed to load teams data.';
-        console.error(error);
-    } finally {
-        isLoading.value = false;
-    }
-};
+const showModal = ref(false);
+const isEditing = ref(false);
+const editingTeamId = ref(null);
 
-const deleteTeam = async (id) => {
-    if (!confirm('Are you sure you want to delete this team?')) return;
-    try {
-        await axios.delete(`/api/teams/${id}`);
-        await fetchTeams();
-    } catch (error) {
-        alert('Could not delete team.');
-    }
-};
+const form = useForm({ 
+    name: '', 
+    shift: '',
+    supporter_ids: []
+});
+
+// Mapeia os supporters para o formato exigido pelo Vuestic Select
+const supporterOptions = computed(() => {
+    return props.supporters.map(s => ({
+        text: s.name,
+        value: s.id
+    }));
+});
 
 const openCreateModal = () => {
-    alert("Modal creation logic will be implemented in the next step.");
+    isEditing.value = false;
+    editingTeamId.value = null;
+    form.reset();
+    form.clearErrors();
+    showModal.value = true;
 };
 
-onMounted(() => {
-    fetchTeams();
-});
+const openEditModal = (team) => {
+    isEditing.value = true;
+    editingTeamId.value = team.id;
+    form.name = team.name;
+    form.shift = team.shift;
+    // Pré-preenche o select com os IDs dos supporters associados a esta equipa
+    form.supporter_ids = team.supporters ? team.supporters.map(s => s.id) : [];
+    form.clearErrors();
+    showModal.value = true;
+};
+
+const submitTeam = () => {
+    if (isEditing.value) {
+        form.put(route('teams.update', editingTeamId.value), {
+            onSuccess: () => { showModal.value = false; }
+        });
+    } else {
+        form.post(route('teams.store'), {
+            onSuccess: () => { showModal.value = false; }
+        });
+    }
+};
+
+const deleteTeam = (id) => {
+    if (confirm('Are you sure you want to delete this team? All assigned supporters will be left unassigned.')) {
+        router.delete(route('teams.destroy', id));
+    }
+};
 </script>
