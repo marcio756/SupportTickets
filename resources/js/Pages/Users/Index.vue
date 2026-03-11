@@ -56,6 +56,14 @@
           </div>
         </template>
 
+        <template #cell(team)="{ rowData }">
+          <div v-if="rowData.team" :class="{ 'opacity-50': rowData.deleted_at }">
+            <va-badge :text="rowData.team.name" color="secondary" />
+            <div class="text-xs mt-1 text-gray-400 capitalize">{{ rowData.team.shift }}</div>
+          </div>
+          <span v-else class="text-gray-400">-</span>
+        </template>
+
         <template #cell(actions)="{ rowData }">
           <div class="flex gap-2 justify-end">
             <template v-if="rowData.deleted_at">
@@ -82,6 +90,7 @@
       :show="isFormModalOpen" 
       :user="selectedUser" 
       :roles="roles"
+      :teams="teams"
       @close="isFormModalOpen = false" 
     />
     
@@ -110,6 +119,7 @@ const props = defineProps({
   users: { type: Object, required: true },
   filters: { type: Object, default: () => ({}) },
   roles: { type: Array, default: () => [] },
+  teams: { type: Array, default: () => [] },
   workSessionStatus: { type: String, default: 'active' }
 });
 
@@ -138,6 +148,7 @@ const columns = [
   { key: 'name', label: 'Name', sortable: false },
   { key: 'email', label: 'Email', sortable: false },
   { key: 'role', label: 'Role', sortable: false },
+  { key: 'team', label: 'Team', sortable: false },
   { key: 'actions', label: 'Actions', sortable: false, align: 'right' },
 ];
 

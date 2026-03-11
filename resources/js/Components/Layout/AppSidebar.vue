@@ -22,7 +22,7 @@
     </div>
 
     <div v-if="!minimized" class="p-4 mt-auto border-t border-gray-200 dark:border-gray-800">
-       <span class="text-xs text-gray-500 font-mono font-bold uppercase">
+       <span class="text-xs text-gray-500 font-bold font-mono uppercase">
           Role: {{ displayRole }}
        </span>
     </div>
@@ -69,13 +69,16 @@ const navigationItems = computed(() => {
     items.push({ title: 'Tickets', icon: 'confirmation_number', route: 'tickets.index' });
   }
 
-  // Staff (Supporter/Admin) can manage Users and Tags
+  // Staff (Supporter/Admin) can manage Users, Tags and Vacations
   if (role === 'supporter' || role === 'admin') {
     items.push({ title: 'Users', icon: 'group', route: 'users.index' });
     items.push({ title: 'Manage Tags', icon: 'local_offer', route: 'tags.index' });
+    items.push({ title: 'Vacations', icon: 'event', route: 'vacations.index' });
   }
 
+  // Admin specific routes
   if (role === 'admin') {
+    items.push({ title: 'Teams', icon: 'groups', route: 'teams.index' });
     items.push({ title: 'Activity Logs', icon: 'history', route: 'activity-logs.index' });
   }
 

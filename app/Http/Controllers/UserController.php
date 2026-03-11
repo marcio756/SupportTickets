@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\RoleEnum;
+use App\Models\Team;
 use App\Models\User;
 use App\Traits\ChecksWorkSession;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class UserController extends Controller
 
     /**
      * Display a listing of the resource.
-     * Enforces hierarchy: Admins see all (including inactive), Supporters see only active customers.
+     * Enforces hierarchy and includes Team data for supporters.
      *
      * @param Request $request
      * @return Response
@@ -32,19 +33,21 @@ class UserController extends Controller
             abort(403, 'Unauthorized access.');
         }
 
-        $query = User::query();
+        // Fetch teams for the creation/edition modal
+        $teams = Team::all();
+        $query = User::query()->with('team');
 
         if ($user->isSupporter()) {
             $query->where('role', RoleEnum::CUSTOMER->value);
             $availableRoles = [RoleEnum::CUSTOMER->value];
         } else {
             $availableRoles = [RoleEnum::CUSTOMER->value, RoleEnum::SUPPORTER->value, RoleEnum::ADMIN->value];
-            // Admins need to see deactivated accounts to manage them
             $query->withTrashed();
         }
 
         $workSessionStatus = $this->getWorkSessionStatus($user);
 
+        // If supporter has no active session, return empty data set as per original logic
         if ($user->isSupporter() && $workSessionStatus !== \App\Enums\WorkSessionStatusEnum::ACTIVE->value) {
             return Inertia::render('Users/Index', [
                 'users' => [
@@ -56,6 +59,7 @@ class UserController extends Controller
                 ],
                 'filters' => $request->only(['query', 'role']),
                 'roles' => $availableRoles,
+                'teams' => $teams,
                 'workSessionStatus' => $workSessionStatus,
             ]);
         }
@@ -78,6 +82,7 @@ class UserController extends Controller
             'users' => $users,
             'filters' => $request->only(['query', 'role']),
             'roles' => $availableRoles,
+            'teams' => $teams,
             'workSessionStatus' => $workSessionStatus,
         ]);
     }
@@ -99,12 +104,14 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')],
             'role' => ['required', Rule::in($allowedRoles)],
             'password' => ['required', 'confirmed', Password::defaults()],
+            'team_id' => ['nullable', 'exists:teams,id'],
         ]);
 
         User::create([
             'name' => $request->name,
             'email' => $request->email,
             'role' => $request->role,
+            'team_id' => $request->role === RoleEnum::SUPPORTER->value ? $request->team_id : null,
             'password' => Hash::make($request->password),
         ]);
 
@@ -121,8 +128,6 @@ class UserController extends Controller
     public function update(Request $request, int $id): RedirectResponse
     {
         $actingUser = $request->user();
-        
-        // Target user might be soft deleted, so we find with trashed
         $targetUser = User::withTrashed()->findOrFail($id);
 
         if ($actingUser->isSupporter() && $targetUser->role !== RoleEnum::CUSTOMER) {
@@ -139,6 +144,7 @@ class UserController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($targetUser->id)],
             'role' => ['required', Rule::in($allowedRoles)],
             'password' => ['nullable', 'confirmed', Password::defaults()],
+            'team_id' => ['nullable', 'exists:teams,id'],
         ]);
 
         if ($targetUser->isAdmin() && $request->role !== RoleEnum::ADMIN->value) {
@@ -152,6 +158,7 @@ class UserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'role' => $request->role,
+            'team_id' => $request->role === RoleEnum::SUPPORTER->value ? $request->team_id : null,
         ]);
 
         if ($request->filled('password')) {
@@ -192,7 +199,6 @@ class UserController extends Controller
             }
         }
 
-        // With the SoftDeletes trait, this safely deactivates the account without destroying relational data.
         $user->delete();
 
         return redirect()->back()->with('success', 'User deactivated successfully.');
@@ -200,7 +206,6 @@ class UserController extends Controller
 
     /**
      * Restore a deactivated (soft deleted) user account.
-     * Only system administrators are granted permission for this action.
      *
      * @param Request $request
      * @param int $id

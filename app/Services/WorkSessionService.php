@@ -11,7 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Encapsulates the core business logic for time tracking, shift management and reporting.
+ * Encapsulates the core business logic for time tracking and shift management.
  */
 class WorkSessionService
 {
@@ -147,7 +147,7 @@ class WorkSessionService
 
     /**
      * Retrieves and formats work session reports based on user permissions and filters.
-     * Maintains strict role-based data isolation.
+     * Includes pause data for calendar rendering.
      *
      * @param User $user
      * @param array $filters
@@ -155,7 +155,7 @@ class WorkSessionService
      */
     public function getReportsData(User $user, array $filters): array
     {
-        $query = WorkSession::with('user:id,name,email')
+        $query = WorkSession::with(['user:id,name,email', 'pauses'])
             ->withCount('pauses')
             ->latest('started_at');
 
@@ -189,6 +189,12 @@ class WorkSessionService
                 'started_at' => $session->started_at->format('H:i'),
                 'ended_at' => $session->ended_at ? $session->ended_at->format('H:i') : null,
                 'pauses_count' => $session->pauses_count,
+                'pauses' => $session->pauses->map(function ($pause) {
+                    return [
+                        'started_at' => $pause->started_at->format('H:i'),
+                        'ended_at' => $pause->ended_at ? $pause->ended_at->format('H:i') : null,
+                    ];
+                })->toArray(),
                 'total_time_formatted' => $session->total_worked_seconds ? "{$hours}h {$minutes}m" : '-',
             ];
         });

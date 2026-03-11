@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -14,6 +14,10 @@ const props = defineProps({
     roles: {
         type: Array,
         required: true,
+    },
+    teams: {
+        type: Array,
+        default: () => [],
     }
 });
 
@@ -25,21 +29,37 @@ const form = useForm({
     name: '',
     email: '',
     role: '',
+    team_id: null,
     password: '',
     password_confirmation: '',
     current_password: '',
+});
+
+// Map teams to Vuestic select format
+const teamOptions = computed(() => {
+    return props.teams.map(team => ({
+        text: `${team.name} (${team.shift})`,
+        value: team.id
+    }));
 });
 
 watch(() => props.show, (isShowing) => {
     if (isShowing) {
         form.name = props.user ? props.user.name : '';
         form.email = props.user ? props.user.email : '';
-        // Automatically default to the first available role if multiple aren't allowed.
-        form.role = props.user ? props.user.role : (props.roles[0] || '');
+        form.role = props.user ? (props.user.role?.value || props.user.role) : (props.roles[0] || '');
+        form.team_id = props.user ? props.user.team_id : null;
         form.password = '';
         form.password_confirmation = '';
         form.current_password = '';
         form.clearErrors();
+    }
+});
+
+// Automatically clear team_id if role is changed from supporter
+watch(() => form.role, (newRole) => {
+    if (newRole !== 'supporter') {
+        form.team_id = null;
     }
 });
 
@@ -109,15 +129,28 @@ const closeModal = () => {
                 required
             />
 
-            <va-select
-                v-if="roles.length > 1"
-                v-model="form.role"
-                :options="roles"
-                label="Role"
-                :error="!!form.errors.role"
-                :error-messages="form.errors.role"
-                required
-            />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <va-select
+                    v-if="roles.length > 1"
+                    v-model="form.role"
+                    :options="roles"
+                    label="Role"
+                    :error="!!form.errors.role"
+                    :error-messages="form.errors.role"
+                    required
+                />
+
+                <va-select
+                    v-if="form.role === 'supporter'"
+                    v-model="form.team_id"
+                    :options="teamOptions"
+                    label="Team Assignment"
+                    value-by="value"
+                    :error="!!form.errors.team_id"
+                    :error-messages="form.errors.team_id"
+                    clearable
+                />
+            </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <va-input

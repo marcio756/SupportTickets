@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\RoleEnum;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -26,6 +27,7 @@ class User extends Authenticatable
         'password',
         'role',
         'daily_support_seconds',
+        'team_id',
     ];
 
     /**
@@ -89,6 +91,24 @@ class User extends Authenticatable
     }
 
     // --- Relationships ---
+
+    /**
+     * Get the team the user belongs to.
+     * * @return BelongsTo
+     */
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * Get the vacations booked by the supporter.
+     * * @return HasMany
+     */
+    public function vacations(): HasMany
+    {
+        return $this->hasMany(Vacation::class, 'supporter_id');
+    }
 
     public function tickets(): HasMany
     {

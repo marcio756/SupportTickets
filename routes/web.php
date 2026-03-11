@@ -3,8 +3,10 @@
 use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\VacationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\ActivityLogController;
@@ -43,12 +45,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/work-sessions/resume', [WorkSessionController::class, 'resume'])->name('work-sessions.resume');
     Route::post('/work-sessions/end', [WorkSessionController::class, 'end'])->name('work-sessions.end');
     Route::get('/work-sessions/reports', [WorkSessionReportController::class, 'index'])->name('work-sessions.index');
-    
-    /**
-     * Administrative Deletion Route.
-     * Note: Placed outside EnsureActiveWorkSession to allow Admins to manage logs anytime.
-     */
     Route::delete('/work-sessions/{workSession}', [WorkSessionController::class, 'destroy'])->name('work-sessions.destroy');
+
+    /**
+     * Admin: Teams Management
+     */
+    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
+
+    /**
+     * Supporters/Admin: Vacations Map
+     */
+    Route::get('/vacations', [VacationController::class, 'index'])->name('vacations.index');
 
     /**
      * Ticket Viewing.
@@ -78,7 +85,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifications/clear', [NotificationController::class, 'destroyAll'])->name('notifications.clear');
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
     
-    // User management routes including the new restoration endpoint
     Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::patch('users/{user}/restore', [UserController::class, 'restore'])->name('users.restore')->withTrashed();
     

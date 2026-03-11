@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkSessionController;
+use App\Http\Controllers\Api\TeamController;
+use App\Http\Controllers\Api\VacationController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -59,7 +61,7 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
     })->name('customers.index');
 
     Route::get('/supporters', function () {
-        $supporters = User::where('role', RoleEnum::SUPPORTER->value)->select('id', 'name', 'email')->get();
+        $supporters = User::where('role', RoleEnum::SUPPORTER->value)->select('id', 'name', 'email', 'team_id')->with('team')->get();
         return response()->json(['data' => $supporters]);
     })->name('supporters.index');
 
@@ -76,6 +78,17 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
         Route::post('/resume', [WorkSessionController::class, 'resume'])->name('resume');
         Route::delete('/{workSession}', [WorkSessionController::class, 'destroy'])->name('destroy');
     });
+
+    /**
+     * Teams Management (Admin)
+     */
+    Route::apiResource('teams', TeamController::class)->except(['create', 'show', 'edit']);
+
+    /**
+     * Vacations Management
+     */
+    Route::apiResource('vacations', VacationController::class)->only(['index', 'store', 'destroy']);
+    Route::get('/vacations/supporter/{supporter}', [VacationController::class, 'showBySupporter'])->name('vacations.supporter');
 
     /**
      * Administrative User Management
