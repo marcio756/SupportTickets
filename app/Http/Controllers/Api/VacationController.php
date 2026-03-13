@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateVacationStatusRequest;
 use App\Models\User;
 use App\Models\Vacation;
+use App\Services\VacationCalendarService;
 use App\Services\VacationService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -16,26 +18,48 @@ use Illuminate\Support\Facades\Auth;
  */
 class VacationController extends Controller
 {
-    /** @var VacationService */
     private VacationService $vacationService;
+    private VacationCalendarService $calendarService;
 
-    /**
-     * Injecting the business logic service.
-     * * @param VacationService $vacationService
-     */
-    public function __construct(VacationService $vacationService)
+    public function __construct(VacationService $vacationService, VacationCalendarService $calendarService)
     {
         $this->vacationService = $vacationService;
+        $this->calendarService = $calendarService;
     }
 
     /**
-     * Get a global list of vacations for the calendar view.
-     * * @return JsonResponse
+     * Get a global list of vacations. Supports filtering for specific date ranges or teams.
+     * * @param Request $request
+     * @return JsonResponse
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $vacations = Vacation::with(['supporter.team'])->get();
-        return response()->json(['data' => $vacations]);
+        $query = Vacation::with(['supporter.team']);
+
+        if ($request->has('team_id')) {
+            $query->whereHas('supporter', function ($q) use ($request) {
+                $q->where('team_id', $request->team_id);
+            });
+        }
+
+        if ($request->has('start_date') && $request->has('end_date')) {
+            $query->whereBetween('start_date', [$request->start_date, $request->end_date]);
+        }
+
+        return response()->json(['data' => $query->paginate(20)]);
+    }
+
+    /**
+     * Exposes structured calendar data for UI rendering.
+     * * @param Request $request
+     * @return JsonResponse
+     */
+    public function calendar(Request $request): JsonResponse
+    {
+        $year = $request->get('year', Carbon::now()->year);
+        $calendarData = $this->calendarService->getCalendarData($year);
+        
+        return response()->json(['data' => $calendarData]);
     }
 
     /**
@@ -63,6 +87,18 @@ class VacationController extends Controller
     }
 
     /**
+     * Update the approval status of a vacation.
+     * * @param UpdateVacationStatusRequest $request
+     * @param Vacation $vacation
+     * @return JsonResponse
+     */
+    public function updateStatus(UpdateVacationStatusRequest $request, Vacation $vacation): JsonResponse
+    {
+        $vacation = $this->vacationService->updateStatus($vacation, $request->validated('status'));
+        return response()->json(['data' => $vacation]);
+    }
+
+    /**
      * Retrieve vacation history and summary for a specific supporter.
      * * @param User $supporter
      * @return JsonResponse
@@ -72,7 +108,7 @@ class VacationController extends Controller
         $vacations = Vacation::where('supporter_id', $supporter->id)->get();
         
         $currentYear = Carbon::now()->year;
-        $usedDays = $vacations->where('year', $currentYear)->sum('total_days');
+        $usedDays = $vacations->where('year', $currentYear)->where('status', '!=', 'rejected')->sum('total_days');
         
         return response()->json([
             'data' => $vacations,
@@ -86,13 +122,12 @@ class VacationController extends Controller
     }
 
     /**
-     * Remove a vacation record.
+     * Remove or cancel a vacation record.
      * * @param Vacation $vacation
      * @return JsonResponse
      */
     public function destroy(Vacation $vacation): JsonResponse
     {
-        // Ideally, authorize here: only the owner or an admin should delete.
         $vacation->delete();
         return response()->json(null, 204);
     }

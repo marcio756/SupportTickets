@@ -19,7 +19,10 @@ class VacationService
 
         $year = $startDate->year;
         
-        // CÁLCULO EXATO: Conta apenas se o dia for literalmente um dia da semana (Seg-Sex)
+        /**
+         * Calculates actual business days to prevent consuming quota on weekends.
+         * Public holidays should ideally be injected here via a separate HolidaysManager in the future.
+         */
         $workingDays = 0;
         foreach ($startDate->daysUntil($endDate) as $date) {
             if ($date->isWeekday()) {
@@ -43,6 +46,12 @@ class VacationService
             'year' => $year,
             'status' => 'pending',
         ]);
+    }
+
+    public function updateStatus(Vacation $vacation, string $status): Vacation
+    {
+        $vacation->update(['status' => $status]);
+        return $vacation;
     }
 
     private function ensureAnnualLimitIsNotExceeded(User $supporter, int $year, int $requestedDays): void
@@ -78,6 +87,11 @@ class VacationService
     {
         if (!$supporter->team_id) return;
 
+        /**
+         * Teams inherently represent a specific shift in this architecture. 
+         * By checking overlaps within the same team, we automatically enforce 
+         * the "no overlap between members of the same shift" requirement.
+         */
         $teamMemberIds = User::where('team_id', $supporter->team_id)->where('id', '!=', $supporter->id)->pluck('id');
         if ($teamMemberIds->isEmpty()) return;
 

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AssignTeamMembersRequest;
 use App\Models\Team;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -64,5 +66,22 @@ class TeamController extends Controller
     {
         $team->delete();
         return response()->json(null, 204);
+    }
+
+    /**
+     * Bulk assigns multiple users to a specific team.
+     * * @param AssignTeamMembersRequest $request
+     * @param Team $team
+     * @return JsonResponse
+     */
+    public function assignMembers(AssignTeamMembersRequest $request, Team $team): JsonResponse
+    {
+        User::whereIn('id', $request->validated('user_ids'))
+            ->update(['team_id' => $team->id]);
+
+        return response()->json([
+            'message' => 'Members assigned successfully',
+            'data' => $team->load('supporters')
+        ]);
     }
 }

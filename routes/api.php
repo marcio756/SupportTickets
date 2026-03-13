@@ -83,12 +83,15 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
      * Teams Management (Admin)
      */
     Route::apiResource('teams', TeamController::class)->except(['create', 'show', 'edit']);
+    Route::post('teams/{team}/members', [TeamController::class, 'assignMembers'])->name('teams.assign-members');
 
     /**
      * Vacations Management
      */
-    Route::apiResource('vacations', VacationController::class)->only(['index', 'store', 'destroy']);
+    Route::get('/vacations/calendar', [VacationController::class, 'calendar'])->name('vacations.calendar');
     Route::get('/vacations/supporter/{supporter}', [VacationController::class, 'showBySupporter'])->name('vacations.supporter');
+    Route::patch('/vacations/{vacation}/status', [VacationController::class, 'updateStatus'])->name('vacations.updateStatus');
+    Route::apiResource('vacations', VacationController::class)->except(['create', 'show', 'edit', 'update']);
 
     /**
      * Administrative User Management
