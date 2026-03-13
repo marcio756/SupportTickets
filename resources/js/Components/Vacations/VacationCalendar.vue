@@ -47,9 +47,10 @@
                         
                         <div v-if="isWeekend(day)" 
                              class="absolute left-0 right-0 flex items-center justify-center shadow-sm" 
-                             style="top: 38%; bottom: 38%; opacity: 0.5;"
+                             style="top: 38%; bottom: 38%; opacity: 0.6;"
                              :style="{ 
-                                backgroundColor: getVacationDay(supporter.id, day).status === 'pending' ? 'var(--va-warning)' : 'var(--va-primary)'
+                                backgroundColor: getVacationDay(supporter.id, day).status === 'pending' ? 'var(--va-warning)' : 
+                                                 getVacationDay(supporter.id, day).status === 'completed' ? 'var(--va-secondary)' : 'var(--va-primary)'
                              }"
                              title="Weekend (Not deducted)">
                         </div>
@@ -58,6 +59,12 @@
                              class="absolute inset-1 rounded-sm shadow-sm border border-dashed" 
                              style="border-color: var(--va-warning); background-color: rgba(225, 190, 50, 0.2);" 
                              title="Pending Approval">
+                        </div>
+
+                        <div v-else-if="getVacationDay(supporter.id, day).status === 'completed'" 
+                             class="absolute inset-1 rounded-sm shadow-sm" 
+                             style="background-color: var(--va-secondary); opacity: 0.6;" 
+                             title="Completed">
                         </div>
 
                         <div v-else 
@@ -70,7 +77,9 @@
                 </td>
             </tr>
             <tr v-if="mappedSupporters.length === 0">
-                <td :colspan="5 + daysInMonth" class="px-6 py-8 text-center" style="color: var(--va-secondary);">No supporters found.</td>
+                <td :colspan="5 + daysInMonth" class="px-6 py-8 text-center" style="color: var(--va-secondary);">
+                    No supporters match the current filters.
+                </td>
             </tr>
         </tbody>
       </table>
@@ -100,6 +109,8 @@ const daysInMonth = computed(() => {
 
 const mappedSupporters = computed(() => {
     return props.supporters.map(supporter => {
+        // Ignora os rejeitados no limite gasto. 
+        // Os pending e completed são contabilizados como dias bloqueados.
         const usedDays = props.vacations
             .filter(v => v.supporter_id === supporter.id && v.year === currentYear.value && v.status !== 'rejected')
             .reduce((sum, v) => sum + v.total_days, 0);
@@ -114,6 +125,7 @@ const isWeekend = (day) => {
     return dayOfWeek === 0 || dayOfWeek === 6; 
 };
 
+// COMPARAÇÃO INQUEBRÁVEL DE DATAS (O Segredo para não desaparecer o Sábado)
 const getVacationDay = (supporterId, day) => {
     const targetStr = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
@@ -121,10 +133,11 @@ const getVacationDay = (supporterId, day) => {
         if (v.supporter_id !== supporterId) return false;
         if (v.status === 'rejected') return false; 
         
+        // Remove as horas para comparar exclusivamente o YYYY-MM-DD
         const sDate = v.start_date.substring(0, 10);
         const eDate = v.end_date.substring(0, 10);
         
-        // Verifica independentemente de ser dia útil ou não para desenhar a ponte!
+        // Não filtramos o `isWeekend` aqui, para que possamos desenhar a ponte no HTML!
         return targetStr >= sDate && targetStr <= eDate;
     });
 };

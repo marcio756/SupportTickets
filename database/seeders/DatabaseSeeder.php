@@ -3,22 +3,27 @@
 namespace Database\Seeders;
 
 use App\Enums\RoleEnum;
+use App\Enums\WorkSessionStatusEnum;
 use App\Models\Tag;
+use App\Models\Team;
 use App\Models\Ticket;
+use App\Models\TicketMessage;
 use App\Models\User;
+use App\Models\Vacation;
+use App\Models\WorkSession;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Seed the application's database.
-     * Orchestrates the creation of users, standard tags, and mock tickets for development.
+     * Seed the application's database with comprehensive test data.
      */
     public function run(): void
     {
         /**
-         * 1. Define and create system default tags
+         * 1. Create system default tags
          */
         $tagsData = [
             ['name' => 'Bug', 'color' => '#ef4444'],
@@ -42,8 +47,32 @@ class DatabaseSeeder extends Seeder
         }
 
         /**
-         * 2. Create the specific testing Customer
+         * 2. Create Teams
          */
+        $teams = collect([
+            Team::firstOrCreate(['name' => 'Alpha Support'], ['shift' => 'morning']),
+            Team::firstOrCreate(['name' => 'Beta Tech'], ['shift' => 'afternoon']),
+            Team::firstOrCreate(['name' => 'Gamma Ops'], ['shift' => 'night']),
+        ]);
+
+        /**
+         * 3. Create Core Demo Users
+         */
+        $testAdmin = User::factory()->create([
+            'name' => 'Admin Demo',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('123'),
+            'role' => RoleEnum::ADMIN,
+        ]);
+
+        $testSupporter = User::factory()->create([
+            'name' => 'Support Demo',
+            'email' => 'support@example.com',
+            'password' => Hash::make('123'),
+            'role' => RoleEnum::SUPPORTER,
+            'team_id' => $teams->first()->id,
+        ]);
+
         $testCustomer = User::factory()->create([
             'name' => 'Customer Demo',
             'email' => 'customer@example.com',
@@ -52,72 +81,100 @@ class DatabaseSeeder extends Seeder
         ]);
 
         /**
-         * 3. Create the specific testing Supporter
+         * 4. Create more Random Supporters and Assign to Teams
          */
-        $testSupporter = User::factory()->create([
-            'name' => 'Support Demo',
-            'email' => 'support@example.com',
-            'password' => Hash::make('123'),
+        $randomSupporters = User::factory(8)->create([
             'role' => RoleEnum::SUPPORTER,
+            'team_id' => fn() => $teams->random()->id,
         ]);
-
-        $testAdmin = User::factory()->create([
-            'name' => 'Admin Demo',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('123'),
-            'role' => RoleEnum::ADMIN,
-        ]);
+        
+        $allSupporters = collect([$testSupporter])->concat($randomSupporters);
 
         /**
-         * 4. Create 10 random Customers
+         * 5. Create Random Customers
          */
-        $randomCustomers = User::factory(10)->create([
-            'role' => RoleEnum::CUSTOMER,
-        ]);
+        $randomCustomers = User::factory(12)->create(['role' => RoleEnum::CUSTOMER]);
 
         /**
-         * 5. Create 5 random Supporters
+         * 6. Generate Vacation Data for all Supporters
          */
-        $randomSupporters = User::factory(5)->create([
-            'role' => RoleEnum::SUPPORTER,
-        ]);
+        foreach ($allSupporters as $supporter) {
+            // Approved vacation in current month
+            $start = Carbon::now()->startOfMonth()->addDays(rand(5, 15));
+            while ($start->isWeekend()) { $start->addDay(); }
+            
+            Vacation::create([
+                'supporter_id' => $supporter->id,
+                'start_date' => $start->toDateString(),
+                'end_date' => $start->copy()->addDays(3)->toDateString(),
+                'total_days' => 4,
+                'year' => Carbon::now()->year,
+                'status' => 'approved',
+            ]);
 
-        /**
-         * 6. Generate mock tickets to populate the UI tables
-         */
-        Ticket::factory(3)->create([
-            'customer_id' => $testCustomer->id,
-            'assigned_to' => $testSupporter->id,
-        ]);
-
-        Ticket::factory(2)->create([
-            'customer_id' => $testCustomer->id,
-            'assigned_to' => null,
-        ]);
-
-        // ADIÇÃO: Criar 3 tickets com origem 'email' para o Customer Demo
-        Ticket::factory(3)->create([
-            'customer_id' => $testCustomer->id,
-            'assigned_to' => null,
-            'source'      => 'email', // Forçamos a origem a ser email
-        ]);
-
-        foreach ($randomCustomers as $customer) {
-            Ticket::factory(rand(1, 5))->create([
-                'customer_id' => $customer->id,
-                'assigned_to' => rand(0, 1) ? $randomSupporters->random()->id : null,
+            // Pending or Rejected vacation in next month
+            $startNext = Carbon::now()->addMonth()->startOfMonth()->addDays(rand(2, 20));
+            while ($startNext->isWeekend()) { $startNext->addDay(); }
+            
+            Vacation::create([
+                'supporter_id' => $supporter->id,
+                'start_date' => $startNext->toDateString(),
+                'end_date' => $startNext->copy()->addDays(2)->toDateString(),
+                'total_days' => 3,
+                'year' => Carbon::now()->year,
+                'status' => rand(0, 1) ? 'pending' : 'rejected',
             ]);
         }
 
         /**
-         * 7. Attach random tags to generated tickets
-         * We iterate over all tickets and randomly assign between 1 to 3 tags to ~80% of them.
+         * 7. Generate Work Sessions for Support Demo (to test Time Tracking)
          */
-        $allTickets = Ticket::all();
-        foreach ($allTickets as $ticket) {
-            if (rand(1, 100) <= 80) {
-                $randomTags = $createdTags->random(rand(1, 3))->pluck('id');
-                $ticket->tags()->attach($randomTags);
+        for ($i = 1; $i <= 7; $i++) {
+            $day = Carbon::now()->subDays($i);
+            if (!$day->isWeekend()) {
+                WorkSession::create([
+                    'user_id' => $testSupporter->id,
+                    'start_time' => $day->copy()->setTime(9, 0, 0),
+                    'end_time' => $day->copy()->setTime(18, 0, 0),
+                    'status' => WorkSessionStatusEnum::COMPLETED->value,
+                ]);
+            }
+        }
+
+        /**
+         * 8. Generate Tickets and Messages
+         */
+        $allCustomers = collect([$testCustomer])->concat($randomCustomers);
+        
+        foreach ($allCustomers as $customer) {
+            $ticketCount = rand(1, 3);
+            for ($i = 0; $i < $ticketCount; $i++) {
+                $assigned = rand(0, 1) ? $allSupporters->random()->id : null;
+                $ticket = Ticket::factory()->create([
+                    'customer_id' => $customer->id,
+                    'assigned_to' => $assigned,
+                ]);
+
+                // Initial Inquiry
+                TicketMessage::create([
+                    'ticket_id' => $ticket->id,
+                    'user_id' => $customer->id,
+                    'message' => 'Hello, I am having trouble accessing the main dashboard. Can you help?',
+                ]);
+
+                // Supporter Response
+                if ($assigned) {
+                    TicketMessage::create([
+                        'ticket_id' => $ticket->id,
+                        'user_id' => $assigned,
+                        'message' => 'I will check that for you immediately.',
+                    ]);
+                }
+
+                // Random Tags
+                if (rand(0, 1)) {
+                    $ticket->tags()->attach($createdTags->random(rand(1, 2))->pluck('id'));
+                }
             }
         }
     }

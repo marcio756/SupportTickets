@@ -1,4 +1,3 @@
-// database/migrations/2026_03_12_000003_create_vacations_table.php
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -7,6 +6,9 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::create('vacations', function (Blueprint $table) {
@@ -16,10 +18,15 @@ return new class extends Migration
             $table->date('end_date');
             $table->integer('total_days');
             $table->integer('year');
+            // A coluna status nasce logo aqui (string em vez de enum para total suporte SQLite)
+            $table->string('status')->default('pending'); 
             $table->timestamps();
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::dropIfExists('vacations');

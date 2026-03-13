@@ -24,11 +24,18 @@ class VacationController extends Controller
 
     public function index(Request $request): Response
     {
+        // ---------------------------------------------------------
+        // TRUQUE INTELIGENTE: Atualização Automática de Estado
+        // Transforma todas as férias aprovadas que já passaram em 'completed'
+        // ---------------------------------------------------------
+        Vacation::where('status', 'approved')
+            ->where('end_date', '<', Carbon::today()->toDateString())
+            ->update(['status' => 'completed']);
+
         $user = $request->user();
         $currentYear = Carbon::now()->year;
 
         $supporters = User::where('role', RoleEnum::SUPPORTER->value)->with('team')->get();
-        // Carrega todas as férias com as relações
         $globalVacations = Vacation::with('supporter.team')->orderBy('created_at', 'desc')->get();
         
         if ($user->isAdmin()) {
@@ -82,9 +89,6 @@ class VacationController extends Controller
         }
     }
 
-    /**
-     * Admin only: Update an existing vacation request
-     */
     public function update(Request $request, Vacation $vacation): RedirectResponse
     {
         if (!$request->user()->isAdmin()) abort(403);
@@ -92,7 +96,7 @@ class VacationController extends Controller
         $validated = $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'status' => 'required|in:pending,approved,rejected',
+            'status' => 'required|in:pending,approved,rejected,completed', // Adicionado completed
         ]);
 
         $start = Carbon::parse($validated['start_date']);
@@ -102,7 +106,6 @@ class VacationController extends Controller
             return redirect()->back()->withErrors(['start_date' => 'Dates must be within the same year.']);
         }
 
-        // CÁLCULO EXATO NA EDIÇÃO TAMBÉM
         $workingDays = 0;
         foreach ($start->daysUntil($end) as $date) {
             if ($date->isWeekday()) {
@@ -127,6 +130,7 @@ class VacationController extends Controller
     public function updateStatus(Request $request, Vacation $vacation): RedirectResponse
     {
         if (!$request->user()->isAdmin()) abort(403);
+        // Admin quick actions
         $validated = $request->validate(['status' => 'required|in:approved,rejected']);
         $vacation->update(['status' => $validated['status']]);
         return redirect()->back()->with('success', "Vacation marked as {$validated['status']}.");

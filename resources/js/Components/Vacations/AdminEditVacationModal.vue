@@ -11,12 +11,25 @@
         </div>
 
         <form @submit.prevent="submit" class="flex flex-col gap-4">
-            <va-input v-model="form.start_date" type="date" label="Start Date" :error="!!form.errors.start_date" required />
-            <va-input v-model="form.end_date" type="date" label="End Date" :error="!!form.errors.end_date" required />
+            <va-input 
+                v-model="form.start_date" 
+                type="date" 
+                label="Start Date" 
+                :error="!!form.errors.start_date" 
+                required 
+            />
+            
+            <va-input 
+                v-model="form.end_date" 
+                type="date" 
+                label="End Date" 
+                :error="!!form.errors.end_date" 
+                required 
+            />
             
             <va-select 
                 v-model="form.status" 
-                :options="['pending', 'approved', 'rejected']" 
+                :options="statusOptions" 
                 label="Request Status" 
                 required 
             />
@@ -33,7 +46,11 @@
 import { computed, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 
-const props = defineProps({ show: Boolean, vacation: Object });
+const props = defineProps({ 
+    show: Boolean, 
+    vacation: Object 
+});
+
 const emit = defineEmits(['close']);
 
 const form = useForm({
@@ -42,10 +59,14 @@ const form = useForm({
     status: 'pending'
 });
 
+const statusOptions = ['pending', 'approved', 'rejected', 'completed'];
+
 const hasErrors = computed(() => Object.keys(form.errors).length > 0);
 
+// Quando o Modal abre, preenchemos o formulário
 watch(() => props.show, (val) => {
     if (val && props.vacation) {
+        // Garantir que carregamos estritamente YYYY-MM-DD para preencher o input nativo HTML
         form.start_date = props.vacation.start_date.substring(0, 10);
         form.end_date = props.vacation.end_date.substring(0, 10);
         form.status = props.vacation.status;
