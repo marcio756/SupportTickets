@@ -45,7 +45,7 @@ class ProfileController extends Controller
 
         $user->update($validated);
 
-        return $this->successResponse(new UserResource($user), 'Perfil atualizado com sucesso.');
+        return $this->successResponse(new UserResource($user), 'Profile updated successfully.');
     }
 
     /**
@@ -65,7 +65,7 @@ class ProfileController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        return $this->successResponse(null, 'Password alterada com sucesso.');
+        return $this->successResponse(null, 'Password changed successfully.');
     }
 
     /**
@@ -88,6 +88,6 @@ class ProfileController extends Controller
         
         $user->delete();
 
-        return $this->successResponse(null, 'Conta eliminada com sucesso.');
+        return $this->successResponse(null, 'Account deleted successfully.');
     }
 }

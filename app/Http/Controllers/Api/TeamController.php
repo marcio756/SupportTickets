@@ -25,6 +25,17 @@ class TeamController extends Controller
     }
 
     /**
+     * Returns the list of members assigned to a specific team.
+     * * @param Team $team
+     * @return JsonResponse
+     */
+    public function members(Team $team): JsonResponse
+    {
+        // Explicitly return the supporters relationship
+        return response()->json(['data' => $team->supporters]);
+    }
+
+    /**
      * Create a new team with a specific shift.
      * * @param Request $request
      * @return JsonResponse

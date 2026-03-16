@@ -24,10 +24,7 @@ class VacationController extends Controller
 
     public function index(Request $request): Response
     {
-        // ---------------------------------------------------------
-        // TRUQUE INTELIGENTE: Atualização Automática de Estado
         // Transforma todas as férias aprovadas que já passaram em 'completed'
-        // ---------------------------------------------------------
         Vacation::where('status', 'approved')
             ->where('end_date', '<', Carbon::today()->toDateString())
             ->update(['status' => 'completed']);
@@ -96,44 +93,34 @@ class VacationController extends Controller
         $validated = $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
-            'status' => 'required|in:pending,approved,rejected,completed', // Adicionado completed
+            'status' => 'required|in:pending,approved,rejected,completed',
         ]);
 
-        $start = Carbon::parse($validated['start_date']);
-        $end = Carbon::parse($validated['end_date']);
-
-        if ($start->year !== $end->year) {
-            return redirect()->back()->withErrors(['start_date' => 'Dates must be within the same year.']);
+        try {
+            $this->vacationService->updateVacation(
+                $vacation,
+                Carbon::parse($validated['start_date']),
+                Carbon::parse($validated['end_date']),
+                $validated['status']
+            );
+            return redirect()->back()->with('success', 'Vacation updated successfully.');
+        } catch (ValidationException $e) {
+            return redirect()->back()->withErrors($e->errors());
         }
-
-        $workingDays = 0;
-        foreach ($start->daysUntil($end) as $date) {
-            if ($date->isWeekday()) {
-                $workingDays++;
-            }
-        }
-
-        if ($workingDays === 0) {
-            return redirect()->back()->withErrors(['start_date' => 'The selected period contains no working days.']);
-        }
-
-        $vacation->update([
-            'start_date' => $start->toDateString(),
-            'end_date' => $end->toDateString(),
-            'total_days' => $workingDays,
-            'status' => $validated['status'],
-        ]);
-
-        return redirect()->back()->with('success', 'Vacation updated successfully.');
     }
 
     public function updateStatus(Request $request, Vacation $vacation): RedirectResponse
     {
         if (!$request->user()->isAdmin()) abort(403);
-        // Admin quick actions
+        
         $validated = $request->validate(['status' => 'required|in:approved,rejected']);
-        $vacation->update(['status' => $validated['status']]);
-        return redirect()->back()->with('success', "Vacation marked as {$validated['status']}.");
+        
+        try {
+            $this->vacationService->updateStatus($vacation, $validated['status']);
+            return redirect()->back()->with('success', "Vacation marked as {$validated['status']}.");
+        } catch (ValidationException $e) {
+            return redirect()->back()->withErrors($e->errors());
+        }
     }
 
     public function destroy(Vacation $vacation): RedirectResponse

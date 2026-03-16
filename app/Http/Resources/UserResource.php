@@ -21,6 +21,7 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'role' => $this->role,
+            'team_id' => $this->team_id,
             'avatar_url' => "https://ui-avatars.com/api/?name=" . urlencode($this->name),
             'chat_time' => [
                 'total' => $this->max_chat_time,

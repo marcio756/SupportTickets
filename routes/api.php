@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
      * Teams Management (Admin)
      */
     Route::apiResource('teams', TeamController::class)->except(['create', 'show', 'edit']);
+    Route::get('teams/{team}/members', [TeamController::class, 'members'])->name('teams.members');
     Route::post('teams/{team}/members', [TeamController::class, 'assignMembers'])->name('teams.assign-members');
 
     /**
