@@ -1,22 +1,12 @@
 <script setup>
-/**
- * Professional Login Page for SupportTickets.
- * Integrated with BrandTitle component and optimized for visual consistency.
- */
 import Checkbox from '@/Components/Checkbox.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import BrandTitle from '@/Components/Common/BrandTitle.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
-/**
- * @typedef {Object} Props
- * @property {boolean} canResetPassword - Determines if the forgot password link should be shown.
- * @property {string} [status] - Session status message.
- */
 defineProps({
     canResetPassword: {
         type: Boolean,
@@ -26,17 +16,12 @@ defineProps({
     },
 });
 
-// Form state management
 const form = useForm({
     email: '',
     password: '',
     remember: false,
 });
 
-/**
- * Handles the login form submission.
- * Resets the password field on failure to ensure security.
- */
 const submit = () => {
     form.post(route('login'), {
         onFinish: () => form.reset('password'),
@@ -48,15 +33,11 @@ const submit = () => {
     <GuestLayout>
         <Head title="Log in" />
 
-        <div class="mb-6 text-center">
-            <BrandTitle />
-        </div>
-
-        <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
+        <div v-if="status" class="mb-4 font-medium text-sm text-green-600">
             {{ status }}
         </div>
 
-        <form @submit.prevent="submit">
+        <form @submit.prevent="submit" class="space-y-6">
             <div>
                 <InputLabel for="email" value="Email" />
 
@@ -68,13 +49,12 @@ const submit = () => {
                     required
                     autofocus
                     autocomplete="username"
-                    placeholder="your@email.com"
                 />
 
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
-            <div class="mt-4">
+            <div>
                 <InputLabel for="password" value="Password" />
 
                 <TextInput
@@ -84,33 +64,28 @@ const submit = () => {
                     v-model="form.password"
                     required
                     autocomplete="current-password"
-                    placeholder="••••••••"
                 />
 
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
 
-            <div class="mt-4 block">
-                <label class="flex items-center">
+            <div class="block mt-4">
+                <label class="flex items-center w-fit cursor-pointer">
                     <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Remember me</span>
+                    <span class="ms-3 text-sm text-gray-600 dark:text-gray-400 select-none">Remember me</span>
                 </label>
             </div>
 
-            <div class="mt-4 flex items-center justify-end">
+            <div class="flex items-center justify-between mt-6">
                 <Link
                     v-if="canResetPassword"
                     :href="route('password.request')"
-                    class="rounded-md text-sm text-gray-600 dark:text-gray-400 underline hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors"
                 >
                     Forgot your password?
                 </Link>
 
-                <PrimaryButton
-                    class="ms-4"
-                    :class="{ 'opacity-25': form.processing }"
-                    :disabled="form.processing"
-                >
+                <PrimaryButton class="ms-4 py-2.5 px-6" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                     Log in
                 </PrimaryButton>
             </div>
