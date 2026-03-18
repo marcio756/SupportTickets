@@ -17,10 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi(); // Ensures Sanctum works for mobile
 
         /**
-         * Appends Inertia middleware to the web group.
-         * This ensures shared data (like the authenticated user) is passed to the Vue frontend globally.
+         * Appends custom and Inertia middlewares to the web group.
+         * The SetLocale middleware must run before HandleInertiaRequests.
          */
         $middleware->web(append: [
+            \App\Http\Middleware\SetLocale::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);

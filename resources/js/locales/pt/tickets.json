@@ -1,0 +1,34 @@
+{
+    "page_title": "Tickets",
+    "title": "Tickets de Suporte",
+    "create_new": "Abrir Novo Ticket",
+    "no_tickets_found": "Nenhum ticket encontrado com os filtros atuais.",
+    "email": "Email",
+    "received_via_email": "Recebido via Email",
+    "no_tags": "Sem tags",
+    "unregistered_user": "Utilizador não registado",
+    "unassigned": "Não atribuído",
+    "status": {
+        "open": "Aberto",
+        "in_progress": "Em Progresso",
+        "resolved": "Resolvido",
+        "closed": "Fechado"
+    },
+    "source": {
+        "web": "Web",
+        "email": "Email"
+    },
+    "assignee": {
+        "unassigned": "Não Atribuído",
+        "me": "Atribuído a Mim"
+    },
+    "columns": {
+        "id": "ID",
+        "subject": "Assunto",
+        "tags": "Tags",
+        "status": "Estado",
+        "created_at": "Criado em",
+        "customer": "Cliente",
+        "assigned_to": "Atribuído a"
+    }
+}

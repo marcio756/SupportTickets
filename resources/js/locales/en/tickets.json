@@ -1,0 +1,36 @@
+{
+    "title": "My Tickets",
+    "create_new": "Create New Ticket",
+    "status": {
+        "open": "Open",
+        "pending": "Pending",
+        "resolved": "Resolved",
+        "closed": "Closed",
+        "in_progress": "In Progress"
+    },
+    "assigned_to": "Assigned to",
+    "no_tickets_found": "No tickets found matching current filters.",
+    "page_title": "Tickets",
+    "email": "E-mail",
+    "received_via_email": "Received via Email",
+    "no_tags": "No tags",
+    "unregistered_user": "Unregistered user",
+    "unassigned": "Not assigned",
+    "source": {
+        "web": "Web",
+        "email": "E-mail"
+    },
+    "assignee": {
+        "unassigned": "Not Assigned",
+        "me": "Assigned to me"
+    },
+    "columns": {
+        "id": "ID",
+        "subject": "Subject",
+        "tags": "Tags",
+        "status": "State",
+        "created_at": "Created in",
+        "customer": "Customer",
+        "assigned_to": "Assigned to"
+    }
+}

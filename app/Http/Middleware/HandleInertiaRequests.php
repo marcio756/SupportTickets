@@ -27,9 +27,9 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
-public function share(Request $request): array
+    public function share(Request $request): array
     {
-        // Descobre se existe uma sessão de trabalho aberta para o supporter
+        // Check if there is an active work session for the supporter
         $activeSession = null;
         if ($request->user() && $request->user()->isSupporter()) {
             $activeSession = \App\Models\WorkSession::where('user_id', $request->user()->id)
@@ -43,6 +43,8 @@ public function share(Request $request): array
                 'user' => $request->user(),
                 'work_session' => $activeSession, 
             ],
+            // Shares the current backend locale state to initialize the frontend translation
+            'locale' => app()->getLocale(),
         ];
     }
 }

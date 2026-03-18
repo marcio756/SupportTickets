@@ -12,6 +12,8 @@
     <template #right>
       <div class="right-section flex items-center gap-4">
         
+        <LanguageSwitcher />
+
         <SessionStatusBadge 
             v-if="activeSession" 
             :session="activeSession" 
@@ -27,11 +29,11 @@
           <va-dropdown-content class="user-dropdown">
             <div class="dropdown-item theme-item cursor-pointer" @click="toggleTheme">
               <va-icon :name="isDark ? 'light_mode' : 'dark_mode'" size="small" class="mr-2" />
-              <span>{{ isDark ? 'Light Mode' : 'Dark Mode' }}</span>
+              <span>{{ isDark ? $t('navbar.light_mode') : $t('navbar.dark_mode') }}</span>
             </div>
             <va-divider class="m-0" />
-            <Link href="/profile" class="dropdown-item">Profile</Link>
-            <div @click="handleLogout" class="dropdown-item text-danger cursor-pointer">Logout</div>
+            <Link href="/profile" class="dropdown-item">{{ $t('navbar.profile') }}</Link>
+            <div @click="handleLogout" class="dropdown-item text-danger cursor-pointer">{{ $t('navbar.logout') }}</div>
           </va-dropdown-content>
         </va-dropdown>
       </div>
@@ -43,14 +45,19 @@
 import { computed } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import { useColors, useToast } from 'vuestic-ui';
+import { useI18n } from 'vue-i18n';
 import NotificationDropdown from './NotificationDropdown.vue';
 import SessionStatusBadge from '@/Components/WorkSession/SessionStatusBadge.vue';
+import LanguageSwitcher from '@/Components/Layout/LanguageSwitcher.vue';
 
 defineEmits(['toggle-sidebar']);
 
 const { currentPresetName, applyPreset } = useColors();
 const { init } = useToast();
 const page = usePage();
+
+// Extracts the translation function to be used inside the script logic
+const { t } = useI18n();
 
 const isDark = computed(() => currentPresetName.value === 'dark');
 const toggleTheme = () => applyPreset(isDark.value ? 'light' : 'dark');
@@ -61,8 +68,7 @@ const userInitials = computed(() => {
 });
 
 /**
- * Lógica robusta para encontrar a sessão de trabalho ativa enviada pelo Laravel.
- * Verifica as várias nomenclaturas possíveis no teu HandleInertiaRequests.
+ * Robust logic to find the active work session dispatched by Laravel.
  */
 const activeSession = computed(() => {
     const props = page.props;
@@ -74,14 +80,15 @@ const activeSession = computed(() => {
 });
 
 /**
- * Previne o logout se o turno estiver ativo.
+ * Prevents logout if the shift is currently active or paused.
+ * Emits a translated toast message for UX consistency.
  */
 const handleLogout = () => {
     const session = activeSession.value;
     
     if (session && (session.status === 'active' || session.status === 'paused')) {
         init({
-            message: 'You cannot log out while your shift is active. Please end your work session first.',
+            message: t('navbar.prevent_logout_msg'),
             color: 'danger',
             position: 'top-right',
             duration: 5000
@@ -94,7 +101,7 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
-/* Garante que a secção direita mantém os elementos visíveis e alinhados */
+/* Ensures the right section elements remain visible and aligned */
 .right-section {
     display: flex;
     align-items: center;

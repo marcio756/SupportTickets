@@ -1,0 +1,10 @@
+{
+    "welcome": "Welcome",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Log Out",
+    "light_mode": "Light Mode",
+    "dark_mode": "Dark Mode",
+    "prevent_logout_msg": "You cannot log out while your turn is active. Please end the work session first."
+}

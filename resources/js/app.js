@@ -11,6 +11,10 @@ import { createVuestic } from "vuestic-ui";
 import "vuestic-ui/css";
 import "material-design-icons-iconfont/dist/material-design-icons.min.css"; 
 
+// Vue I18n Modular Import
+import { createI18n } from 'vue-i18n';
+import messages from './locales/index';
+
 const appName = import.meta.env.VITE_APP_NAME || 'SupportTickets';
 
 createInertiaApp({
@@ -21,12 +25,26 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
+        /**
+         * Initializes the i18n module.
+         * Extracts the initial session locale provided by Laravel's HandleInertiaRequests middleware.
+         * Utilizes the dynamically generated messages object containing all namespaces.
+         */
+        const initialLocale = props.initialPage.props.locale || 'pt';
+
+        const i18n = createI18n({
+            legacy: false,
+            locale: initialLocale,
+            fallbackLocale: 'en',
+            messages: messages
+        });
+
         return createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)
+            .use(i18n)
             .use(createVuestic({
                 config: {
-                    // Configuração de cores baseada no tema do Vuestic Admin
                     colors: {
                         variables: {
                             primary: '#154EC1',

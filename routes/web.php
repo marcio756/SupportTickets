@@ -16,6 +16,7 @@ use App\Http\Controllers\WorkSessionReportController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -24,6 +25,17 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+/**
+ * Global locale switcher endpoint.
+ * Accessible by guests and authenticated users.
+ */
+Route::post('/language', function (Request $request) {
+    $request->validate(['locale' => ['required', 'string', 'in:en,pt']]);
+    session()->put('locale', $request->locale);
+    
+    return redirect()->back();
+})->name('language.switch');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
