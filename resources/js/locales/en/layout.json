@@ -1,0 +1,10 @@
+{
+    "profile": "Profile",
+    "logout": "End Session",
+    "prevent_logout_msg": "You cannot log out while your turn is active. Please end the work session first.",
+    "modal": {
+        "title": "Blocked Action",
+        "subtitle": "End Session Canceled",
+        "understood": "Understood"
+    }
+}

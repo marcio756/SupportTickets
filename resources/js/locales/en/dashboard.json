@@ -1,0 +1,20 @@
+{
+    "page_title": "Control Panel",
+    "welcome_user": "Welcome, {name}!",
+    "subtitle": "Your daily control panel.",
+    "metrics": {
+        "open_tickets": "Open Tickets",
+        "resolved_tickets": "Tickets Solved",
+        "time_remaining_min": "Remaining Time (Min)",
+        "global_active": "Global Assets",
+        "global_resolved": "Global Resolved",
+        "total_supporters": "Total Support",
+        "time_worked_hrs": "Hours Worked Today"
+    },
+    "rankings": {
+        "top_clients": "Main Customers (By Tickets)",
+        "tickets": "Tickets",
+        "top_supporters": "Top 5 Productive Supports",
+        "resolved": "Resolved"
+    }
+}

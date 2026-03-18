@@ -1,0 +1,17 @@
+{
+    "page_title": "Bem-vindo ao SupportTickets",
+    "subtitle": "A plataforma centralizada para todas as tuas necessidades de suporte técnico. Gere tickets, acompanha o progresso e comunica com facilidade.",
+    "features": {
+        "ticketing": {
+            "title": "Gestão Inteligente",
+            "description": "Organiza e prioriza os pedidos de forma eficiente."
+        },
+        "updates": {
+            "title": "Atualizações em Tempo Real",
+            "description": "Recebe notificações no momento em que a equipa responde."
+        }
+    },
+    "access_dashboard": "Aceder ao Painel",
+    "login": "Iniciar Sessão",
+    "footer_version": "Sistema SupportTickets v1.0.0"
+}

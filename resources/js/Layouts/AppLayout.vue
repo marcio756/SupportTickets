@@ -9,11 +9,15 @@ import { ref, computed, onMounted } from 'vue';
 import { Head, Link, usePage, router } from '@inertiajs/vue3';
 import { useTheme } from '@/Composables/useTheme';
 import { useAppNotifications } from '@/Composables/useAppNotifications';
+import { useI18n } from 'vue-i18n';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import ThemeButton from '@/Components/navbar/ThemeButton.vue';
 import NotificationDropdown from '@/Components/Layout/NotificationDropdown.vue';
 import AppSidebar from '@/Components/Layout/AppSidebar.vue';
 import TimerWidget from '@/Components/WorkSession/TimerWidget.vue';
+
+// Correct path to the global Language Switcher component
+import LanguageSwitcher from '@/Components/navbar/LanguageSwitcher.vue';
 
 defineProps({
     title: String,
@@ -21,6 +25,9 @@ defineProps({
 
 const { initTheme } = useTheme();
 useAppNotifications();
+
+// Initialize i18n for layout-level translations (e.g., modals, dropdowns)
+const { t } = useI18n();
 
 const isSidebarMinimized = ref(false);
 const showLogoutBlocker = ref(false);
@@ -34,12 +41,13 @@ const user = computed(() => usePage().props.auth?.user);
 
 /**
  * Handles the logout process safely without triggering native browser alerts.
+ * Utilizes vue-i18n for translated error messages.
  */
 const handleLogout = () => {
     // Proactive frontend check
     const session = usePage().props.auth?.work_session;
     if (session && (session.status === 'active' || session.status === 'paused')) {
-        logoutErrorMessage.value = "You cannot log out while having an open work session. Please clock out first to ensure your time is accurately logged.";
+        logoutErrorMessage.value = t('layout.prevent_logout_msg');
         showLogoutBlocker.value = true;
         return;
     }
@@ -103,6 +111,8 @@ onMounted(() => {
                         <div class="flex items-center gap-2 sm:gap-4">
                             
                             <TimerWidget />
+
+                            <LanguageSwitcher />
                             
                             <NotificationDropdown />
 
@@ -122,7 +132,7 @@ onMounted(() => {
 
                                     <Link :href="route('profile.edit')" class="block w-full">
                                         <VaButton preset="plain" color="textPrimary" class="w-full justify-start mb-1" icon="person">
-                                            Profile
+                                            {{ $t('layout.profile') }}
                                         </VaButton>
                                     </Link>
                                     
@@ -134,7 +144,7 @@ onMounted(() => {
                                             icon="logout"
                                             @click="handleLogout"
                                         >
-                                            Logout
+                                            {{ $t('layout.logout') }}
                                         </VaButton>
                                     </div>
                                 </VaDropdownContent>
@@ -164,7 +174,7 @@ onMounted(() => {
 
         <VaModal
             v-model="showLogoutBlocker"
-            title="Action Blocked"
+            :title="$t('layout.modal.title')"
             hide-default-actions
             size="small"
         >
@@ -172,7 +182,7 @@ onMounted(() => {
                 <div class="h-16 w-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
                     <VaIcon name="block" color="danger" size="2.5rem" />
                 </div>
-                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Logout Prevented</h3>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">{{ $t('layout.modal.subtitle') }}</h3>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
                     {{ logoutErrorMessage }}
                 </p>
@@ -180,7 +190,7 @@ onMounted(() => {
             <template #footer>
                 <div class="w-full flex justify-center pb-2">
                     <VaButton @click="showLogoutBlocker = false" color="danger" class="w-full max-w-[200px]">
-                        Understood
+                        {{ $t('layout.modal.understood') }}
                     </VaButton>
                 </div>
             </template>

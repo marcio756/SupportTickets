@@ -2,6 +2,7 @@
 /**
  * Professional Landing Page for SupportTickets.
  * Replaces the default Laravel welcome page.
+ * Implements full localization to target a wider user base.
  */
 import { Head, Link } from '@inertiajs/vue3';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
@@ -16,15 +17,14 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Welcome to SupportTickets" />
+    <Head :title="$t('welcome.page_title')" />
 
     <GuestLayout>
         <div class="text-center py-4">
             <div class="mb-10">
                 <BrandTitle />
                 <p class="mt-4 text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
-                    The centralized platform for all your technical support needs. 
-                    Manage tickets, track progress, and communicate with ease.
+                    {{ $t('welcome.subtitle') }}
                 </p>
             </div>
 
@@ -33,16 +33,16 @@ defineProps({
                     icon="confirmation_number"
                     iconColor="primary"
                     iconBgClass="bg-indigo-100 dark:bg-indigo-900/50"
-                    title="Smart Ticketing"
-                    description="Organize and prioritize requests efficiently."
+                    :title="$t('welcome.features.ticketing.title')"
+                    :description="$t('welcome.features.ticketing.description')"
                 />
                 
                 <FeatureCard 
                     icon="chat"
                     iconColor="success"
                     iconBgClass="bg-green-100 dark:bg-green-900/50"
-                    title="Real-time Updates"
-                    description="Get notified the moment a supporter responds."
+                    :title="$t('welcome.features.updates.title')"
+                    :description="$t('welcome.features.updates.description')"
                 />
             </div>
 
@@ -50,7 +50,7 @@ defineProps({
                 <template v-if="$page.props.auth?.user">
                     <Link :href="route('dashboard')" class="sm:col-span-2">
                         <PrimaryButton class="w-full justify-center py-3 text-base">
-                            Access Dashboard
+                            {{ $t('welcome.access_dashboard') }}
                         </PrimaryButton>
                     </Link>
                 </template>
@@ -58,14 +58,14 @@ defineProps({
                 <template v-else>
                     <Link :href="route('login')">
                         <PrimaryButton class="w-full justify-center py-3 text-base">
-                            Login
+                            {{ $t('welcome.login') }}
                         </PrimaryButton>
                     </Link>
                 </template>
             </div>
 
             <p class="mt-12 text-xs font-mono text-gray-400 dark:text-gray-600 uppercase tracking-widest">
-                SupportTickets System v1.0.0
+                {{ $t('welcome.footer_version') }}
             </p>
         </div>
     </GuestLayout>

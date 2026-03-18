@@ -1,6 +1,7 @@
 {
     "light_mode": "Modo Claro",
     "dark_mode": "Modo Escuro",
+    "language": "Idioma",
     "profile": "Perfil",
     "logout": "Terminar Sessão",
     "prevent_logout_msg": "Não podes terminar sessão enquanto o teu turno estiver ativo. Por favor, encerra a sessão de trabalho primeiro."

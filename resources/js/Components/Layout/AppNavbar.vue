@@ -12,26 +12,41 @@
     <template #right>
       <div class="right-section flex items-center gap-4">
         
-        <LanguageSwitcher />
-
         <SessionStatusBadge 
             v-if="activeSession" 
             :session="activeSession" 
         />
 
         <NotificationDropdown />
+        
         <va-dropdown placement="bottom-end">
           <template #anchor>
             <va-avatar size="small" color="warning" class="user-avatar cursor-pointer">
               {{ userInitials }}
             </va-avatar>
           </template>
+          
           <va-dropdown-content class="user-dropdown">
             <div class="dropdown-item theme-item cursor-pointer" @click="toggleTheme">
               <va-icon :name="isDark ? 'light_mode' : 'dark_mode'" size="small" class="mr-2" />
               <span>{{ isDark ? $t('navbar.light_mode') : $t('navbar.dark_mode') }}</span>
             </div>
+            
             <va-divider class="m-0" />
+
+            <div class="dropdown-item flex items-center justify-between cursor-default" @click.stop>
+              <div class="flex items-center text-inherit whitespace-nowrap">
+                <va-icon name="language" size="small" class="mr-2" />
+                <span>{{ $t('navbar.language') }}</span>
+              </div>
+              
+              <div class="ml-4 flex items-center">
+                  <LanguageSwitcher class="scale-90 origin-right" />
+              </div>
+            </div>
+
+            <va-divider class="m-0" />
+            
             <Link href="/profile" class="dropdown-item">{{ $t('navbar.profile') }}</Link>
             <div @click="handleLogout" class="dropdown-item text-danger cursor-pointer">{{ $t('navbar.logout') }}</div>
           </va-dropdown-content>
@@ -48,7 +63,9 @@ import { useColors, useToast } from 'vuestic-ui';
 import { useI18n } from 'vue-i18n';
 import NotificationDropdown from './NotificationDropdown.vue';
 import SessionStatusBadge from '@/Components/WorkSession/SessionStatusBadge.vue';
-import LanguageSwitcher from '@/Components/Layout/LanguageSwitcher.vue';
+
+// Corrected import path matching your repository structure
+import LanguageSwitcher from '@/Components/navbar/LanguageSwitcher.vue';
 
 defineEmits(['toggle-sidebar']);
 

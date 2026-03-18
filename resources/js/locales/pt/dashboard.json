@@ -1,0 +1,20 @@
+{
+    "page_title": "Painel de Controlo",
+    "welcome_user": "Bem-vindo, {name}!",
+    "subtitle": "O teu painel de controlo diário.",
+    "metrics": {
+        "open_tickets": "Tickets Abertos",
+        "resolved_tickets": "Tickets Resolvidos",
+        "time_remaining_min": "Tempo Restante (Min)",
+        "global_active": "Ativos Globais",
+        "global_resolved": "Resolvidos Globais",
+        "total_supporters": "Total de Suportes",
+        "time_worked_hrs": "Horas Trabalhadas Hoje"
+    },
+    "rankings": {
+        "top_clients": "Principais Clientes (Por Tickets)",
+        "tickets": "Tickets",
+        "top_supporters": "Top 5 Suportes Produtivos",
+        "resolved": "Resolvidos"
+    }
+}

@@ -36,7 +36,10 @@ createInertiaApp({
             legacy: false,
             locale: initialLocale,
             fallbackLocale: 'en',
-            messages: messages
+            messages: messages,
+            silentTranslationWarn: true,
+            missingWarn: false,
+            fallbackWarn: false 
         });
 
         return createApp({ render: () => h(App, props) })

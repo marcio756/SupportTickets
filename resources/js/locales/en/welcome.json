@@ -1,0 +1,17 @@
+{
+    "page_title": "Welcome to SupportTickets",
+    "subtitle": "The one-stop platform for all your technical support needs. Generate tickets, track progress and communicate with ease.",
+    "features": {
+        "ticketing": {
+            "title": "Smart Management",
+            "description": "Organizes and prioritizes orders efficiently."
+        },
+        "updates": {
+            "title": "Real-Time Updates",
+            "description": "Receive notifications the moment the team responds."
+        }
+    },
+    "access_dashboard": "Access the Dashboard",
+    "login": "Login",
+    "footer_version": "SupportTickets System v1.0.0"
+}
