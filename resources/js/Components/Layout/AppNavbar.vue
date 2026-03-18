@@ -63,8 +63,6 @@ import { useColors, useToast } from 'vuestic-ui';
 import { useI18n } from 'vue-i18n';
 import NotificationDropdown from './NotificationDropdown.vue';
 import SessionStatusBadge from '@/Components/WorkSession/SessionStatusBadge.vue';
-
-// Corrected import path matching your repository structure
 import LanguageSwitcher from '@/Components/navbar/LanguageSwitcher.vue';
 
 defineEmits(['toggle-sidebar']);
@@ -72,20 +70,34 @@ defineEmits(['toggle-sidebar']);
 const { currentPresetName, applyPreset } = useColors();
 const { init } = useToast();
 const page = usePage();
-
-// Extracts the translation function to be used inside the script logic
 const { t } = useI18n();
 
+/**
+ * Determines the current application visual theme.
+ * Evaluates the active preset to dynamically render theme-switching UI elements and text.
+ * * @returns {boolean} True if the dark theme preset is currently active.
+ */
 const isDark = computed(() => currentPresetName.value === 'dark');
+
+/**
+ * Toggles the global application theme between light and dark modes via Vuestic's color engine.
+ */
 const toggleTheme = () => applyPreset(isDark.value ? 'light' : 'dark');
 
+/**
+ * Extracts and capitalizes the first two letters of the authenticated user's name
+ * to serve as a reliable visual avatar placeholder if a profile image is missing.
+ * * @returns {string} The formatted user initials or a fallback character.
+ */
 const userInitials = computed(() => {
-  const user = page.props.auth.user;
+  const user = page.props.auth?.user;
   return user?.name ? user.name.substring(0, 2).toUpperCase() : 'U';
 });
 
 /**
- * Robust logic to find the active work session dispatched by Laravel.
+ * Resolves the current active work session state from the shared Inertia page properties.
+ * This ensures the layout can globally display the user's shift status without dispatching additional API calls.
+ * * @returns {Object|null} The active or paused session object, otherwise null.
  */
 const activeSession = computed(() => {
     const props = page.props;
@@ -97,8 +109,8 @@ const activeSession = computed(() => {
 });
 
 /**
- * Prevents logout if the shift is currently active or paused.
- * Emits a translated toast message for UX consistency.
+ * Intercepts the logout action to enforce critical business logic related to operational metrics.
+ * Prevents staff members from abandoning an ongoing shift unexpectedly, which guarantees accurate time tracking.
  */
 const handleLogout = () => {
     const session = activeSession.value;
@@ -118,7 +130,9 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
-/* Ensures the right section elements remain visible and aligned */
+/* * Establishes a predictable structural alignment for the navbar's trailing components.
+ * Prevents UI layout collapse when dynamic elements like badges or notification popups are conditionally rendered.
+ */
 .right-section {
     display: flex;
     align-items: center;

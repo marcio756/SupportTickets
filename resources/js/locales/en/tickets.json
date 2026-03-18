@@ -32,5 +32,58 @@
         "created_at": "Created in",
         "customer": "Customer",
         "assigned_to": "Assigned to"
+    },
+    "form": {
+        "open_new_title": "Open a New Support Ticket",
+        "description": "Please describe your problem in detail. Our support team will help you shortly.",
+        "select_customer": "Select Customer",
+        "search_customer": "Search by customer name...",
+        "subject_label": "Subject/Short Description",
+        "subject_placeholder": "ex: I can't connect to the database",
+        "detailed_message_label": "Detailed Message",
+        "detailed_message_placeholder": "Explains steps to reproduce the problem, error codes, etc.",
+        "submit_button": "Submit Ticket"
+    },
+    "show": {
+        "page_title": "Ticket #{id} - {title}",
+        "view_only_mode": "Read Only Mode",
+        "claim_description": "You need to claim ownership or be invited to this ticket before you can interact with the customer.",
+        "claim_button": "Claim Ticket Now",
+        "back_to_tickets": "Return to Tickets",
+        "opened_by": "Opened by",
+        "manage_tags": "Manage Tags",
+        "assigned_to": "Assigned to"
+    },
+    "actions": {
+        "mark_resolved": "Mark as Solved",
+        "reopen": "Reopen Ticket",
+        "set_in_progress": "Mark In Progress",
+        "close_ticket": "Close Ticket",
+        "delete_ticket": "Delete Ticket"
+    },
+    "chat": {
+        "time_expired_alert": "Daily support time has expired (30 minutes reached). The chat is blocked until tomorrow.",
+        "open_status_alert": "The ticket is \"Open\". Please change it to \"In Progress\" in the actions menu to start responding and recording time.",
+        "no_messages": "There are no messages yet.",
+        "input_disabled_placeholder": "The chat is blocked. The ticket must be In Progress.",
+        "input_placeholder": "Write your answer here... (Use @ to mention)"
+    },
+    "mentions": {
+        "available_members": "Available Members",
+        "role_supporter": "SUPPORT",
+        "role_customer": "CUSTOMER",
+        "no_members": "No members found."
+    },
+    "tags": {
+        "manage_title": "Manage Ticket Tags",
+        "select_categories": "Select Categories",
+        "select_placeholder": "Select tags...",
+        "unknown": "Unknown"
+    },
+    "delete": {
+        "title": "Delete Ticket",
+        "confirmation_message": "Are you sure you want to delete this ticket? This action is irreversible.",
+        "password_label": "Confirmation Password",
+        "password_placeholder": "Enter your current password"
     }
 }

@@ -1,8 +1,8 @@
 {
-    "light_mode": "Modo Claro",
-    "dark_mode": "Modo Escuro",
-    "language": "Idioma",
-    "profile": "Perfil",
-    "logout": "Terminar Sessão",
-    "prevent_logout_msg": "Não podes terminar sessão enquanto o teu turno estiver ativo. Por favor, encerra a sessão de trabalho primeiro."
+  "light_mode": "Modo Claro",
+  "dark_mode": "Modo Escuro",
+  "language": "Idioma",
+  "profile": "Perfil",
+  "logout": "Sair",
+  "prevent_logout_msg": "Não podes terminar sessão com um turno de trabalho ativo ou pausado. Por favor, termina o teu turno primeiro."
 }

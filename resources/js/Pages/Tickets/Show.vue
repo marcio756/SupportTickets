@@ -1,6 +1,6 @@
 <template>
     <AppLayout>
-        <Head :title="`Ticket #${ticket.id} - ${ticket.title}`" />
+        <Head :title="$t('tickets.show.page_title', { id: ticket.id, title: ticket.title })" />
 
         <div 
             v-if="showClaimOverlay" 
@@ -10,17 +10,17 @@
             <VaCard class="w-full max-w-md p-6 text-center shadow-xl border-t-4 border-primary">
                 <VaCardContent>
                     <VaIcon name="lock_person" size="5rem" color="secondary" class="mb-6 opacity-75" />
-                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">View-Only Mode</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">{{ $t('tickets.show.view_only_mode') }}</h2>
                     <p class="text-gray-600 dark:text-gray-400 mb-8 text-lg leading-relaxed">
-                        You must claim ownership or be invited to this ticket before you can interact with the customer.
+                        {{ $t('tickets.show.claim_description') }}
                     </p>
 
                     <div class="flex flex-col gap-3">
                         <VaButton size="large" icon="person_add" @click="assignToMe" :loading="isAssigning" class="w-full font-bold py-3">
-                            Claim Ticket Now
+                            {{ $t('tickets.show.claim_button') }}
                         </VaButton>
                         <Link :href="route('tickets.index')">
-                            <VaButton preset="secondary" color="secondary" size="small">Cancel and go back</VaButton>
+                            <VaButton preset="secondary" color="secondary" size="small">{{ $t('common.actions.cancel_and_back') }}</VaButton>
                         </Link>
                     </div>
                 </VaCardContent>
@@ -30,7 +30,7 @@
         <div :class="{ 'blur-md pointer-events-none select-none transition-all duration-300': showClaimOverlay }">
             <div class="mb-4">
                 <Link :href="route('tickets.index')" class="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1 mb-2">
-                    &larr; Back to Tickets
+                    &larr; {{ $t('tickets.show.back_to_tickets') }}
                 </Link>
                 
                 <div class="flex flex-col md:flex-row justify-between md:items-start gap-4">
@@ -39,12 +39,12 @@
                             #{{ ticket.id }} {{ ticket.title }}
                             <span v-if="ticket.source === 'email'"
                                   class="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                                  title="Received via Email">
-                                📧 Email
+                                  :title="$t('tickets.received_via_email')">
+                                📧 {{ $t('tickets.email') }}
                             </span>
                         </h1>
                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Opened by 
+                            {{ $t('tickets.show.opened_by') }} 
                             <span v-if="ticket.customer" class="font-medium text-gray-700 dark:text-gray-300">{{ ticket.customer.name }}</span>
                             <span v-else class="font-medium text-gray-700 dark:text-gray-300">{{ ticket.sender_email }}</span>
                         </p>
@@ -59,7 +59,7 @@
                                 @click="isTagModalOpen = true"
                                 class="!px-2 !py-0 h-6"
                             >
-                                Manage Tags
+                                {{ $t('tickets.show.manage_tags') }}
                             </va-button>
                         </div>
                     </div>
@@ -68,30 +68,30 @@
                         <TicketStatusBadge :status="ticket.status" />
                         <span v-if="ticket.assignee" class="text-sm bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full text-gray-600 dark:text-gray-400 flex items-center gap-1">
                             <VaIcon name="support_agent" size="small" color="secondary" />
-                            Assigned to: {{ ticket.assignee.name }}
+                            {{ $t('tickets.show.assigned_to') }}: {{ ticket.assignee.name }}
                         </span>
                         
                         <SupportTimeDisplay v-if="ticket.customer" :seconds="currentRemainingSeconds" />
 
                         <va-dropdown placement="bottom-end" v-if="!isSupporter || hasWritePermission">
                             <template #anchor>
-                                <va-button preset="secondary" icon="settings" size="small">Actions</va-button>
+                                <va-button preset="secondary" icon="settings" size="small">{{ $t('common.actions.actions') }}</va-button>
                             </template>
                             <va-dropdown-content class="p-0">
                                 <va-list>
                                     <va-list-item v-if="!isSupporter && ticket.status !== 'resolved' && ticket.status !== 'closed'" @click="updateStatus('resolved')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
                                         <va-list-item-section icon><va-icon name="check_circle" color="success" /></va-list-item-section>
-                                        <va-list-item-section>Mark as Resolved</va-list-item-section>
+                                        <va-list-item-section>{{ $t('tickets.actions.mark_resolved') }}</va-list-item-section>
                                     </va-list-item>
 
                                     <template v-if="hasWritePermission">
-                                        <va-list-item @click="updateStatus('open')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section>Re-Open Ticket</va-list-item-section></va-list-item>
-                                        <va-list-item @click="updateStatus('in_progress')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section>Set In Progress</va-list-item-section></va-list-item>
-                                        <va-list-item @click="updateStatus('resolved')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section class="text-blue-600 dark:text-blue-400">Mark Resolved</va-list-item-section></va-list-item>
-                                        <va-list-item @click="updateStatus('closed')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section class="text-red-600 dark:text-red-400">Close Ticket</va-list-item-section></va-list-item>
+                                        <va-list-item @click="updateStatus('open')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section>{{ $t('tickets.actions.reopen') }}</va-list-item-section></va-list-item>
+                                        <va-list-item @click="updateStatus('in_progress')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section>{{ $t('tickets.actions.set_in_progress') }}</va-list-item-section></va-list-item>
+                                        <va-list-item @click="updateStatus('resolved')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section class="text-blue-600 dark:text-blue-400">{{ $t('tickets.actions.mark_resolved') }}</va-list-item-section></va-list-item>
+                                        <va-list-item @click="updateStatus('closed')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section class="text-red-600 dark:text-red-400">{{ $t('tickets.actions.close_ticket') }}</va-list-item-section></va-list-item>
                                         <va-list-item @click="confirmingDeletion = true" class="cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 border-t border-gray-100 dark:border-gray-700">
                                             <va-list-item-section icon><va-icon name="delete" color="danger" /></va-list-item-section>
-                                            <va-list-item-section class="text-red-600 dark:text-red-400">Delete Ticket</va-list-item-section>
+                                            <va-list-item-section class="text-red-600 dark:text-red-400">{{ $t('tickets.actions.delete_ticket') }}</va-list-item-section>
                                         </va-list-item>
                                     </template>
                                 </va-list>
@@ -103,15 +103,15 @@
 
             <div class="chat-container flex flex-col bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden h-[600px] mt-4">
                 <va-alert v-if="ticket.customer && isTimeUp" color="danger" class="m-4" dense icon="block">
-                    Daily support time has expired (30 minutes reached). The chat is locked until tomorrow.
+                    {{ $t('tickets.chat.time_expired_alert') }}
                 </va-alert>
 
                 <va-alert v-if="ticket.status === 'open' && !showClaimOverlay" color="info" class="m-4" dense outline icon="info">
-                    The ticket is currently "Open". Please set it to "In Progress" in the actions menu to start replying and tracking time.
+                    {{ $t('tickets.chat.open_status_alert') }}
                 </va-alert>
                 
                 <div class="flex-1 overflow-y-auto p-6" ref="messagesContainer">
-                    <div v-if="localMessages.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-10">No messages yet.</div>
+                    <div v-if="localMessages.length === 0" class="text-center text-gray-500 dark:text-gray-400 py-10">{{ $t('tickets.chat.no_messages') }}</div>
                     <TicketMessageBubble v-for="msg in localMessages" :key="msg.id" :message="msg" />
                 </div>
 
@@ -120,7 +120,9 @@
                         <div class="flex gap-3 items-end">
                             <div class="relative flex-1">
                                 <div v-if="showMentionMenu" class="absolute bottom-full left-0 mb-2 w-64 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50">
-                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">Available Members</div>
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                                        {{ $t('tickets.mentions.available_members') }}
+                                    </div>
                                     <div 
                                         v-for="user in filteredMentions" 
                                         :key="user.id" 
@@ -129,11 +131,11 @@
                                     >
                                         <va-icon name="alternate_email" size="small" color="secondary" />
                                         {{ user.name }}
-                                        <span v-if="user.role === 'supporter' || user.role === 'admin'" class="text-xs text-blue-500 font-bold ml-auto">SUPORTE</span>
-                                        <span v-if="user.role === 'customer'" class="text-xs text-green-500 font-bold ml-auto">CLIENTE</span>
+                                        <span v-if="user.role === 'supporter' || user.role === 'admin'" class="text-xs text-blue-500 font-bold ml-auto">{{ $t('tickets.mentions.role_supporter') }}</span>
+                                        <span v-if="user.role === 'customer'" class="text-xs text-green-500 font-bold ml-auto">{{ $t('tickets.mentions.role_customer') }}</span>
                                     </div>
                                     <div v-if="filteredMentions.length === 0" class="px-3 py-4 text-center text-sm text-gray-500">
-                                        No members found.
+                                        {{ $t('tickets.mentions.no_members') }}
                                     </div>
                                 </div>
 
@@ -141,7 +143,7 @@
                                     v-model="replyForm.message"
                                     @keyup="handleKeyUp"
                                     @click="updateCursor"
-                                    :placeholder="isInputDisabled ? 'Chat is locked. Ticket must be In Progress.' : 'Type your reply here... (Use @ to mention)'"
+                                    :placeholder="isInputDisabled ? $t('tickets.chat.input_disabled_placeholder') : $t('tickets.chat.input_placeholder')"
                                     class="w-full chat-input"
                                     :min-rows="2"
                                     autosize
@@ -149,10 +151,20 @@
                                     :disabled="isInputDisabled"
                                 />
                             </div>
-                            <va-button type="submit" color="primary" icon="send" :loading="replyForm.processing" :disabled="isSubmitDisabled">Send</va-button>
+                            <va-button type="submit" color="primary" icon="send" :loading="replyForm.processing" :disabled="isSubmitDisabled">
+                                {{ $t('common.actions.send') }}
+                            </va-button>
                         </div>
                         <div class="flex items-center gap-2">
-                            <va-file-upload v-model="replyForm.attachment" type="single" file-types=".pdf,.jpg,.jpeg,.png,.zip" :disabled="isInputDisabled" class="w-full max-w-sm" uploadButtonText="Attach File" dropzoneText="Drop a file here" />
+                            <va-file-upload 
+                                v-model="replyForm.attachment" 
+                                type="single" 
+                                file-types=".pdf,.jpg,.jpeg,.png,.zip" 
+                                :disabled="isInputDisabled" 
+                                class="w-full max-w-sm" 
+                                :uploadButtonText="$t('common.actions.attach_file')" 
+                                :dropzoneText="$t('common.actions.drop_file')" 
+                            />
                         </div>
                     </form>
                 </div>
@@ -161,9 +173,9 @@
 
         <va-modal
             v-model="isTagModalOpen"
-            title="Manage Ticket Tags"
-            ok-text="Save Changes"
-            cancel-text="Cancel"
+            :title="$t('tickets.tags.manage_title')"
+            :ok-text="$t('common.actions.save_changes')"
+            :cancel-text="$t('common.actions.cancel')"
             @ok="saveTags"
         >
             <div class="py-4">
@@ -172,7 +184,7 @@
                     :options="tagOptions"
                     value-by="value"
                     text-by="text"
-                    label="Select Categories"
+                    :label="$t('tickets.tags.select_categories')"
                     multiple
                     clearable
                     searchable
@@ -180,7 +192,7 @@
                 >
                     <template #content="{ valueArray }">
                         <div class="flex gap-1 flex-wrap items-center">
-                            <span v-if="valueArray.length === 0" class="text-gray-400">Select tags...</span>
+                            <span v-if="valueArray.length === 0" class="text-gray-400">{{ $t('tickets.tags.select_placeholder') }}</span>
                             <template v-else>
                                 <span 
                                     v-for="(val, index) in valueArray.slice(0, 3)" 
@@ -203,9 +215,26 @@
             </div>
         </va-modal>
 
-        <va-modal v-model="confirmingDeletion" title="Delete Ticket" message="Are you sure you want to delete this ticket? This action is permanent." ok-text="Confirm Deletion" cancel-text="Cancel" state="danger" @ok="deleteTicket">
+        <va-modal 
+            v-model="confirmingDeletion" 
+            :title="$t('tickets.delete.title')" 
+            :message="$t('tickets.delete.confirmation_message')" 
+            :ok-text="$t('common.actions.confirm_deletion')" 
+            :cancel-text="$t('common.actions.cancel')" 
+            state="danger" 
+            @ok="deleteTicket"
+        >
             <div class="mt-4">
-                <va-input v-model="deleteForm.password" type="password" label="Confirmation Password" placeholder="Enter your current password" :error="!!deleteForm.errors.password" :error-messages="deleteForm.errors.password" class="w-full" @keyup.enter="deleteTicket" />
+                <va-input 
+                    v-model="deleteForm.password" 
+                    type="password" 
+                    :label="$t('tickets.delete.password_label')" 
+                    :placeholder="$t('tickets.delete.password_placeholder')" 
+                    :error="!!deleteForm.errors.password" 
+                    :error-messages="deleteForm.errors.password" 
+                    class="w-full" 
+                    @keyup.enter="deleteTicket" 
+                />
             </div>
         </va-modal>
     </AppLayout>
@@ -214,6 +243,7 @@
 <script setup>
 import { ref, toRef, computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TicketStatusBadge from '@/Components/Tickets/TicketStatusBadge.vue';
 import TicketMessageBubble from '@/Components/Tickets/TicketMessageBubble.vue';
@@ -241,6 +271,8 @@ const {
     submitReply, assignToMe, updateStatus, deleteTicket
 } = useTicketSupport(ticketRef);
 
+const { t } = useI18n();
+
 // Tag Management Logic
 const isTagModalOpen = ref(false);
 
@@ -257,11 +289,12 @@ const tagOptions = computed(() => {
 
 /**
  * Retrieves the full tag object from the available list to display properties like color and name.
+ * Uses translations to return a safe fallback if the tag is no longer available.
  * @param {string|number} id - The ID of the requested tag.
  * @returns {Object} The complete tag object or a fallback generic object.
  */
 const getDetailedTag = (id) => {
-    return props.availableTags.find(t => String(t.id) === String(id)) || { name: 'Unknown', color: '#ccc' };
+    return props.availableTags.find(t => String(t.id) === String(id)) || { name: t('tickets.tags.unknown'), color: '#ccc' };
 };
 
 /**
@@ -376,4 +409,4 @@ const insertMention = (user) => {
 <style scoped>
 .chat-container { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
 .blur-md { backdrop-filter: blur(12px); }
-</style> 
+</style>

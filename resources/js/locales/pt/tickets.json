@@ -1,34 +1,55 @@
 {
-    "page_title": "Tickets",
-    "title": "Tickets de Suporte",
-    "create_new": "Abrir Novo Ticket",
-    "no_tickets_found": "Nenhum ticket encontrado com os filtros atuais.",
-    "email": "Email",
-    "received_via_email": "Recebido via Email",
-    "no_tags": "Sem tags",
-    "unregistered_user": "Utilizador não registado",
-    "unassigned": "Não atribuído",
-    "status": {
-        "open": "Aberto",
-        "in_progress": "Em Progresso",
-        "resolved": "Resolvido",
-        "closed": "Fechado"
-    },
-    "source": {
-        "web": "Web",
-        "email": "Email"
-    },
-    "assignee": {
-        "unassigned": "Não Atribuído",
-        "me": "Atribuído a Mim"
-    },
-    "columns": {
-        "id": "ID",
-        "subject": "Assunto",
-        "tags": "Tags",
-        "status": "Estado",
-        "created_at": "Criado em",
-        "customer": "Cliente",
-        "assigned_to": "Atribuído a"
-    }
+  "form": {
+    "open_new_title": "Abrir um Novo Ticket de Suporte",
+    "description": "Por favor descreve o teu problema em detalhe. A nossa equipa de suporte irá ajudar-te em breve.",
+    "select_customer": "Selecionar Cliente",
+    "search_customer": "Pesquisar pelo nome do cliente...",
+    "subject_label": "Assunto / Descrição Curta",
+    "subject_placeholder": "ex: Não consigo ligar à base de dados",
+    "detailed_message_label": "Mensagem Detalhada",
+    "detailed_message_placeholder": "Explica os passos para reproduzir o problema, códigos de erro, etc.",
+    "submit_button": "Submeter Ticket"
+  },
+  "show": {
+    "page_title": "Ticket #{id} - {title}",
+    "view_only_mode": "Modo de Apenas Leitura",
+    "claim_description": "Precisas de reclamar a propriedade ou ser convidado para este ticket antes de poderes interagir com o cliente.",
+    "claim_button": "Reclamar Ticket Agora",
+    "back_to_tickets": "Voltar aos Tickets",
+    "opened_by": "Aberto por",
+    "manage_tags": "Gerir Tags",
+    "assigned_to": "Atribuído a"
+  },
+  "actions": {
+    "mark_resolved": "Marcar como Resolvido",
+    "reopen": "Reabrir Ticket",
+    "set_in_progress": "Marcar Em Curso",
+    "close_ticket": "Fechar Ticket",
+    "delete_ticket": "Eliminar Ticket"
+  },
+  "chat": {
+    "time_expired_alert": "O tempo de suporte diário expirou (30 minutos atingidos). O chat está bloqueado até amanhã.",
+    "open_status_alert": "O ticket encontra-se \"Aberto\". Por favor, altera-o para \"Em Curso\" no menu de ações para começares a responder e a registar tempo.",
+    "no_messages": "Ainda não existem mensagens.",
+    "input_disabled_placeholder": "O chat está bloqueado. O ticket tem de estar Em Curso.",
+    "input_placeholder": "Escreve a tua resposta aqui... (Usa @ para mencionar)"
+  },
+  "mentions": {
+    "available_members": "Membros Disponíveis",
+    "role_supporter": "SUPORTE",
+    "role_customer": "CLIENTE",
+    "no_members": "Nenhum membro encontrado."
+  },
+  "tags": {
+    "manage_title": "Gerir Tags do Ticket",
+    "select_categories": "Selecionar Categorias",
+    "select_placeholder": "Selecionar tags...",
+    "unknown": "Desconhecida"
+  },
+  "delete": {
+    "title": "Eliminar Ticket",
+    "confirmation_message": "Tens a certeza que pretendes eliminar este ticket? Esta ação é irreversível.",
+    "password_label": "Palavra-passe de Confirmação",
+    "password_placeholder": "Introduz a tua palavra-passe atual"
+  }
 }

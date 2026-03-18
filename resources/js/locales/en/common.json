@@ -5,5 +5,14 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "confirm": "Confirm",
-    "actions": "Actions"
+    "actions": {
+        "cancel": "Cancel",
+        "save_changes": "Save Changes",
+        "send": "To send",
+        "actions": "Actions",
+        "cancel_and_back": "Cancel and go back",
+        "confirm_deletion": "Confirm Deletion",
+        "attach_file": "Attach File",
+        "drop_file": "Drop a file here"
+    }
 }

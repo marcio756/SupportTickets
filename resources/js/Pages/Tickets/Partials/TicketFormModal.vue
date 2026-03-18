@@ -1,6 +1,7 @@
 <script setup>
 import { watch, computed } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
     show: {
@@ -16,6 +17,8 @@ const props = defineProps({
 const emit = defineEmits(['close']);
 
 const page = usePage();
+const { t } = useI18n();
+
 const isSupporter = page.props.auth.user.role !== 'customer';
 
 const form = useForm({
@@ -25,7 +28,8 @@ const form = useForm({
 });
 
 /**
- * Reset form when modal opens
+ * Monitors the modal's visibility state to enforce a clean slate.
+ * Resets form data and clears any previous validation errors whenever the modal is opened.
  */
 watch(() => props.show, (isShowing) => {
     if (isShowing) {
@@ -35,7 +39,9 @@ watch(() => props.show, (isShowing) => {
 });
 
 /**
- * Format customers array for Vuestic Select
+ * Transforms the raw customers array into the standardized object structure 
+ * expected by the Vuestic Select component.
+ * @returns {Array<{value: string|number, text: string}>}
  */
 const customerOptions = computed(() => {
     return props.customers.map(customer => ({
@@ -45,7 +51,8 @@ const customerOptions = computed(() => {
 });
 
 /**
- * Submits the form via modal
+ * Intercepts the form submission to normalize payload structures before dispatching to the backend.
+ * Ensures the 'customer_id' is extracted correctly whether the Vuestic component emits an object or a primitive.
  */
 const submit = () => {
     form.transform((data) => {
@@ -59,10 +66,17 @@ const submit = () => {
     });
 };
 
+/**
+ * Handles external modal updates (e.g., clicking outside the modal or pressing Esc).
+ * @param {boolean} value 
+ */
 const handleModalUpdate = (value) => {
     if (!value) closeModal();
 };
 
+/**
+ * Encapsulates the teardown logic for closing the modal safely.
+ */
 const closeModal = () => {
     emit('close');
     form.reset();
@@ -78,11 +92,11 @@ const closeModal = () => {
         size="large"
     >
         <h3 class="va-h5 mb-6" style="color: var(--va-text-primary)">
-            Open a New Support Ticket
+            {{ $t('tickets.form.open_new_title') }}
         </h3>
 
         <p class="text-sm mb-6" style="color: var(--va-secondary)">
-            Please describe your issue in detail. Our support team will assist you shortly.
+            {{ $t('tickets.form.description') }}
         </p>
 
         <form @submit.prevent="submit" class="flex flex-col gap-5">
@@ -91,8 +105,8 @@ const closeModal = () => {
                 v-if="isSupporter"
                 v-model="form.customer_id"
                 :options="customerOptions"
-                label="Select Customer"
-                placeholder="Search by customer name..."
+                :label="$t('tickets.form.select_customer')"
+                :placeholder="$t('tickets.form.search_customer')"
                 searchable
                 text-by="text"
                 value-by="value"
@@ -107,18 +121,20 @@ const closeModal = () => {
 
             <va-input
                 v-model="form.title"
-                label="Subject / Short Description"
-                placeholder="e.g. Cannot connect to the database"
+                :label="$t('tickets.form.subject_label')"
+                :placeholder="$t('tickets.form.subject_placeholder')"
                 :error="!!form.errors.title"
                 :error-messages="form.errors.title"
                 required
             />
 
             <div>
-                <div class="mb-2 text-sm font-bold" style="color: var(--va-text-primary);">Detailed Message</div>
+                <div class="mb-2 text-sm font-bold" style="color: var(--va-text-primary);">
+                    {{ $t('tickets.form.detailed_message_label') }}
+                </div>
                 <va-textarea
                     v-model="form.message"
-                    placeholder="Explain the steps to reproduce the issue, any error codes, etc."
+                    :placeholder="$t('tickets.form.detailed_message_placeholder')"
                     :error="!!form.errors.message"
                     :error-messages="form.errors.message"
                     :min-rows="6"
@@ -129,9 +145,9 @@ const closeModal = () => {
             </div>
 
             <div class="flex justify-end gap-3 mt-2">
-                <va-button preset="secondary" @click="closeModal">Cancel</va-button>
+                <va-button preset="secondary" @click="closeModal">{{ $t('common.actions.cancel') }}</va-button>
                 <va-button type="submit" color="primary" :loading="form.processing">
-                    Submit Ticket
+                    {{ $t('tickets.form.submit_button') }}
                 </va-button>
             </div>
         </form>

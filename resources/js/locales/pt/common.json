@@ -1,9 +1,12 @@
 {
-    "switch_to_pt": "Mudar para Português",
-    "switch_to_en": "Mudar para Inglês",
-    "save": "Guardar",
+  "actions": {
     "cancel": "Cancelar",
-    "delete": "Eliminar",
-    "confirm": "Confirmar",
-    "actions": "Ações"
+    "save_changes": "Guardar Alterações",
+    "send": "Enviar",
+    "actions": "Ações",
+    "cancel_and_back": "Cancelar e voltar atrás",
+    "confirm_deletion": "Confirmar Eliminação",
+    "attach_file": "Anexar Ficheiro",
+    "drop_file": "Larga um ficheiro aqui"
+  }
 }

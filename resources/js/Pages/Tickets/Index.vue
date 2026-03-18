@@ -134,7 +134,9 @@ const props = defineProps({
 });
 
 const page = usePage();
-const { t } = useI18n();
+
+// Extracts both translation function and the current active locale string
+const { t, locale } = useI18n();
 
 const isSupporter = page.props.auth.user.role !== 'customer';
 const isCreateModalOpen = ref(false);
@@ -189,8 +191,16 @@ const columns = computed(() => {
 const openCreateModal = () => isCreateModalOpen.value = true;
 const navigateToTicket = (event) => router.get(route('tickets.show', event.item.id));
 
+/**
+ * Formats the given date string dynamically based on the active application locale.
+ * Ensures international users see dates in their native structural format.
+ * * @param {string} dateString 
+ * @returns {string} Localized date string.
+ */
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
+  if (!dateString) return '';
+  // Utilizes the global i18n locale value instead of a hardcoded 'en-US'
+  return new Date(dateString).toLocaleDateString(locale.value, {
     month: 'short', day: 'numeric', year: 'numeric'
   });
 };
