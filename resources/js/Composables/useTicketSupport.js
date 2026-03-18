@@ -3,11 +3,11 @@ import { useForm, usePage, router } from '@inertiajs/vue3';
 import axios from 'axios';
 
 /**
- * Encapsula o estado reativo, manipulação de formulários e interações WebSocket
- * necessários para o chat de tickets e acompanhamento de tempo de suporte.
+ * Encapsulates the reactive state, form handling, and WebSocket interactions
+ * needed for ticket chat and support time tracking.
  *
- * @param {import('vue').Ref<Object>} ticket - A referência reativa ao objeto do ticket.
- * @returns {Object} Variáveis reativas e funções de controlo para a UI.
+ * @param {import('vue').Ref<Object>} ticket - The reactive reference to the ticket object.
+ * @returns {Object} Reactive variables and control functions for the UI.
  */
 export function useTicketSupport(ticket) {
     const page = usePage();
@@ -22,7 +22,8 @@ export function useTicketSupport(ticket) {
     
     const replyForm = useForm({ 
         message: '',
-        attachment: []
+        attachment: [],
+        mentions: []
     });
 
     const deleteForm = useForm({
@@ -35,16 +36,21 @@ export function useTicketSupport(ticket) {
      * @type {import('vue').ComputedRef<boolean>}
      */
     const isTimeUp = computed(() => {
-        // Correção principal: Utilizadores de e-mail (sem conta) não têm restrição de tempo
+        // Core fix: Email users (without account) have no time restriction
         if (!ticket.value.customer) return false;
         return currentRemainingSeconds.value <= 0;
     });
 
     /**
+     * Computes whether the active user has explicit write permission.
+     * It checks if they are the primary assignee OR a registered participant (mentioned).
      * @type {import('vue').ComputedRef<boolean>}
      */
-    const isAssignedSupporter = computed(() => {
-        return isSupporter && ticket.value.assignee && ticket.value.assignee.id === currentUser.id;
+    const hasWritePermission = computed(() => {
+        if (!isSupporter) return false;
+        if (ticket.value.assignee && ticket.value.assignee.id === currentUser.id) return true;
+        if (ticket.value.participants && ticket.value.participants.some(p => p.id === currentUser.id)) return true;
+        return false;
     });
 
     /**
@@ -54,11 +60,12 @@ export function useTicketSupport(ticket) {
         if (ticket.value.status === 'closed' || ticket.value.status === 'resolved') {
             return false;
         }
-        return isSupporter && !isAssignedSupporter.value;
+        // If they already have permission (assignee or mentioned), no need to claim
+        return isSupporter && !hasWritePermission.value;
     });
 
     /**
-     * Bloqueia o input se o estado NÃO for 'in_progress', se o tempo esgotou ou se o utilizador não estiver atribuído.
+     * Blocks input if status is NOT 'in_progress', time is up, or the user lacks write access.
      * @type {import('vue').ComputedRef<boolean>}
      */
     const isInputDisabled = computed(() => {
@@ -68,7 +75,7 @@ export function useTicketSupport(ticket) {
         if (ticket.value.status !== 'in_progress') {
             return true;
         }
-        if (isSupporter && !isAssignedSupporter.value) {
+        if (isSupporter && !hasWritePermission.value) {
             return true;
         }
         return false;
@@ -85,16 +92,17 @@ export function useTicketSupport(ticket) {
     });
 
     /**
-     * Determina se o ping automático de dedução de tempo deve ser despachado.
+     * Determines if the automatic time deduction ping should run.
      * @type {import('vue').ComputedRef<boolean>}
      */
     const shouldRunHeartbeat = computed(() => {
         if (!ticket.value.customer) return false;
-        return isAssignedSupporter.value && ticket.value.status === 'in_progress' && !isTimeUp.value;
+        // Allows any participant writing in the chat to deduct time
+        return hasWritePermission.value && ticket.value.status === 'in_progress' && !isTimeUp.value;
     });
 
     /**
-     * Rola o scroll do contentor de mensagens para o fundo.
+     * Scrolls the message container wrapper to the bottom.
      * @returns {Promise<void>}
      */
     const scrollToBottom = async () => {
@@ -105,7 +113,7 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Submete uma nova mensagem de resposta no ticket.
+     * Submits a new reply message.
      * @returns {void}
      */
     const submitReply = () => {
@@ -117,18 +125,20 @@ export function useTicketSupport(ticket) {
         replyForm.transform((data) => ({
             message: data.message || '',
             attachment: fileToUpload,
+            mentions: data.mentions
         })).post(route('tickets.messages.store', ticket.value.id), {
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
                 replyForm.reset('message', 'attachment');
                 replyForm.attachment = [];
+                replyForm.mentions = [];
             }
         });
     };
 
     /**
-     * Reivindica o ticket para o supporter autenticado.
+     * Claims the ticket for the authenticated supporter.
      * @returns {void}
      */
     const assignToMe = () => {
@@ -140,8 +150,8 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Atualiza o estado do ticket via API local.
-     * @param {string} newStatus O novo estado do ticket.
+     * Updates the ticket status via local API.
+     * @param {string} newStatus The new ticket status.
      * @returns {void}
      */
     const updateStatus = (newStatus) => {
@@ -149,7 +159,7 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Executa o soft-delete ou hard-delete do ticket.
+     * Executes soft-delete or hard-delete of the ticket.
      * @returns {void}
      */
     const deleteTicket = () => {
@@ -161,7 +171,7 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Inicia o intervalo de heartbeat para dedução de tempo de suporte.
+     * Starts the heartbeat interval to deduct support time.
      * @returns {void}
      */
     const startHeartbeat = () => {
@@ -179,7 +189,7 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Para o intervalo de heartbeat ativamente em execução.
+     * Stops the actively running heartbeat interval.
      * @returns {void}
      */
     const stopHeartbeat = () => {
@@ -228,7 +238,7 @@ export function useTicketSupport(ticket) {
         deleteForm,
         confirmingDeletion,
         isTimeUp,
-        isAssignedSupporter,
+        hasWritePermission, // Exporting the new unified permission flag
         showClaimOverlay,
         isInputDisabled,
         isSubmitDisabled,

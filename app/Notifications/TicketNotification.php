@@ -25,14 +25,14 @@ class TicketNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        // Se for uma notificação para um email anónimo (Guest), enviamos apenas email
+        // If it is a notification for an anonymous email (Guest), we only send an email
         if ($notifiable instanceof AnonymousNotifiable) {
             return ['mail'];
         }
 
-        $channels = ['database']; // Canal do site é sempre obrigatório
+        $channels = ['database']; // Database channel is always mandatory for registered users
 
-        // Verifica se o utilizador tem email e se não é um email fictício/placeholder do sistema
+        // Check if the user has a valid email and it's not a system placeholder
         if (!empty($notifiable->email) && !str_ends_with($notifiable->email, '@example.com')) {
             $channels[] = 'mail';
         }
@@ -42,7 +42,7 @@ class TicketNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        // Generate the exact same ID format used in the initial auto-reply
+        // Generate the exact same ID format used in the initial auto-reply to thread emails correctly
         $domain = parse_url(config('app.url'), PHP_URL_HOST) ?? 'localhost';
         $messageId = "<ticket-{$this->ticket->id}@{$domain}>";
 
@@ -50,7 +50,7 @@ class TicketNotification extends Notification implements ShouldQueue
             ->subject("Re: " . $this->ticket->title)
             ->greeting(" ")    // Removes automatic "Hello"
             ->salutation(" ")  // Removes automatic "Regards"
-            ->line($this->content) // <-- Corrigido aqui (estava $this->replyMessage)
+            ->line($this->content) 
             ->action('View Ticket', route('tickets.show', $this->ticket))
             ->line("________________________________")
             ->line("Reply above this line to continue the conversation in the ticket. Do not change the subject.")

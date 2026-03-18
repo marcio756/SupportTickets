@@ -42,10 +42,9 @@ class TicketController extends Controller
     {
         $user = $request->user();
 
-        // Added 'tags' to eager loading to prevent N+1 queries and provide data to the app
-        $query = Ticket::with(['customer', 'assignee', 'tags']);
+        $query = Ticket::with(['customer', 'assignee', 'tags', 'participants']);
 
-        if ($user->isCustomer()) {
+        if (! $user->isStaff()) {
             $query->where('customer_id', $user->id);
         }
 
@@ -71,7 +70,7 @@ class TicketController extends Controller
             $query->where(function ($q) use ($searchTerm, $user) {
                 $q->where('title', 'like', '%' . $searchTerm . '%');
                 
-                if ($user->isSupporter()) {
+                if ($user->isStaff()) {
                     $q->orWhereHas('customer', function ($customerQuery) use ($searchTerm) {
                         $customerQuery->where('name', 'like', '%' . $searchTerm . '%');
                     });
@@ -87,12 +86,12 @@ class TicketController extends Controller
             $query->where('source', $request->source);
         }
 
-        if ($request->filled('customers') && $user->isSupporter()) {
+        if ($request->filled('customers') && $user->isStaff()) {
             $customerIds = is_array($request->customers) ? $request->customers : explode(',', $request->customers);
             $query->whereIn('customer_id', $customerIds);
         }
 
-        if ($request->filled('assignees') && $user->isSupporter()) {
+        if ($request->filled('assignees') && $user->isStaff()) {
             $assignees = is_array($request->assignees) ? $request->assignees : explode(',', $request->assignees);
             
             $query->where(function ($q) use ($assignees, $user) {
@@ -105,7 +104,7 @@ class TicketController extends Controller
             });
         }
 
-        if ($request->filled('tags') && $user->isSupporter()) {
+        if ($request->filled('tags') && $user->isStaff()) {
             $tags = is_array($request->tags) ? $request->tags : explode(',', $request->tags);
             $query->whereHas('tags', function ($q) use ($tags) {
                 $q->whereIn('tags.id', $tags);
@@ -121,18 +120,17 @@ class TicketController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $isSupporter = $request->user()->isSupporter();
+        $isStaff = $request->user()->isStaff();
 
-        // Validates requiring either a registered customer OR an external email
         $validated = $request->validate([
             'title'        => ['required', 'string', 'max:255'],
             'message'      => ['required', 'string'],
             'customer_id'  => [
-                $isSupporter ? 'required_without:sender_email' : 'nullable', 
+                $isStaff ? 'required_without:sender_email' : 'nullable', 
                 'exists:users,id'
             ],
             'sender_email' => [
-                $isSupporter ? 'required_without:customer_id' : 'prohibited', 
+                $isStaff ? 'required_without:customer_id' : 'prohibited', 
                 'email', 
                 'nullable'
             ],
@@ -147,7 +145,7 @@ class TicketController extends Controller
             );
 
             return $this->successResponse(
-                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])), 
+                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants'])), 
                 'Ticket created successfully.', 
                 201
             );
@@ -167,7 +165,7 @@ class TicketController extends Controller
     {
         Gate::authorize('view', $ticket);
 
-        return new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags']));
+        return new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants']));
     }
 
     /**
@@ -206,7 +204,7 @@ class TicketController extends Controller
             $ticket = $this->ticketService->assignTicket($request->user(), $ticket);
 
             return $this->successResponse(
-                new TicketResource($ticket->load(['customer', 'assignee', 'tags'])),
+                new TicketResource($ticket->load(['customer', 'assignee', 'tags', 'participants'])),
                 'Ticket claimed successfully.'
             );
         } catch (\Exception $e) {
@@ -232,7 +230,7 @@ class TicketController extends Controller
             $ticket = $this->ticketService->updateStatus($request->user(), $ticket, $validated['status']);
 
             return $this->successResponse(
-                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])),
+                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants'])),
                 'Ticket status updated.'
             );
         } catch (\Exception $e) {
@@ -255,6 +253,8 @@ class TicketController extends Controller
         $validated = $request->validate([
             'message' => 'required_without:attachment|nullable|string',
             'attachment' => 'nullable|file|max:10240',
+            'mentions' => ['nullable', 'array'],
+            'mentions.*' => ['string'],
         ]);
 
         try {
@@ -266,7 +266,7 @@ class TicketController extends Controller
             );
 
             return $this->successResponse(
-                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])), 
+                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants'])), 
                 'Message sent successfully.'
             );
         } catch (\Exception $e) {
@@ -287,17 +287,13 @@ class TicketController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isSupporter()) {
+        if (!$user->isStaff()) {
             return $this->errorResponse('Unauthorized.', 403);
-        }
-
-        if ($ticket->assigned_to !== $user->id) {
-            return $this->errorResponse('You must claim this ticket to deduct time.', 403);
         }
 
         Gate::authorize('update', $ticket);
 
-        if ($ticket->status !== TicketStatusEnum::IN_PROGRESS) {
+        if ($ticket->status !== TicketStatusEnum::IN_PROGRESS->value) {
             return $this->errorResponse('Ticket is not in progress.', 400);
         }
 
@@ -329,7 +325,7 @@ class TicketController extends Controller
             $ticket->tags()->sync($validated['tags'] ?? []);
 
             return $this->successResponse(
-                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags'])),
+                new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants'])),
                 'Tags synchronized successfully.'
             );
         } catch (\Exception $e) {

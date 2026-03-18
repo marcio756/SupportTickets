@@ -90,6 +90,16 @@ class User extends Authenticatable
         return $this->role === RoleEnum::CUSTOMER || $this->role === RoleEnum::CUSTOMER->value;
     }
 
+    /**
+     * Checks if the user belongs to the internal staff (either an Admin or a Supporter).
+     * Centralizes logic to prevent code duplication across controllers.
+     * * @return bool
+     */
+    public function isStaff(): bool
+    {
+        return $this->isAdmin() || $this->isSupporter();
+    }
+
     // --- Relationships ---
 
     /**

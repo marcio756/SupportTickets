@@ -44,8 +44,8 @@ class TicketController extends Controller
         $user = $request->user();
         $workSessionStatus = $this->getWorkSessionStatus($user);
 
-        // If supporter is not actively clocked-in, block access to data
-        if ($user->isSupporter() && $workSessionStatus !== WorkSessionStatusEnum::ACTIVE->value) {
+        // If a regular supporter is not actively clocked-in, block access. Admins bypass this.
+        if ($user->isSupporter() && !$user->isAdmin() && $workSessionStatus !== WorkSessionStatusEnum::ACTIVE->value) {
             return Inertia::render('Tickets/Index', [
                 'tickets' => [
                     'data' => [],
@@ -61,9 +61,9 @@ class TicketController extends Controller
             ]);
         }
 
-        $query = Ticket::with(['customer', 'assignee', 'tags']);
+        $query = Ticket::with(['customer', 'assignee', 'tags', 'participants']);
 
-        if (! $user->isSupporter()) {
+        if (! $user->isStaff()) {
             $query->where('customer_id', $user->id);
         }
 
@@ -74,7 +74,7 @@ class TicketController extends Controller
         $customersList = [];
         $availableTags = [];
         
-        if ($user->isSupporter()) {
+        if ($user->isStaff()) {
             $customersList = User::where('role', 'customer')
                 ->select('id', 'name')
                 ->orderBy('name')
@@ -107,7 +107,7 @@ class TicketController extends Controller
             $query->where(function ($q) use ($searchTerm, $user) {
                 $q->where('title', 'like', '%' . $searchTerm . '%');
                 
-                if ($user->isSupporter()) {
+                if ($user->isStaff()) {
                     $q->orWhereHas('customer', function ($customerQuery) use ($searchTerm) {
                         $customerQuery->where('name', 'like', '%' . $searchTerm . '%');
                     });
@@ -123,12 +123,12 @@ class TicketController extends Controller
             $query->where('source', $request->source);
         }
 
-        if ($request->filled('customers') && $user->isSupporter()) {
+        if ($request->filled('customers') && $user->isStaff()) {
             $customerIds = is_array($request->customers) ? $request->customers : explode(',', $request->customers);
             $query->whereIn('customer_id', $customerIds);
         }
 
-        if ($request->filled('assignees') && $user->isSupporter()) {
+        if ($request->filled('assignees') && $user->isStaff()) {
             $assignees = is_array($request->assignees) ? $request->assignees : explode(',', $request->assignees);
             
             $query->where(function ($q) use ($assignees, $user) {
@@ -160,7 +160,7 @@ class TicketController extends Controller
         $customers = [];
         $availableTags = [];
 
-        if ($request->user()->isSupporter()) {
+        if ($request->user()->isStaff()) {
             $customers = User::where('role', 'customer') 
                 ->select('id', 'name')
                 ->orderBy('name')
@@ -186,7 +186,7 @@ class TicketController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'message' => ['required', 'string'],
-            'customer_id' => [$request->user()->isSupporter() ? 'required' : 'nullable', 'exists:users,id'],
+            'customer_id' => [$request->user()->isStaff() ? 'required' : 'nullable', 'exists:users,id'],
             'attachment' => ['nullable', 'file', 'max:10240'], 
             'tags' => ['nullable', 'array'],
             'tags.*' => ['exists:tags,id'],
@@ -213,24 +213,33 @@ class TicketController extends Controller
     {
         $user = $request->user();
 
-        if ($user->isSupporter()) {
-            if ($this->getWorkSessionStatus($user) !== WorkSessionStatusEnum::ACTIVE->value) {
+        if ($user->isStaff()) {
+            if (!$user->isAdmin() && $this->getWorkSessionStatus($user) !== WorkSessionStatusEnum::ACTIVE->value) {
                 return redirect()->route('tickets.index')->with('error', 'You must start your shift to view ticket details.');
             }
         } elseif ($ticket->customer_id !== $user->id) {
             abort(403, 'Unauthorized access to this ticket.');
         }
 
-        $ticket->load(['customer', 'assignee', 'messages.sender', 'tags']);
+        $ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants']);
 
         $availableTags = [];
-        if ($user->isSupporter()) {
+        $mentionableUsers = [];
+
+        if ($user->isStaff()) {
             $availableTags = Tag::select('id', 'name', 'color')->orderBy('name')->get();
+            
+            // Pass all possible supporters and admins to the frontend to allow global mentioning
+            $mentionableUsers = User::whereIn('role', ['supporter', 'admin'])
+                ->select('id', 'name', 'role')
+                ->orderBy('name')
+                ->get();
         }
 
         return Inertia::render('Tickets/Show', [
             'ticket' => $ticket,
             'availableTags' => $availableTags,
+            'mentionableUsers' => $mentionableUsers,
         ]);
     }
 
@@ -243,7 +252,7 @@ class TicketController extends Controller
      */
     public function syncTags(Request $request, Ticket $ticket): RedirectResponse
     {
-        if (! $request->user()->isSupporter()) {
+        if (! $request->user()->isStaff()) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -283,6 +292,8 @@ class TicketController extends Controller
         $validated = $request->validate([
             'message' => ['required_without:attachment', 'nullable', 'string'],
             'attachment' => ['nullable', 'file', 'max:10240'], 
+            'mentions' => ['nullable', 'array'],
+            'mentions.*' => ['string'],
         ]);
 
         $this->ticketService->sendMessage(
@@ -325,15 +336,14 @@ class TicketController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->isSupporter()) {
-            abort(403, 'Only supporters can deduct time.');
+        if (! $user->isStaff()) {
+            abort(403, 'Only staff can deduct time.');
         }
 
-        if ($ticket->assigned_to !== $user->id) {
-            return response()->json(['status' => 'not_assigned', 'message' => 'You must claim this ticket to deduct time.']);
-        }
+        // Must authorize against the policy to ensure the caller has rights (owner, participant or admin)
+        \Illuminate\Support\Facades\Gate::authorize('update', $ticket);
 
-        if ($ticket->status !== TicketStatusEnum::IN_PROGRESS) {
+        if ($ticket->status !== TicketStatusEnum::IN_PROGRESS->value) {
             return response()->json(['status' => 'not_in_progress']);
         }
 
@@ -354,7 +364,7 @@ class TicketController extends Controller
      */
     public function destroy(Request $request, Ticket $ticket): RedirectResponse
     {
-        if (!$request->user()->isSupporter()) {
+        if (!$request->user()->isStaff()) {
             abort(403);
         }
 

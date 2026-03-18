@@ -28,7 +28,7 @@
                 </span>
             </div>
             
-            <p v-if="message.message" class="text-sm whitespace-pre-wrap leading-relaxed">{{ message.message }}</p>
+            <p v-if="message.message" class="text-sm whitespace-pre-wrap leading-relaxed" v-html="formattedMessageContent"></p>
             
             <div v-if="message.attachment_url" class="mt-2 pt-2 flex items-center gap-2" :class="[message.message ? 'border-t border-opacity-20' : '']">
                 <va-icon name="attach_file" size="small" />
@@ -74,6 +74,26 @@ const formattedDate = computed(() => {
     return date.toLocaleString([], { 
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
     });
+});
+
+/**
+ * Processes the message text to highlight mentions.
+ * Identifies patterns starting with @ followed by alphanumeric characters or complete email formats.
+ * Also performs sanitization replacing HTML entities to prevent XSS vulnerabilities.
+ */
+const formattedMessageContent = computed(() => {
+    if (!props.message.message) return '';
+    
+    // Replace html tags to avoid XSS injections since we are using v-html
+    const escapedMessage = props.message.message
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    // Match @Name or @Email formats to recreate the Discord pings aesthetic
+    return escapedMessage.replace(/@([a-zA-Z0-9_À-ÿ.-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9_À-ÿ]+)/g, '<span class="text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-900/30 px-1 py-0.5 rounded cursor-pointer hover:underline">@$1</span>');
 });
 </script>
 

@@ -95,4 +95,14 @@ class Ticket extends Model
     {
         return $this->belongsToMany(Tag::class);
     }
+
+    /**
+     * The users (supporters/admins) that have been mentioned and granted access to this ticket.
+     *
+     * @return BelongsToMany
+     */
+    public function participants(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'ticket_user')->withTimestamps();
+    }
 }

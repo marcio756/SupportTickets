@@ -12,6 +12,9 @@ use App\Models\User;
 use App\Notifications\TicketNotification;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Handles all business logic related to Ticket manipulation, assignments and messaging.
+ */
 class TicketService
 {
     protected AttachmentService $attachmentService;
@@ -60,7 +63,11 @@ class TicketService
             }
 
             if ($availableSupporter) {
-                $availableSupporter->notify(new TicketNotification($ticket, 'Foi-lhe atribuído um novo ticket automaticamente.'));
+                $availableSupporter->notify(new TicketNotification(
+                    $ticket, 
+                    "A new ticket #{$ticket->id} has been automatically assigned to you.",
+                    "assignment"
+                ));
             }
 
             return $ticket;
@@ -96,6 +103,31 @@ class TicketService
                 $this->attachmentService->processAttachments($data['attachments'], clone $message);
             }
 
+            // Notification Logic for Mentions
+            if (!empty($data['mentions'])) {
+                // Filter only numeric user IDs to prevent crashes when processing raw emails
+                $userIds = array_filter($data['mentions'], 'is_numeric');
+                
+                if (!empty($userIds)) {
+                    // GRANT PERMISSION: Explicitly attach mentioned users to the participants pivot table
+                    $ticket->participants()->syncWithoutDetaching($userIds);
+
+                    $mentionedUsers = User::whereIn('id', $userIds)->get();
+                    foreach ($mentionedUsers as $mentionedUser) {
+                        // Prevent sending notification to the sender if they mention themselves
+                        if ($user && $mentionedUser->id === $user->id) continue;
+                        
+                        $senderName = $user ? $user->name : ($data['sender_email'] ?? 'System');
+                        
+                        $mentionedUser->notify(new TicketNotification(
+                            $ticket, 
+                            "You were mentioned in Ticket #{$ticket->id} by {$senderName}.",
+                            "mention"
+                        ));
+                    }
+                }
+            }
+
             broadcast(new TicketMessageCreated($message))->toOthers();
 
             return $message;
@@ -109,9 +141,19 @@ class TicketService
         return $ticket;
     }
 
-    public function assignTicket(User $user, Ticket $ticket, User $supporter): Ticket
+    /**
+     * Assigns a ticket to a supporter. If no target supporter is specified, 
+     * it assigns the ticket to the acting user (self-claim).
+     *
+     * @param User $user The user performing the action.
+     * @param Ticket $ticket The ticket to be assigned.
+     * @param User|null $supporter The target supporter (optional).
+     * @return Ticket
+     */
+    public function assignTicket(User $user, Ticket $ticket, ?User $supporter = null): Ticket
     {
-        $ticket->assigned_to = $supporter->id;
+        $targetUser = $supporter ?? $user;
+        $ticket->assigned_to = $targetUser->id;
         $ticket->save();
         return $ticket;
     }

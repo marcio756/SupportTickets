@@ -39,12 +39,18 @@ defineProps({
 
 const page = usePage();
 
+/**
+ * Computes the display string for the user's role.
+ */
 const displayRole = computed(() => {
     const user = page.props.auth?.user;
     if (!user) return 'Guest';
     return typeof user.role === 'object' ? user.role.value : user.role;
 });
 
+/**
+ * Computes the available navigation items dynamically based on the authenticated user's role.
+ */
 const navigationItems = computed(() => {
   const user = page.props.auth?.user;
   if (!user) return [];
@@ -55,7 +61,7 @@ const navigationItems = computed(() => {
     { title: 'Dashboard', icon: 'dashboard', route: 'dashboard' },
   ];
 
-  // Time Tracking is available for Staff (Supporters and Admins)
+  // Time Tracking is available for internal Staff only (Supporters and Admins)
   if (role !== 'customer') {
     items.push({ 
         title: 'Time Tracking', 
@@ -64,12 +70,10 @@ const navigationItems = computed(() => {
     });
   }
 
-  // Admin does NOT see operational Tickets menu
-  if (role !== 'admin') {
-    items.push({ title: 'Tickets', icon: 'confirmation_number', route: 'tickets.index' });
-  }
+  // Tickets menu is now accessible to all roles (Customers, Supporters, and Admins)
+  items.push({ title: 'Tickets', icon: 'confirmation_number', route: 'tickets.index' });
 
-  // Staff (Supporter/Admin) can manage Users, Tags and Vacations
+  // Staff (Supporters and Admins) can manage operational entities
   if (role === 'supporter' || role === 'admin') {
     items.push({ title: 'Users', icon: 'group', route: 'users.index' });
     items.push({ title: 'Manage Tags', icon: 'local_offer', route: 'tags.index' });
@@ -85,10 +89,21 @@ const navigationItems = computed(() => {
   return items;
 });
 
+/**
+ * Safely resolves a route URL, providing a fallback to prevent app crashes if a route name goes missing.
+ * * @param {string} routeName 
+ * @returns {string} The resolved URL or '#' as fallback.
+ */
 const getRouteUrl = (routeName) => {
     try { return route(routeName); } catch { return '#'; }
 };
 
+/**
+ * Checks if the given route is currently active to highlight the sidebar item.
+ * Evaluates both exact matches and wildcard child routes (e.g., matching tickets.show when on tickets.index).
+ * * @param {string} routeName 
+ * @returns {boolean} True if the route is active.
+ */
 const isCurrentRoute = (routeName) => {
   try {
     return route().current(routeName) || route().current(routeName.replace('.index', '.*'));

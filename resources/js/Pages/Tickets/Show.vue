@@ -12,7 +12,7 @@
                     <VaIcon name="lock_person" size="5rem" color="secondary" class="mb-6 opacity-75" />
                     <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3">View-Only Mode</h2>
                     <p class="text-gray-600 dark:text-gray-400 mb-8 text-lg leading-relaxed">
-                        You must claim ownership of this ticket before you can interact with the customer or track time.
+                        You must claim ownership or be invited to this ticket before you can interact with the customer.
                     </p>
 
                     <div class="flex flex-col gap-3">
@@ -73,7 +73,7 @@
                         
                         <SupportTimeDisplay v-if="ticket.customer" :seconds="currentRemainingSeconds" />
 
-                        <va-dropdown placement="bottom-end" v-if="!isSupporter || isAssignedSupporter">
+                        <va-dropdown placement="bottom-end" v-if="!isSupporter || hasWritePermission">
                             <template #anchor>
                                 <va-button preset="secondary" icon="settings" size="small">Actions</va-button>
                             </template>
@@ -84,7 +84,7 @@
                                         <va-list-item-section>Mark as Resolved</va-list-item-section>
                                     </va-list-item>
 
-                                    <template v-if="isAssignedSupporter">
+                                    <template v-if="hasWritePermission">
                                         <va-list-item @click="updateStatus('open')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section>Re-Open Ticket</va-list-item-section></va-list-item>
                                         <va-list-item @click="updateStatus('in_progress')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section>Set In Progress</va-list-item-section></va-list-item>
                                         <va-list-item @click="updateStatus('resolved')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"><va-list-item-section class="text-blue-600 dark:text-blue-400">Mark Resolved</va-list-item-section></va-list-item>
@@ -118,10 +118,30 @@
                 <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
                     <form @submit.prevent="submitReply" class="flex flex-col gap-3">
                         <div class="flex gap-3 items-end">
-                            <div class="flex-1">
+                            <div class="relative flex-1">
+                                <div v-if="showMentionMenu" class="absolute bottom-full left-0 mb-2 w-64 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50">
+                                    <div class="px-3 py-2 text-xs font-semibold text-gray-500 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">Available Members</div>
+                                    <div 
+                                        v-for="user in filteredMentions" 
+                                        :key="user.id" 
+                                        @click="insertMention(user)"
+                                        class="px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-700 dark:text-gray-200 flex items-center gap-2"
+                                    >
+                                        <va-icon name="alternate_email" size="small" color="secondary" />
+                                        {{ user.name }}
+                                        <span v-if="user.role === 'supporter' || user.role === 'admin'" class="text-xs text-blue-500 font-bold ml-auto">SUPORTE</span>
+                                        <span v-if="user.role === 'customer'" class="text-xs text-green-500 font-bold ml-auto">CLIENTE</span>
+                                    </div>
+                                    <div v-if="filteredMentions.length === 0" class="px-3 py-4 text-center text-sm text-gray-500">
+                                        No members found.
+                                    </div>
+                                </div>
+
                                 <va-textarea
                                     v-model="replyForm.message"
-                                    :placeholder="isInputDisabled ? 'Chat is locked. Ticket must be In Progress.' : 'Type your reply here...'"
+                                    @keyup="handleKeyUp"
+                                    @click="updateCursor"
+                                    :placeholder="isInputDisabled ? 'Chat is locked. Ticket must be In Progress.' : 'Type your reply here... (Use @ to mention)'"
                                     class="w-full chat-input"
                                     :min-rows="2"
                                     autosize
@@ -208,7 +228,8 @@ import { useTicketSupport } from '@/Composables/useTicketSupport';
 
 const props = defineProps({
     ticket: { type: Object, required: true },
-    availableTags: { type: Array, default: () => [] }
+    availableTags: { type: Array, default: () => [] },
+    mentionableUsers: { type: Array, default: () => [] } // Fetched globally from Controller
 });
 
 const ticketRef = toRef(props, 'ticket');
@@ -216,7 +237,7 @@ const ticketRef = toRef(props, 'ticket');
 const {
     isSupporter, currentRemainingSeconds, localMessages, messagesContainer,
     isAssigning, replyForm, deleteForm, confirmingDeletion, isTimeUp,
-    isAssignedSupporter, showClaimOverlay, isInputDisabled, isSubmitDisabled,
+    hasWritePermission, showClaimOverlay, isInputDisabled, isSubmitDisabled,
     submitReply, assignToMe, updateStatus, deleteTicket
 } = useTicketSupport(ticketRef);
 
@@ -267,9 +288,92 @@ const saveTags = () => {
         }
     });
 };
+
+// --- MENTIONS LOGIC START ---
+const showMentionMenu = ref(false);
+const mentionSearch = ref('');
+const cursorPosition = ref(0);
+
+if (typeof replyForm.mentions === 'undefined') {
+    replyForm.mentions = [];
+}
+
+/**
+ * SRP Focus: We compute the strictly available mentionable participants locally.
+ * It merges the globally fetched team members (mentionableUsers from Controller) 
+ * with the external/internal ticket customer.
+ */
+const mentionableEntities = computed(() => {
+    // Start with all possible supporters and admins
+    const users = [...props.mentionableUsers];
+    
+    // Append customer or external email if they aren't already matched
+    if (props.ticket.customer && !users.find(u => String(u.id) === String(props.ticket.customer.id))) {
+        users.push({ id: String(props.ticket.customer.id), name: props.ticket.customer.name, role: 'customer' });
+    } else if (props.ticket.sender_email) {
+        users.push({ id: props.ticket.sender_email, name: props.ticket.sender_email, role: 'customer' });
+    }
+    
+    return users;
+});
+
+/**
+ * Computes the filtered list of mentionable users based on current search input.
+ */
+const filteredMentions = computed(() => {
+    if (!mentionSearch.value) return mentionableEntities.value;
+    const search = mentionSearch.value.toLowerCase();
+    return mentionableEntities.value.filter(u => u.name.toLowerCase().includes(search));
+});
+
+/**
+ * Updates the local state storing the cursor position inside the textarea.
+ */
+const updateCursor = (e) => {
+    cursorPosition.value = e.target.selectionStart;
+};
+
+/**
+ * Parses user input to handle the floating mention menu logic.
+ * Matches standard names AND email patterns without breaking.
+ */
+const handleKeyUp = (e) => {
+    updateCursor(e);
+    
+    const textBeforeCursor = replyForm.message.substring(0, cursorPosition.value);
+    const match = textBeforeCursor.match(/@([a-zA-Z0-9_À-ÿ.\-@]*)$/);
+    
+    if (match) {
+        showMentionMenu.value = true;
+        mentionSearch.value = match[1];
+    } else {
+        showMentionMenu.value = false;
+    }
+};
+
+/**
+ * Inserts the chosen user's name or email directly into the textarea.
+ * It also pushes the entity's ID to the form mentions array for backend parsing and permissions.
+ */
+const insertMention = (user) => {
+    const textBefore = replyForm.message.substring(0, cursorPosition.value);
+    const textAfter = replyForm.message.substring(cursorPosition.value);
+    
+    const textBeforeMention = textBefore.replace(/@[a-zA-Z0-9_À-ÿ.\-@]*$/, '');
+    const mentionText = `@${user.name.replace(/\s+/g, '')} `;
+    
+    replyForm.message = textBeforeMention + mentionText + textAfter;
+    
+    if (!replyForm.mentions.includes(user.id)) {
+        replyForm.mentions.push(user.id);
+    }
+    
+    showMentionMenu.value = false;
+};
+// --- MENTIONS LOGIC END ---
 </script>
 
 <style scoped>
 .chat-container { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
 .blur-md { backdrop-filter: blur(12px); }
-</style>
+</style> 
