@@ -4,9 +4,9 @@
       <table class="w-full text-left border-collapse">
         <thead>
           <tr class="border-b border-gray-200 dark:border-gray-700">
-            <th class="py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Field</th>
-            <th v-if="hasOldValues" class="py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Old Value</th>
-            <th class="py-2 px-3 text-xs font-semibold text-gray-500 uppercase">New Value</th>
+            <th class="py-2 px-3 text-xs font-semibold text-gray-500 uppercase">{{ $t('activity_log.details.field') }}</th>
+            <th v-if="hasOldValues" class="py-2 px-3 text-xs font-semibold text-gray-500 uppercase">{{ $t('activity_log.details.old_value') }}</th>
+            <th class="py-2 px-3 text-xs font-semibold text-gray-500 uppercase">{{ $t('activity_log.details.new_value') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -22,13 +22,13 @@
               <span v-if="change.old !== null" class="text-sm text-red-600 dark:text-red-400 line-through bg-red-50 dark:bg-red-900/20 px-1 rounded">
                 {{ resolveValue(change.old, change.key) }}
               </span>
-              <span v-else class="text-xs text-gray-400 italic">None</span>
+              <span v-else class="text-xs text-gray-400 italic">{{ $t('common.none') }}</span>
             </td>
             <td class="py-2 px-3">
               <span v-if="change.new !== null" class="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1 rounded font-medium">
                 {{ resolveValue(change.new, change.key) }}
               </span>
-              <span v-else class="text-xs text-gray-400 italic">None</span>
+              <span v-else class="text-xs text-gray-400 italic">{{ $t('common.none') }}</span>
             </td>
           </tr>
         </tbody>
@@ -36,27 +36,38 @@
     </div>
 
     <div v-else class="text-sm text-gray-400 italic">
-      No detailed properties recorded.
+      {{ $t('activity_log.details.no_properties') }}
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
-  /** @type {Object} The properties object from the activity log */
+  /** * The underlying JSON properties payload stored within the activity log record.
+   * Contains attributes, old values, or custom structure depending on the event.
+   */
   properties: {
     type: Object,
     default: () => ({})
   },
-  /** @type {Array} List of users to resolve IDs to names */
+  /** * A mapping collection of system users to resolve foreign keys (IDs) 
+   * into human-readable names automatically.
+   */
   users: {
     type: Array,
     default: () => []
   }
 });
 
+const { t } = useI18n();
+
+/**
+ * Normalizes the divergent log payload structures into a standard array of changes.
+ * Handles both Spatie ActivityLog format (attributes vs old) and generic custom JSON logging.
+ */
 const formattedChanges = computed(() => {
   if (!props.properties || Object.keys(props.properties).length === 0) return [];
 
@@ -72,7 +83,7 @@ const formattedChanges = computed(() => {
       }));
   }
 
-  // Handling standard Spatie model logs
+  // Handling standard Spatie model logs via Set to prevent duplicate keys
   const keys = Array.from(new Set([...Object.keys(attributes), ...Object.keys(oldValues)]));
   
   return keys.map(key => ({
@@ -91,8 +102,10 @@ const hasOldValues = computed(() => {
 });
 
 /**
- * Converts snake_case keys to Title Case.
- * @param {string} key 
+ * Transforms backend snake_case column names into readable Title Case presentation.
+ * Enhances UI readability without requiring database schema changes.
+ * * @param {string} key - The raw database column name.
+ * @returns {string} The formatted label string.
  */
 const formatKey = (key) => {
   return key
@@ -101,16 +114,17 @@ const formatKey = (key) => {
 };
 
 /**
- * Resolves a raw value to a human-readable format, 
- * including mapping User IDs to Names if applicable.
- * @param {any} value 
- * @param {string} key
+ * Parses and resolves raw database values into meaningful UI representations.
+ * Evaluates booleans via i18n, auto-resolves User IDs to Names, and handles complex objects.
+ * * @param {any} value - The raw value stored in the database.
+ * @param {string} key - The column key associated with this value.
+ * @returns {string} The human-readable resolved string.
  */
 const resolveValue = (value, key) => {
-  if (value === null) return 'null';
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (value === null) return t('common.null_value'); // Can map to a "null" i18n key or string
+  if (typeof value === 'boolean') return value ? t('common.yes') : t('common.no');
 
-  // Logic to detect User IDs: fields ending in _id or specific names
+  // Business Logic: Detect reference fields and resolve ID to Name mapping
   const userFields = ['causer_id', 'user_id', 'assigned_to', 'creator_id', 'author_id'];
   const isIdField = key.endsWith('_id') || userFields.includes(key);
 

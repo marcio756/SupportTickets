@@ -1,0 +1,31 @@
+{
+    "page_title": "Activity Logs",
+    "title": "Activity Logs",
+    "subtitle": "Track and audit all system changes and user actions.",
+    "empty_message": "No activity logs found matching the criteria.",
+    "system_automator": "System / Automator",
+    "view_changes": "View Changes",
+    "details_title": "Activity Details",
+    "description": "Description",
+    "changes": "Changes",
+    "filters": {
+        "user": "User",
+        "event": "Event",
+        "target": "Target Model",
+        "date_from": "Date From",
+        "date_to": "Date To"
+    },
+    "columns": {
+        "date_time": "Date & Time",
+        "user_causer": "Causer",
+        "event": "Event",
+        "target_model": "Target Model",
+        "details": "Details"
+    },
+    "details": {
+        "field": "Field",
+        "old_value": "Old Value",
+        "new_value": "New Value",
+        "no_properties": "No properties were logged for this event."
+    }
+}

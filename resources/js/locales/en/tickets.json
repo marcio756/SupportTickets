@@ -85,5 +85,21 @@
         "detailed_message_label": "Detailed Message",
         "detailed_message_placeholder": "Provide as much detail as possible...",
         "submit_button": "Submit Ticket"
+    },
+    "create": {
+        "page_title": "Create Ticket",
+        "back": "Back to Tickets",
+        "title": "Open a Support Ticket",
+        "subtitle": "Fill in the details below to submit a new request.",
+        "customer_label": "Customer",
+        "customer_placeholder": "Select a customer...",
+        "tags_label": "Tags",
+        "tags_placeholder": "Select related categories...",
+        "no_tags": "No tags available",
+        "subject_label": "Subject",
+        "subject_placeholder": "Brief description of the issue",
+        "message_label": "Message",
+        "message_placeholder": "Provide detailed information about your issue...",
+        "submit": "Submit Ticket"
     }
 }

@@ -87,5 +87,21 @@
         "created_at": "Criado em",
         "customer": "Cliente",
         "assigned_to": "Atribuído a"
+    },
+    "create": {
+        "page_title": "Criar ingresso",
+        "back": "Voltar para Ingressos",
+        "title": "Abra um ticket de suporte",
+        "subtitle": "Preencha os dados abaixo para enviar uma nova solicitação.",
+        "customer_label": "Cliente",
+        "customer_placeholder": "Selecione um cliente...",
+        "tags_label": "Etiquetas",
+        "tags_placeholder": "Selecione categorias relacionadas...",
+        "no_tags": "Nenhuma tag disponível",
+        "subject_label": "Assunto",
+        "subject_placeholder": "Breve descrição do problema",
+        "message_label": "Mensagem",
+        "message_placeholder": "Forneça informações detalhadas sobre o seu problema...",
+        "submit": "Enviar tíquete"
     }
 }

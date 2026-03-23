@@ -1,14 +1,14 @@
 <template>
   <AppLayout>
-    <Head title="Create Ticket" />
+    <Head :title="$t('tickets.create.page_title')" />
 
     <div class="max-w-3xl mx-auto">
       <div class="mb-6">
         <Link :href="route('tickets.index')" class="text-[var(--va-primary)] hover:underline text-sm flex items-center gap-1">
-          <va-icon name="arrow_back" size="small" /> Back to Tickets
+          <va-icon name="arrow_back" size="small" /> {{ $t('tickets.create.back') }}
         </Link>
-        <h1 class="text-2xl font-bold mt-4 text-[var(--va-dark)]">Open a New Support Ticket</h1>
-        <p class="text-gray-500 text-sm mt-1">Please describe your issue in detail. Our support team will assist you shortly.</p>
+        <h1 class="text-2xl font-bold mt-4 text-[var(--va-dark)]">{{ $t('tickets.create.title') }}</h1>
+        <p class="text-gray-500 text-sm mt-1">{{ $t('tickets.create.subtitle') }}</p>
       </div>
 
       <va-card>
@@ -19,8 +19,8 @@
               <va-select
                 v-model="form.customer_id"
                 :options="customerOptions"
-                label="Select Customer"
-                placeholder="Search by customer name..."
+                :label="$t('tickets.create.customer_label')"
+                :placeholder="$t('tickets.create.customer_placeholder')"
                 searchable
                 text-by="text"
                 value-by="value"
@@ -39,8 +39,8 @@
               <va-select
                 v-model="form.tags"
                 :options="tagOptions"
-                label="Assign Categories (Tags)"
-                placeholder="Search and select tags..."
+                :label="$t('tickets.create.tags_label')"
+                :placeholder="$t('tickets.create.tags_placeholder')"
                 searchable
                 multiple
                 clearable
@@ -52,7 +52,7 @@
               >
                 <template #content="{ valueArray }">
                   <div class="flex gap-1 flex-wrap">
-                    <span v-if="valueArray.length === 0" class="text-gray-500">No tags selected</span>
+                    <span v-if="valueArray.length === 0" class="text-gray-500">{{ $t('tickets.create.no_tags') }}</span>
                     <TagBadge 
                       v-for="tagId in valueArray" 
                       :key="tagId" 
@@ -66,8 +66,8 @@
             <div class="mb-4">
               <va-input
                 v-model="form.title"
-                label="Subject / Short Description"
-                placeholder="e.g. Cannot connect to the database"
+                :label="$t('tickets.create.subject_label')"
+                :placeholder="$t('tickets.create.subject_placeholder')"
                 :error="!!form.errors.title"
                 :error-messages="form.errors.title"
                 class="w-full"
@@ -76,10 +76,10 @@
             </div>
 
             <div class="mb-6">
-              <div class="va-title mb-2 text-sm font-bold" style="color: var(--va-dark);">Detailed Message</div>
+              <div class="va-title mb-2 text-sm font-bold" style="color: var(--va-dark);">{{ $t('tickets.create.message_label') }}</div>
               <va-textarea
                 v-model="form.message"
-                placeholder="Explain the steps to reproduce the issue, any error codes, etc."
+                :placeholder="$t('tickets.create.message_placeholder')"
                 :error="!!form.errors.message"
                 :error-messages="form.errors.message"
                 class="w-full"
@@ -90,9 +90,9 @@
             </div>
 
             <div class="flex justify-end gap-3 mt-6">
-              <va-button preset="secondary" @click="cancel">Cancel</va-button>
+              <va-button preset="secondary" @click="cancel">{{ $t('common.cancel') }}</va-button>
               <va-button type="submit" color="primary" :loading="form.processing">
-                Submit Ticket
+                {{ $t('tickets.create.submit') }}
               </va-button>
             </div>
           </form>
@@ -105,15 +105,22 @@
 <script setup>
 import { computed } from 'vue';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TagBadge from '@/Components/Common/TagBadge.vue';
 
+/**
+ * Ticket Creation Component.
+ * Handles the logic for users and supporters to open new support tickets.
+ * Integrates customer selection and tag assignment conditionally based on user roles.
+ */
 const props = defineProps({
   customers: { type: Array, default: () => [] },
   availableTags: { type: Array, default: () => [] }
 });
 
 const page = usePage();
+const { t } = useI18n();
 const isSupporter = page.props.auth.user.role !== 'customer';
 
 const form = useForm({
@@ -137,10 +144,19 @@ const tagOptions = computed(() => {
   }));
 });
 
+/**
+ * Retrieves full tag details for rendering dynamic badges in the UI.
+ * @param {number|string} id - The Tag ID to find.
+ * @returns {Object} The tag object or a localized fallback unknown object.
+ */
 const getDetailedTag = (id) => {
-  return props.availableTags.find(t => String(t.id) === String(id)) || { name: 'Unknown', color: '#ccc' };
+  return props.availableTags.find(t => String(t.id) === String(id)) || { name: t('common.unknown'), color: '#ccc' };
 };
 
+/**
+ * Transforms the form payload before submission.
+ * Ensures data relationships like customer IDs and Tags are formatted exactly as the backend expects.
+ */
 const submit = () => {
   form.transform((data) => {
     return {
@@ -154,6 +170,9 @@ const submit = () => {
   });
 };
 
+/**
+ * Cancels ticket creation and returns to the list view.
+ */
 const cancel = () => {
   router.get(route('tickets.index'));
 };

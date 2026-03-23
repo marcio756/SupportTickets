@@ -3,6 +3,7 @@
  * Professional Landing Page for SupportTickets.
  * Replaces the default Laravel welcome page.
  * Implements full localization to target a wider user base.
+ * Acts as the primary entry point for unauthenticated users, routing them to login or registration.
  */
 import { Head, Link } from '@inertiajs/vue3';
 import GuestLayout from '@/Layouts/GuestLayout.vue';

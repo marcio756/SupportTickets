@@ -11,7 +11,7 @@
 
     <va-dropdown-content class="notification-dropdown">
       <div class="dropdown-header">
-        <span class="title">Notificações</span>
+        <span class="title">{{ $t('notifications.title') }}</span>
         <va-button 
           v-if="notifications.length > 0" 
           preset="plain" 
@@ -19,7 +19,7 @@
           color="danger" 
           @click="clearAll"
         >
-          Apagar todas
+          {{ $t('notifications.clear_all') }}
         </va-button>
       </div>
 
@@ -59,7 +59,7 @@
           </div>
         </template>
         <div v-else class="empty-state">
-          Sem notificações novas
+          {{ $t('notifications.empty') }}
         </div>
       </div>
     </va-dropdown-content>
@@ -79,10 +79,11 @@ const notifications = ref([]);
 const unreadCount = computed(() => notifications.value.length);
 
 /**
- * Agrupa as notificações pelo ticket_id E pelo tipo de notificação.
- * Isto garante que mensagens não se misturam com mudanças de estado.
+ * Groups notifications by ticket_id AND by notification type.
+ * This ensures that standard messages do not merge with status change alerts,
+ * providing a cleaner and more organized UI for the user.
  *
- * @returns {Array<Object>} Array de objetos de notificação agrupados.
+ * @returns {Array<Object>} Array of grouped notification objects.
  */
 const groupedNotifications = computed(() => {
     const groups = [];
@@ -93,7 +94,7 @@ const groupedNotifications = computed(() => {
         const type = n.data?.type || 'general';
         
         if (tId) {
-            // Chave composta (Ex: "1_new_message" ou "1_status_change")
+            // Composite key (e.g., "1_new_message" or "1_status_change")
             const groupKey = `${tId}_${type}`;
 
             if (!messageGroups[groupKey]) {
@@ -111,7 +112,7 @@ const groupedNotifications = computed(() => {
 });
 
 /**
- * Busca notificações iniciais não lidas da API nativa.
+ * Fetches initial unread notifications from the native API endpoint.
  * @returns {Promise<void>}
  */
 const fetchNotifications = async () => {
@@ -124,10 +125,10 @@ const fetchNotifications = async () => {
 };
 
 /**
- * Lida com o clique numa notificação agrupada ou item único.
- * Elimina todas as notificações atreladas a ela na DB.
+ * Handles clicks on a grouped or single notification item.
+ * Marks all related notifications as read in the database before redirecting.
  *
- * @param {Object} item O item ou grupo com os respetivos IDs
+ * @param {Object} item The notification item or group with respective IDs.
  * @returns {Promise<void>}
  */
 const handleNotificationClick = async (item) => {
@@ -141,9 +142,9 @@ const handleNotificationClick = async (item) => {
 };
 
 /**
- * Apaga a notificação visualmente e da DB sem redirecionar a view.
+ * Visually removes the notification and deletes it from the DB without view redirection.
  *
- * @param {Object} item O item ou grupo de notificação.
+ * @param {Object} item The notification item or group.
  * @returns {Promise<void>}
  */
 const deleteNotification = async (item) => {
@@ -156,7 +157,7 @@ const deleteNotification = async (item) => {
 };
 
 /**
- * Hard reset que elimina todas as notificações do painel.
+ * Hard reset: clears all notifications from the panel and database for the user.
  * @returns {Promise<void>}
  */
 const clearAll = async () => {
@@ -173,7 +174,7 @@ onMounted(() => {
     
     const userId = usePage().props.auth?.user?.id;
     
-    // Ouve notificações via WebSockets (Laravel Echo + Reverb)
+    // Listens for real-time notifications via WebSockets (Laravel Echo + Reverb)
     if (window.Echo && userId) {
         window.Echo.private(`App.Models.User.${userId}`)
             .notification((notification) => {

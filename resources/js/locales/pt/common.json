@@ -14,5 +14,14 @@
     "save": "Salvar",
     "cancel": "Cancelar",
     "delete": "Excluir",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "selected": "Selecionado",
+    "unknown": "Desconhecido",
+    "na": "N / D",
+    "close": "Fechar",
+    "none": "Nenhum",
+    "null_value": "Nulo/Vazio",
+    "yes": "Sim",
+    "no": "Não",
+    "no_records_found": "Nenhum registro encontrado."
 }

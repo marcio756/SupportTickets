@@ -1,7 +1,8 @@
 <script setup>
 /**
- * Componente para exibir as funcionalidades na página de Welcome.
- * Abstraído para garantir a reutilização (DRY) e facilidade de manutenção.
+ * UI Component for displaying feature highlights on the Welcome page.
+ * Extracted to enforce the DRY principle and ensure visual consistency 
+ * across promotional/informational sections of the application.
  */
 defineProps({
     icon: {

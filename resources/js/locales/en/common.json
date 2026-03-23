@@ -8,5 +8,15 @@
         "drop_file": "Drop file here or click to upload",
         "save_changes": "Save Changes",
         "confirm_deletion": "Confirm Deletion"
-    }
+    },
+    "selected": "Selected",
+    "unknown": "Unknown",
+    "na": "N/A",
+    "close": "Close",
+    "none": "None",
+    "null_value": "Null / Empty",
+    "yes": "Yes",
+    "no": "No",
+    "no_records_found": "No records found.",
+    "cancel": "Cancel"
 }

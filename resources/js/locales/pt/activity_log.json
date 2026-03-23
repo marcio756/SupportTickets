@@ -1,0 +1,31 @@
+{
+    "page_title": "Registros de atividades",
+    "title": "Registros de atividades",
+    "subtitle": "Rastreie e audite todas as alterações do sistema e ações do usuário.",
+    "empty_message": "Nenhum registro de atividades encontrado que corresponda aos critérios.",
+    "system_automator": "Sistema / Automatizador",
+    "view_changes": "Ver alterações",
+    "details_title": "Detalhes da atividade",
+    "description": "Descrição",
+    "changes": "Mudanças",
+    "filters": {
+        "user": "Usuário",
+        "event": "Evento",
+        "target": "Modelo alvo",
+        "date_from": "Data de",
+        "date_to": "Data até"
+    },
+    "columns": {
+        "date_time": "Data e hora",
+        "user_causer": "Causador",
+        "event": "Evento",
+        "target_model": "Modelo alvo",
+        "details": "Detalhes"
+    },
+    "details": {
+        "field": "Campo",
+        "old_value": "Valor Antigo",
+        "new_value": "Novo valor",
+        "no_properties": "Nenhuma propriedade foi registrada para este evento."
+    }
+}

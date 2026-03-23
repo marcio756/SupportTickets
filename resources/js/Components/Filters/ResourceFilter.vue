@@ -8,7 +8,7 @@
         <va-input
           v-if="!hideSearch"
           v-model="internalQuery"
-          placeholder="Search..."
+          :placeholder="$t('filters.search')"
           class="flex-1 w-full min-w-[200px]"
           clearable
           preset="bordered"
@@ -26,7 +26,7 @@
           v-model="internalStatus"
           :options="statusOptions"
           value-by="value"
-          placeholder="All Statuses"
+          :placeholder="$t('filters.all_statuses')"
           clearable
           preset="bordered"
           class="w-full xl:w-48 flex-none"
@@ -34,7 +34,7 @@
         >
             <template #content="{ valueArray }">
                 <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
-                <span v-else class="text-gray-400">All Statuses</span>
+                <span v-else class="text-gray-400">{{ $t('filters.all_statuses') }}</span>
             </template>
         </va-select>
 
@@ -44,7 +44,7 @@
           :options="sourceOptions"
           value-by="value"
           text-by="text"
-          placeholder="All Sources"
+          :placeholder="$t('filters.all_sources')"
           clearable
           preset="bordered"
           class="w-full xl:w-48 flex-none"
@@ -52,7 +52,7 @@
         >
             <template #content="{ valueArray }">
                 <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
-                <span v-else class="text-gray-400">All Sources</span>
+                <span v-else class="text-gray-400">{{ $t('filters.all_sources') }}</span>
             </template>
         </va-select>
 
@@ -62,7 +62,7 @@
           :options="roleOptions"
           value-by="value"
           text-by="text"
-          placeholder="All Roles"
+          :placeholder="$t('filters.all_roles')"
           clearable
           preset="bordered"
           class="w-full xl:w-48 flex-none"
@@ -70,7 +70,7 @@
         >
             <template #content="{ valueArray }">
                 <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
-                <span v-else class="text-gray-400">All Roles</span>
+                <span v-else class="text-gray-400">{{ $t('filters.all_roles') }}</span>
             </template>
         </va-select>
 
@@ -82,7 +82,7 @@
           searchable
           text-by="name"
           value-by="id"
-          placeholder="Filter by Customers"
+          :placeholder="$t('filters.customers')"
           clearable
           preset="bordered"
           class="w-full xl:w-56 flex-none"
@@ -91,9 +91,9 @@
             <template #content="{ valueArray }">
                 <span v-if="valueArray.length === 1">{{ valueArray[0].name || valueArray[0] }}</span>
                 <span v-else-if="valueArray.length > 1" class="font-bold text-sm">
-                    {{ valueArray.length }} selected
+                    {{ valueArray.length }} {{ $t('common.selected') }}
                 </span>
-                <span v-else class="text-gray-400">Filter by Customers</span>
+                <span v-else class="text-gray-400">{{ $t('filters.customers') }}</span>
             </template>
         </va-select>
 
@@ -103,7 +103,7 @@
           :options="assigneeOptions"
           multiple
           value-by="value"
-          placeholder="Filter by Assignment"
+          :placeholder="$t('filters.assignment')"
           clearable
           preset="bordered"
           class="w-full xl:w-56 flex-none"
@@ -112,9 +112,9 @@
             <template #content="{ valueArray }">
                 <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
                 <span v-else-if="valueArray.length > 1" class="font-bold text-sm">
-                    {{ valueArray.length }} selected
+                    {{ valueArray.length }} {{ $t('common.selected') }}
                 </span>
-                <span v-else class="text-gray-400">Filter by Assignment</span>
+                <span v-else class="text-gray-400">{{ $t('filters.assignment') }}</span>
             </template>
         </va-select>
 
@@ -124,7 +124,7 @@
           :options="formattedTagOptions"
           value-by="value"
           text-by="text"
-          placeholder="Filter by Tags"
+          :placeholder="$t('filters.tags')"
           multiple
           clearable
           searchable
@@ -134,7 +134,7 @@
         >
           <template #content="{ valueArray }">
             <div class="flex gap-1 flex-wrap items-center">
-              <span v-if="valueArray.length === 0" class="text-gray-400">Filter by Tags</span>
+              <span v-if="valueArray.length === 0" class="text-gray-400">{{ $t('filters.tags') }}</span>
               <template v-else>
                 <span 
                     v-for="(val, index) in valueArray.slice(0, 3)" 
@@ -163,7 +163,7 @@
           @click="clearAllFilters"
           class="w-full xl:w-auto flex-none mt-2 xl:mt-0"
         >
-          Clear All
+          {{ $t('filters.clear_all') }}
         </va-button>
       </div>
     </va-card-content>
@@ -172,7 +172,12 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
+/**
+ * Reusable layout and logic component for resource filtering.
+ * Emits unified events to maintain a Single Source of Truth for list queries.
+ */
 const props = defineProps({
   query: { type: String, default: '' },
   hideSearch: { type: Boolean, default: false },
@@ -196,6 +201,8 @@ const emit = defineEmits([
     'update:query', 'update:status', 'update:source', 'update:role', 
     'update:customers', 'update:assignees', 'update:tags', 'clear-all'
 ]);
+
+const { t } = useI18n();
 
 const internalQuery = ref(props.query);
 const internalStatus = ref(props.status);
@@ -233,7 +240,7 @@ const formattedTagOptions = computed(() => {
 });
 
 const getDetailedTag = (id) => {
-  return props.availableTags.find(t => String(t.id) === String(id)) || { name: 'Unknown', color: '#ccc' };
+  return props.availableTags.find(t => String(t.id) === String(id)) || { name: t('common.unknown'), color: '#ccc' };
 };
 
 const resolveTagName = (val) => {

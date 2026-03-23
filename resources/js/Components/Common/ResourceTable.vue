@@ -16,7 +16,7 @@
             </va-data-table>
 
             <div v-if="resourceData.data.length === 0" class="text-center py-8" style="color: var(--va-secondary)">
-                {{ emptyMessage }}
+                {{ emptyMessage || $t('common.no_records_found') }}
             </div>
 
             <div v-if="resourceData.last_page > 1" class="flex justify-center mt-6">
@@ -34,8 +34,9 @@
 
 <script setup>
 /**
- * Generic Table Component for resources
- * Wraps va-data-table to automatically handle Laravel pagination data structure and empty states.
+ * Generic Table Component for resources.
+ * Wraps va-data-table to automatically handle Laravel pagination data structures 
+ * and localization-ready empty states, promoting DRY principles across data views.
  */
 defineProps({
     resourceData: {
@@ -49,7 +50,7 @@ defineProps({
     },
     emptyMessage: {
         type: String,
-        default: 'No records found.',
+        default: '',
     },
     clickable: {
         type: Boolean,
