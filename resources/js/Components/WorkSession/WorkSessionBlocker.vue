@@ -2,13 +2,13 @@
   <div class="flex flex-col items-center justify-center py-16 px-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
     <va-icon name="schedule" size="80px" color="warning" class="mb-6 opacity-80" />
     <h2 class="text-2xl font-bold mb-4 text-center" style="color: var(--va-text-primary)">
-      {{ isPaused ? 'Work Session Paused' : 'Inactive Work Session' }}
+      {{ isPaused ? $t('work_sessions.blocker.paused_title') : $t('work_sessions.blocker.inactive_title') }}
     </h2>
     <p class="text-md text-center max-w-lg mb-8" style="color: var(--va-text-secondary)">
-      To protect data privacy and accurately log your time, you must {{ isPaused ? 'resume' : 'start' }} your shift before accessing this section.
+      {{ $t('work_sessions.blocker.desc_start') }}{{ isPaused ? $t('work_sessions.blocker.action_resume') : $t('work_sessions.blocker.action_start') }}{{ $t('work_sessions.blocker.desc_end') }}
     </p>
     <va-button color="primary" size="large" :icon="isPaused ? 'play_circle' : 'play_arrow'" @click="handleAction" :loading="isLoading">
-      {{ isPaused ? 'Resume Shift Now' : 'Start Shift Now' }}
+      {{ isPaused ? $t('work_sessions.blocker.resume_btn') : $t('work_sessions.blocker.start_btn') }}
     </va-button>
   </div>
 </template>

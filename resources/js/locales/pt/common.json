@@ -1,12 +1,18 @@
 {
-  "actions": {
+    "actions": {
+        "cancel": "Cancelar",
+        "save_changes": "Guardar Alterações",
+        "send": "Enviar",
+        "actions": "Ações",
+        "cancel_and_back": "Cancelar e voltar atrás",
+        "confirm_deletion": "Confirmar Eliminação",
+        "attach_file": "Anexar Ficheiro",
+        "drop_file": "Larga um ficheiro aqui"
+    },
+    "switch_to_pt": "Mudar para português",
+    "switch_to_en": "Mudar para inglês",
+    "save": "Salvar",
     "cancel": "Cancelar",
-    "save_changes": "Guardar Alterações",
-    "send": "Enviar",
-    "actions": "Ações",
-    "cancel_and_back": "Cancelar e voltar atrás",
-    "confirm_deletion": "Confirmar Eliminação",
-    "attach_file": "Anexar Ficheiro",
-    "drop_file": "Larga um ficheiro aqui"
-  }
+    "delete": "Excluir",
+    "confirm": "Confirmar"
 }

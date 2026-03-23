@@ -1,18 +1,12 @@
 {
-    "switch_to_pt": "Switch to Portuguese",
-    "switch_to_en": "Switch to English",
-    "save": "Save",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "confirm": "Confirm",
     "actions": {
         "cancel": "Cancel",
-        "save_changes": "Save Changes",
-        "send": "To send",
+        "cancel_and_back": "Cancel and Go Back",
         "actions": "Actions",
-        "cancel_and_back": "Cancel and go back",
-        "confirm_deletion": "Confirm Deletion",
+        "send": "Send",
         "attach_file": "Attach File",
-        "drop_file": "Drop a file here"
+        "drop_file": "Drop file here or click to upload",
+        "save_changes": "Save Changes",
+        "confirm_deletion": "Confirm Deletion"
     }
 }

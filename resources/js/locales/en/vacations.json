@@ -1,0 +1,61 @@
+{
+    "title": "Vacation Map",
+    "book_vacation": "Book Vacation",
+    "summary": {
+        "global_total": "Global Annual Total",
+        "annual_total": "Annual Total",
+        "global_used": "Total Used Days",
+        "used_days": "Used Days",
+        "global_remaining": "Total Remaining Days",
+        "remaining_days": "Remaining Days"
+    },
+    "filters": {
+        "status": "Filter by Status",
+        "supporter": "Filter by Supporter",
+        "date_from": "From Date",
+        "date_to": "To Date",
+        "clear": "Clear Filters",
+        "all": "All",
+        "pending": "Pending",
+        "approved": "Approved",
+        "completed": "Completed",
+        "rejected": "Rejected"
+    },
+    "table": {
+        "manage": "Manage Vacations",
+        "supporter": "Supporter",
+        "dates": "Dates",
+        "days": "Days",
+        "status": "Status",
+        "actions": "Actions",
+        "quick_approve": "Quick Approve",
+        "quick_reject": "Quick Reject",
+        "edit_request": "Edit Request",
+        "delete_record": "Delete Record",
+        "no_results": "No vacation requests match your current filters.",
+        "confirm_delete": "Are you sure you want to completely delete this vacation record?"
+    },
+    "calendar": {
+        "prev": "Prev",
+        "next": "Next",
+        "supporter": "Supporter",
+        "team": "Team",
+        "shift": "Shift",
+        "used": "Used",
+        "left": "Left",
+        "unassigned": "Unassigned",
+        "weekend": "Weekend (Not deducted)",
+        "pending": "Pending Approval",
+        "completed": "Completed",
+        "approved": "Approved",
+        "no_supporters": "No supporters match the current filters."
+    },
+    "modals": {
+        "book_title": "Book Vacation",
+        "edit_title": "Edit Vacation Request",
+        "start_date": "Start Date",
+        "end_date": "End Date",
+        "status": "Request Status"
+    },
+    "days_suffix": "days"
+}

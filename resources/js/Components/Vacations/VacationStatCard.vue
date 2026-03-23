@@ -1,5 +1,5 @@
 <template>
-    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-l-4" :class="borderColor">
+    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 border-l-4" :class="borderColor">
         <div class="flex items-center">
             <div class="flex-shrink-0">
                 <slot name="icon">
@@ -11,8 +11,10 @@
             <div class="ml-4 w-full">
                 <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">{{ title }}</h3>
                 <div class="mt-1 flex items-baseline">
-                    <p class="text-2xl font-semibold text-gray-900">{{ value }}</p>
-                    <p v-if="suffix" class="ml-1 text-sm text-gray-500">{{ suffix }}</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ value }}</p>
+                    <p v-if="suffix" class="ml-1 text-sm text-gray-500">
+                        {{ suffix === 'dias' ? $t('vacations.days_suffix') : suffix }}
+                    </p>
                 </div>
             </div>
         </div>
@@ -20,6 +22,10 @@
 </template>
 
 <script setup>
+/**
+ * Vacation Statistic Card Component.
+ * Presents key performance indicators tailored for the vacation summary section.
+ */
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -42,6 +48,10 @@ const props = defineProps({
     }
 });
 
+/**
+ * Dynamically resolves Tailwind structural border color classes.
+ * @returns {string} The active Tailwind class.
+ */
 const borderColor = computed(() => {
     const colors = {
         blue: 'border-blue-500',

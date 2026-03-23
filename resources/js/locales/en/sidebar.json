@@ -1,20 +1,17 @@
 {
-    "dashboard": "Control Panel",
-    "tickets": "My Tickets",
-    "work_sessions": "Work Sessions",
-    "vacations": "Vacation Map",
-    "teams": "Teams",
-    "users": "Users",
-    "activity_log": "Activity Log",
-    "tags": "Tag Management",
-    "time_tracking": "Work Sessions",
-    "manage_tags": "Manage Tags",
-    "activity_logs": "Activity Log",
-    "role": "Function",
+    "role": "Role",
     "roles": {
-        "guest": "Visitor",
         "admin": "Administrator",
-        "supporter": "Support",
-        "customer": "Customer"
-    }
+        "supporter": "Support Agent",
+        "customer": "Customer",
+        "guest": "Guest"
+    },
+    "dashboard": "Dashboard",
+    "time_tracking": "Time Tracking",
+    "tickets": "Tickets",
+    "users": "Users",
+    "manage_tags": "Manage Tags",
+    "vacations": "Vacations",
+    "teams": "Teams",
+    "activity_logs": "Activity Logs"
 }

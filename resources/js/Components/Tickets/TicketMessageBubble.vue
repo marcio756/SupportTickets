@@ -5,7 +5,7 @@
             <UserAvatar :user="message.sender" size="48px" />
         </template>
         <template v-else>
-            <div class="flex items-center justify-center shrink-0 min-w-[48px] w-[48px] min-h-[48px] h-[48px] rounded-full bg-gray-200 text-gray-500 overflow-hidden shadow-sm" title="Mensagem via Email">
+            <div class="flex items-center justify-center shrink-0 min-w-[48px] w-[48px] min-h-[48px] h-[48px] rounded-full bg-gray-200 text-gray-500 overflow-hidden shadow-sm" :title="$t('tickets.chat.email_message_tooltip')">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
@@ -33,7 +33,7 @@
             <div v-if="message.attachment_url" class="mt-2 pt-2 flex items-center gap-2" :class="[message.message ? 'border-t border-opacity-20' : '']">
                 <va-icon name="attach_file" size="small" />
                 <a :href="message.attachment_url" target="_blank" class="text-sm underline hover:opacity-80">
-                    View Attachment
+                    {{ $t('tickets.chat.view_attachment') }}
                 </a>
             </div>
         </div>

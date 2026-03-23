@@ -1,89 +1,89 @@
 {
-    "title": "My Tickets",
+    "page_title": "Tickets",
+    "title": "Tickets",
     "create_new": "Create New Ticket",
+    "no_tickets_found": "No tickets found.",
+    "received_via_email": "Received via Email",
+    "email": "Email",
+    "no_tags": "No Tags",
+    "unregistered_user": "Unregistered User",
+    "unassigned": "Unassigned",
     "status": {
         "open": "Open",
-        "pending": "Pending",
+        "in_progress": "In Progress",
         "resolved": "Resolved",
-        "closed": "Closed",
-        "in_progress": "In Progress"
+        "closed": "Closed"
     },
-    "assigned_to": "Assigned to",
-    "no_tickets_found": "No tickets found matching current filters.",
-    "page_title": "Tickets",
-    "email": "E-mail",
-    "received_via_email": "Received via Email",
-    "no_tags": "No tags",
-    "unregistered_user": "Unregistered user",
-    "unassigned": "Not assigned",
     "source": {
         "web": "Web",
-        "email": "E-mail"
+        "email": "Email"
     },
     "assignee": {
-        "unassigned": "Not Assigned",
-        "me": "Assigned to me"
+        "unassigned": "Unassigned",
+        "me": "Me"
     },
     "columns": {
         "id": "ID",
         "subject": "Subject",
         "tags": "Tags",
-        "status": "State",
-        "created_at": "Created in",
+        "status": "Status",
+        "created_at": "Created At",
         "customer": "Customer",
-        "assigned_to": "Assigned to"
-    },
-    "form": {
-        "open_new_title": "Open a New Support Ticket",
-        "description": "Please describe your problem in detail. Our support team will help you shortly.",
-        "select_customer": "Select Customer",
-        "search_customer": "Search by customer name...",
-        "subject_label": "Subject/Short Description",
-        "subject_placeholder": "ex: I can't connect to the database",
-        "detailed_message_label": "Detailed Message",
-        "detailed_message_placeholder": "Explains steps to reproduce the problem, error codes, etc.",
-        "submit_button": "Submit Ticket"
+        "assigned_to": "Assigned To"
     },
     "show": {
         "page_title": "Ticket #{id} - {title}",
-        "view_only_mode": "Read Only Mode",
-        "claim_description": "You need to claim ownership or be invited to this ticket before you can interact with the customer.",
-        "claim_button": "Claim Ticket Now",
-        "back_to_tickets": "Return to Tickets",
+        "view_only_mode": "View Only Mode",
+        "claim_description": "This ticket is currently unassigned. You are viewing it in read-only mode. Claim it to start replying.",
+        "claim_button": "Claim Ticket",
+        "back_to_tickets": "Back to Tickets",
         "opened_by": "Opened by",
         "manage_tags": "Manage Tags",
         "assigned_to": "Assigned to"
     },
     "actions": {
-        "mark_resolved": "Mark as Solved",
+        "mark_resolved": "Mark Resolved",
         "reopen": "Reopen Ticket",
-        "set_in_progress": "Mark In Progress",
+        "set_in_progress": "Set In Progress",
         "close_ticket": "Close Ticket",
         "delete_ticket": "Delete Ticket"
     },
     "chat": {
-        "time_expired_alert": "Daily support time has expired (30 minutes reached). The chat is blocked until tomorrow.",
-        "open_status_alert": "The ticket is \"Open\". Please change it to \"In Progress\" in the actions menu to start responding and recording time.",
-        "no_messages": "There are no messages yet.",
-        "input_disabled_placeholder": "The chat is blocked. The ticket must be In Progress.",
-        "input_placeholder": "Write your answer here... (Use @ to mention)"
+        "time_expired_alert": "The allotted support time has expired.",
+        "open_status_alert": "This ticket is open. Please review the details.",
+        "no_messages": "No messages yet.",
+        "input_disabled_placeholder": "You cannot reply to this ticket at this time.",
+        "input_placeholder": "Type your message here... Use @ to mention someone.",
+        "view_attachment": "View Attachment",
+        "email_message_tooltip": "Message via Email"
     },
     "mentions": {
         "available_members": "Available Members",
-        "role_supporter": "SUPPORT",
-        "role_customer": "CUSTOMER",
-        "no_members": "No members found."
+        "role_supporter": "Supporter",
+        "role_customer": "Customer",
+        "no_members": "No members found"
     },
     "tags": {
-        "manage_title": "Manage Ticket Tags",
+        "manage_title": "Manage Tags",
         "select_categories": "Select Categories",
-        "select_placeholder": "Select tags...",
+        "select_placeholder": "Select...",
         "unknown": "Unknown"
     },
     "delete": {
         "title": "Delete Ticket",
-        "confirmation_message": "Are you sure you want to delete this ticket? This action is irreversible.",
-        "password_label": "Confirmation Password",
-        "password_placeholder": "Enter your current password"
+        "confirmation_message": "Are you sure you want to delete this ticket? This action cannot be undone.",
+        "password_label": "Password",
+        "password_placeholder": "Enter your password to confirm"
+    },
+    "form": {
+        "open_new_title": "Open New Ticket",
+        "description": "Please fill in the details below to open a new support ticket.",
+        "select_customer": "Select Customer",
+        "search_customer": "Search for a customer...",
+        "subject_label": "Subject",
+        "subject_placeholder": "Brief description of the issue",
+        "detailed_message_label": "Detailed Message",
+        "detailed_message_placeholder": "Provide as much detail as possible...",
+        "submit_button": "Submit Ticket"
     }
 }

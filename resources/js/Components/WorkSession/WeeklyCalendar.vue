@@ -5,6 +5,7 @@
  * Work sessions are sliced mathematically around pauses.
  */
 import { ref, watch, reactive, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { DayPilot, DayPilotCalendar, DayPilotNavigator } from '@daypilot/daypilot-lite-vue';
 
 const props = defineProps({
@@ -19,12 +20,15 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:weekStartDate']);
+const { t } = useI18n();
 
 const calendarRef = ref(null);
 
 /**
- * CONVERSOR ESTRITO DE FUSO HORÁRIO COM PRECISÃO DE MILISSEGUNDOS
- * Preserva a ordem cronológica exata para o layout engine do DayPilot não sobrepor blocos.
+ * STRICT TIMEZONE CONVERTER WITH MILLISECOND PRECISION
+ * Preserves exact chronological order for the DayPilot layout engine to prevent block overlap.
+ * @param {string} dateStr - The ISO date string to convert.
+ * @returns {string|null} Parsed local string compatible with DayPilot.
  */
 const getLocalDayPilotTime = (dateStr) => {
     if (!dateStr) return null;
@@ -62,7 +66,7 @@ const calendarConfig = reactive({
     eventMoveHandling: "Disabled",
     eventResizeHandling: "Disabled",
     timeRangeSelectedHandling: "Disabled",
-    // Configurações para garantir largura máxima caso haja conflitos não previstos
+    // Configuration to guarantee maximum width in case of unforeseen conflicts
     eventArrangement: "Full", 
     allowEventOverlap: false,
     events: [],
@@ -76,8 +80,9 @@ const calendarConfig = reactive({
 });
 
 /**
- * LÓGICA DE FATIAMENTO LINEAR
- * Garante que os eventos são puramente adjacentes, sem NENHUMA sobreposição temporal.
+ * LINEAR SLICING LOGIC
+ * Guarantees that events are purely adjacent, without ANY temporal overlap.
+ * @returns {Array<Object>} Mapped dataset ready for the DayPilot UI.
  */
 const processEvents = () => {
     const mappedEvents = [];
@@ -96,15 +101,15 @@ const processEvents = () => {
             ? new DayPilot.Date() 
             : new DayPilot.Date(getLocalDayPilotTime(session.ended_at_iso || session.ended_at));
 
-        const sessionTitle = session.user?.name ? `${session.user.name}` : 'Session';
-        let cursor = dpSessionStart; // O cursor viaja no tempo sem nunca recuar
+        const sessionTitle = session.user?.name ? `${session.user.name}` : t('work_sessions.calendar.default_session_name');
+        let cursor = dpSessionStart; // The cursor travels through time without ever going backwards
 
-        // Função geradora de blocos individuais na linha do tempo
+        // Generator function for individual blocks on the timeline
         const pushBlock = (start, end, type, pauseData = null) => {
-            if (start.getTime() >= end.getTime()) return; // Ignora blocos com duração zero ou negativa
+            if (start.getTime() >= end.getTime()) return; // Ignores blocks with zero or negative duration
 
             const diffMins = Math.round((end.getTime() - start.getTime()) / 60000);
-            if (diffMins < 1 && type === 'work') return; // Ignora micro-trabalhos de segundos para limpeza visual
+            if (diffMins < 1 && type === 'work') return; // Ignores micro-works of seconds for visual cleanliness
 
             const displayDuration = getDurationText(Math.max(1, diffMins));
             const timeRangeText = `${start.toString('HH:mm')} - ${end.toString('HH:mm')}`;
@@ -115,7 +120,7 @@ const processEvents = () => {
                 
                 const backColor = isBlockActive ? '#16a34a' : '#4f46e5';
                 const borderColor = isBlockActive ? '#15803d' : '#3730a3';
-                const statusText = isBlockActive ? 'ACTIVE' : 'COMPLETED';
+                const statusText = isBlockActive ? t('work_sessions.calendar.status_active') : t('work_sessions.calendar.status_completed');
 
                 mappedEvents.push({
                     id: `work_${session.id}_${start.getTime()}`,
@@ -124,7 +129,7 @@ const processEvents = () => {
                     html: `
                         <div style="padding: 4px; display: flex; flex-direction: column; gap: 2px;">
                             <div style="font-weight: 800; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${sessionTitle}</div>
-                            <div style="font-size: 10px; opacity: 0.9;">${isBlockActive ? start.toString('HH:mm') + ' - Active' : timeRangeText}</div>
+                            <div style="font-size: 10px; opacity: 0.9;">${isBlockActive ? start.toString('HH:mm') + ' - ' + t('work_sessions.calendar.status_active') : timeRangeText}</div>
                             <div>
                                 <span style="font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; color: white;">
                                     ⏱ ${displayDuration}
@@ -132,7 +137,7 @@ const processEvents = () => {
                             </div>
                         </div>
                     `,
-                    toolTip: `Supporter: ${sessionTitle}\nStatus: ${statusText}\nTime: ${timeRangeText}\nWorked: ${displayDuration}`,
+                    toolTip: `${t('work_sessions.calendar.tooltip.supporter')}: ${sessionTitle}\n${t('work_sessions.calendar.tooltip.status')}: ${statusText}\n${t('work_sessions.calendar.tooltip.time')}: ${timeRangeText}\n${t('work_sessions.calendar.tooltip.worked')}: ${displayDuration}`,
                     backColor: backColor,
                     borderColor: borderColor,
                     tags: { type: 'session' }
@@ -142,8 +147,8 @@ const processEvents = () => {
                     id: `pause_${pauseData.id}_${start.getTime()}`,
                     start: start.toString(),
                     end: end.toString(),
-                    html: `<div style="text-align:center; font-weight:bold; font-size:9px; margin-top:2px; color:white;">PAUSE<br/>${displayDuration}</div>`,
-                    toolTip: `PAUSE\nTime: ${timeRangeText}\nDuration: ${displayDuration}`,
+                    html: `<div style="text-align:center; font-weight:bold; font-size:9px; margin-top:2px; color:white;">${t('work_sessions.calendar.pause_uppercase')}<br/>${displayDuration}</div>`,
+                    toolTip: `${t('work_sessions.calendar.pause_uppercase')}\n${t('work_sessions.calendar.tooltip.time')}: ${timeRangeText}\n${t('work_sessions.calendar.tooltip.duration')}: ${displayDuration}`,
                     backColor: '#ea580c',
                     borderColor: '#c2410c',
                     tags: { type: 'pause' }
@@ -151,7 +156,7 @@ const processEvents = () => {
             }
         };
 
-        // Extrai e ordena as pausas cronologicamente
+        // Extracts and sorts the pauses chronologically
         if (session.pauses && session.pauses.length > 0) {
             const sortedPauses = [...session.pauses].sort((a, b) => {
                 return new Date(a.started_at_iso || a.started_at).getTime() - new Date(b.started_at_iso || b.started_at).getTime();
@@ -167,23 +172,23 @@ const processEvents = () => {
                     ? new DayPilot.Date() 
                     : new DayPilot.Date(getLocalDayPilotTime(pause.ended_at_iso || pause.ended_at));
 
-                // Validação estrita para impedir corrupção temporal
+                // Strict validation to prevent temporal corruption
                 if (dpPauseStart.getTime() < cursor.getTime()) dpPauseStart = cursor;
                 if (dpPauseEnd.getTime() < dpPauseStart.getTime()) dpPauseEnd = dpPauseStart;
                 if (dpPauseEnd.getTime() > dpSessionEnd.getTime()) dpPauseEnd = dpSessionEnd;
 
-                // 1. Cria o bloco de trabalho que aconteceu ANTES desta pausa
+                // 1. Creates the work block that happened BEFORE this pause
                 pushBlock(cursor, dpPauseStart, 'work');
 
-                // 2. Cria o bloco da pausa exata
+                // 2. Creates the exact pause block
                 pushBlock(dpPauseStart, dpPauseEnd, 'pause', pause);
 
-                // 3. Atualiza o cursor do tempo para o fim da pausa
+                // 3. Updates the time cursor to the end of the pause
                 cursor = dpPauseEnd;
             });
         }
 
-        // Cria o bloco final de trabalho (após a última pausa até ao fim da sessão)
+        // Creates the final work block (after the last pause until the end of the session)
         pushBlock(cursor, dpSessionEnd, 'work');
     });
 
@@ -191,7 +196,7 @@ const processEvents = () => {
 };
 
 // ==========================================
-// REATIVIDADE E ATUALIZAÇÃO DO DAYPILOT
+// REACTIVITY AND DAYPILOT UPDATES
 // ==========================================
 
 watch(() => props.weekStartDate, (newDate) => {
@@ -226,18 +231,18 @@ onMounted(() => {
             </div>
             
             <div class="mt-6 px-2 space-y-3">
-                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Legend</h4>
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{{ $t('work_sessions.calendar.legend') }}</h4>
                 <div class="flex items-center gap-3">
                     <div class="w-3 h-3 rounded-full bg-[#4f46e5]"></div>
-                    <span class="text-xs text-gray-600 dark:text-gray-300 font-medium">Completed Session</span>
+                    <span class="text-xs text-gray-600 dark:text-gray-300 font-medium">{{ $t('work_sessions.calendar.completed_session') }}</span>
                 </div>
                 <div class="flex items-center gap-3">
                     <div class="w-3 h-3 rounded-full bg-[#16a34a]"></div>
-                    <span class="text-xs text-gray-600 dark:text-gray-300 font-medium">Active Session</span>
+                    <span class="text-xs text-gray-600 dark:text-gray-300 font-medium">{{ $t('work_sessions.calendar.active_session') }}</span>
                 </div>
                 <div class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <div class="w-3 h-3 rounded-sm bg-[#ea580c]"></div>
-                    <span class="text-xs text-gray-600 dark:text-gray-300 font-bold">Pause (Block)</span>
+                    <span class="text-xs text-gray-600 dark:text-gray-300 font-bold">{{ $t('work_sessions.calendar.pause_block') }}</span>
                 </div>
             </div>
         </div>
@@ -250,7 +255,7 @@ onMounted(() => {
 </template>
 
 <style>
-/* Forçar ocupação horizontal completa por segurança */
+/* Forces full horizontal occupancy for layout safety */
 .calendar_default_event {
     left: 0 !important;
     width: 100% !important;

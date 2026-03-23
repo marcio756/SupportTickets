@@ -1,17 +1,17 @@
 <template>
-  <AppLayout title="Vacation Map">
+  <AppLayout :title="$t('vacations.title')">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-      <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">Vacation Map</h1>
+      <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">{{ $t('vacations.title') }}</h1>
       
       <va-button v-if="!isAdmin" color="primary" icon="add" @click="showBookModal = true">
-        Book Vacation
+        {{ $t('vacations.book_vacation') }}
       </va-button>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-      <StatCard :title="isAdmin ? 'Global Annual Total' : 'Annual Total'" :value="summary.total_allowed" icon="event" style="border-left: 4px solid var(--va-info);" />
-      <StatCard :title="isAdmin ? 'Total Used Days' : 'Used Days'" :value="summary.used_days" icon="event_busy" style="border-left: 4px solid var(--va-danger);" />
-      <StatCard :title="isAdmin ? 'Total Remaining Days' : 'Remaining Days'" :value="summary.remaining_days" icon="event_available" style="border-left: 4px solid var(--va-success);" />
+      <StatCard :title="isAdmin ? $t('vacations.summary.global_total') : $t('vacations.summary.annual_total')" :value="summary.total_allowed" icon="event" style="border-left: 4px solid var(--va-info);" />
+      <StatCard :title="isAdmin ? $t('vacations.summary.global_used') : $t('vacations.summary.used_days')" :value="summary.used_days" icon="event_busy" style="border-left: 4px solid var(--va-danger);" />
+      <StatCard :title="isAdmin ? $t('vacations.summary.global_remaining') : $t('vacations.summary.remaining_days')" :value="summary.remaining_days" icon="event_available" style="border-left: 4px solid var(--va-success);" />
     </div>
 
     <div v-if="isAdmin" class="mb-6 p-4 rounded-lg border border-solid flex flex-col md:flex-row gap-4 items-start md:items-end" style="background-color: var(--va-background-secondary); border-color: var(--va-background-border);">
@@ -19,7 +19,8 @@
             v-model="filters.status"
             :options="statusOptions"
             value-by="value"
-            label="Filter by Status"
+            text-by="text"
+            :label="$t('vacations.filters.status')"
             class="w-full md:w-48"
             clearable
         />
@@ -27,40 +28,41 @@
             v-model="filters.supporter_id"
             :options="supporterOptions"
             value-by="value"
-            label="Filter by Supporter"
+            text-by="text"
+            :label="$t('vacations.filters.supporter')"
             class="w-full md:w-56"
             clearable
         />
         <va-input
             v-model="filters.date_from"
             type="date"
-            label="From Date"
+            :label="$t('vacations.filters.date_from')"
             class="w-full md:w-40"
             clearable
         />
         <va-input
             v-model="filters.date_to"
             type="date"
-            label="To Date"
+            :label="$t('vacations.filters.date_to')"
             class="w-full md:w-40"
             clearable
         />
         <va-button preset="secondary" icon="clear" @click="clearFilters" class="mb-1">
-            Clear Filters
+            {{ $t('vacations.filters.clear') }}
         </va-button>
     </div>
 
     <div v-if="isAdmin" class="mb-6 p-6 rounded-lg border border-solid" style="background-color: var(--va-background-secondary); border-color: var(--va-background-border);">
-        <h3 class="text-lg font-bold mb-4" style="color: var(--va-text-primary)">Manage Vacations</h3>
+        <h3 class="text-lg font-bold mb-4" style="color: var(--va-text-primary)">{{ $t('vacations.table.manage') }}</h3>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr style="border-bottom: 1px solid var(--va-background-border);">
-                        <th class="py-2 px-4 text-sm font-semibold" style="color: var(--va-secondary)">Supporter</th>
-                        <th class="py-2 px-4 text-sm font-semibold" style="color: var(--va-secondary)">Dates</th>
-                        <th class="py-2 px-4 text-sm font-semibold" style="color: var(--va-secondary)">Days</th>
-                        <th class="py-2 px-4 text-sm font-semibold" style="color: var(--va-secondary)">Status</th>
-                        <th class="py-2 px-4 text-sm font-semibold text-right" style="color: var(--va-secondary)">Actions</th>
+                        <th class="py-2 px-4 text-sm font-semibold" style="color: var(--va-secondary)">{{ $t('vacations.table.supporter') }}</th>
+                        <th class="py-2 px-4 text-sm font-semibold" style="color: var(--va-secondary)">{{ $t('vacations.table.dates') }}</th>
+                        <th class="py-2 px-4 text-sm font-semibold" style="color: var(--va-secondary)">{{ $t('vacations.table.days') }}</th>
+                        <th class="py-2 px-4 text-sm font-semibold" style="color: var(--va-secondary)">{{ $t('vacations.table.status') }}</th>
+                        <th class="py-2 px-4 text-sm font-semibold text-right" style="color: var(--va-secondary)">{{ $t('vacations.table.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -74,21 +76,21 @@
                         </td>
                         <td class="py-3 px-4" style="color: var(--va-text-primary)">{{ vacation.total_days }}</td>
                         <td class="py-3 px-4">
-                            <va-badge :text="vacation.status" :color="statusColor(vacation.status)" size="small" class="uppercase" />
+                            <va-badge :text="$t(`vacations.filters.${vacation.status}`)" :color="statusColor(vacation.status)" size="small" class="uppercase" />
                         </td>
                         <td class="py-3 px-4 text-right space-x-2">
-                            <va-button v-if="vacation.status === 'pending'" preset="primary" color="success" size="small" title="Quick Approve" @click="updateStatus(vacation.id, 'approved')">
+                            <va-button v-if="vacation.status === 'pending'" preset="primary" color="success" size="small" :title="$t('vacations.table.quick_approve')" @click="updateStatus(vacation.id, 'approved')">
                                 <va-icon name="check" size="small" />
                             </va-button>
-                            <va-button v-if="vacation.status === 'pending'" preset="primary" color="warning" size="small" title="Quick Reject" @click="updateStatus(vacation.id, 'rejected')">
+                            <va-button v-if="vacation.status === 'pending'" preset="primary" color="warning" size="small" :title="$t('vacations.table.quick_reject')" @click="updateStatus(vacation.id, 'rejected')">
                                 <va-icon name="close" size="small" />
                             </va-button>
-                            <va-button preset="primary" color="info" size="small" icon="edit" title="Edit Request" @click="openEditModal(vacation)" />
-                            <va-button preset="primary" color="danger" size="small" icon="delete" title="Delete Record" @click="deleteVacation(vacation.id)" />
+                            <va-button preset="primary" color="info" size="small" icon="edit" :title="$t('vacations.table.edit_request')" @click="openEditModal(vacation)" />
+                            <va-button preset="primary" color="danger" size="small" icon="delete" :title="$t('vacations.table.delete_record')" @click="deleteVacation(vacation.id)" />
                         </td>
                     </tr>
                     <tr v-if="filteredVacations.length === 0">
-                        <td colspan="5" class="py-6 text-center" style="color: var(--va-secondary)">No vacation requests match your current filters.</td>
+                        <td colspan="5" class="py-6 text-center" style="color: var(--va-secondary)">{{ $t('vacations.table.no_results') }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -105,8 +107,13 @@
 </template>
 
 <script setup>
+/**
+ * Vacations Management Index Component.
+ * Orchestrates the visual mapping, KPIs, and administrative actions for team vacations.
+ */
 import { ref, computed } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
 import VacationCalendar from '@/Components/Vacations/VacationCalendar.vue';
@@ -119,11 +126,16 @@ const props = defineProps({
     summary: Object
 });
 
+const { t } = useI18n();
 const page = usePage();
 const showBookModal = ref(false);
 const showEditModal = ref(false);
 const selectedVacation = ref(null);
 
+/**
+ * Validates if the authenticated user has administrative privileges.
+ * @returns {boolean}
+ */
 const isAdmin = computed(() => {
     const role = page.props.auth?.user?.role;
     if (!role) return false;
@@ -131,7 +143,7 @@ const isAdmin = computed(() => {
 });
 
 // ==========================================
-// FILTROS INSTANTÂNEOS
+// INSTANT FILTERS
 // ==========================================
 
 const filters = ref({
@@ -141,6 +153,10 @@ const filters = ref({
     date_to: ''
 });
 
+/**
+ * Maps supporters to standard Vuestic select structure.
+ * @returns {Array<{text: string, value: string|number}>}
+ */
 const supporterOptions = computed(() => {
     return props.supporters.map(s => ({
         text: s.name,
@@ -148,18 +164,29 @@ const supporterOptions = computed(() => {
     }));
 });
 
-const statusOptions = [
-    { text: 'All', value: '' },
-    { text: 'Pending', value: 'pending' },
-    { text: 'Approved', value: 'approved' },
-    { text: 'Completed', value: 'completed' },
-    { text: 'Rejected', value: 'rejected' }
-];
+/**
+ * Reactive translated options for status filtering.
+ * @returns {Array<{text: string, value: string}>}
+ */
+const statusOptions = computed(() => [
+    { text: t('vacations.filters.all'), value: '' },
+    { text: t('vacations.filters.pending'), value: 'pending' },
+    { text: t('vacations.filters.approved'), value: 'approved' },
+    { text: t('vacations.filters.completed'), value: 'completed' },
+    { text: t('vacations.filters.rejected'), value: 'rejected' }
+]);
 
+/**
+ * Resets all dashboard filters to their default empty states.
+ */
 const clearFilters = () => {
     filters.value = { status: '', supporter_id: '', date_from: '', date_to: '' };
 };
 
+/**
+ * Evaluates the active filters to limit the dataset presented in tables and calendars.
+ * @returns {Array<Object>}
+ */
 const filteredVacations = computed(() => {
     return props.vacations.filter(v => {
         let match = true;
@@ -177,6 +204,10 @@ const filteredVacations = computed(() => {
     });
 });
 
+/**
+ * Filters the displayed supporters in the calendar to match the active search.
+ * @returns {Array<Object>}
+ */
 const filteredSupporters = computed(() => {
     if (filters.value.supporter_id) {
         return props.supporters.filter(s => s.id === filters.value.supporter_id);
@@ -185,9 +216,14 @@ const filteredSupporters = computed(() => {
 });
 
 // ==========================================
-// AÇÕES E CORES
+// ACTIONS AND COLORS
 // ==========================================
 
+/**
+ * Maps the status enum to corresponding Vuestic contextual colors.
+ * @param {string} status 
+ * @returns {string}
+ */
 const statusColor = (status) => {
     const colors = { 
         'pending': 'warning', 
@@ -198,17 +234,30 @@ const statusColor = (status) => {
     return colors[status] || 'info';
 };
 
+/**
+ * Commits a quick status change to the backend.
+ * @param {number|string} id 
+ * @param {string} status 
+ */
 const updateStatus = (id, status) => {
     router.patch(route('vacations.status', id), { status: status }, { preserveScroll: true });
 };
 
+/**
+ * Populates and opens the administrative edit modal for a specific record.
+ * @param {Object} vacation 
+ */
 const openEditModal = (vacation) => {
     selectedVacation.value = vacation;
     showEditModal.value = true;
 };
 
+/**
+ * Issues a hard-delete request for the targeted vacation instance.
+ * @param {number|string} id 
+ */
 const deleteVacation = (id) => {
-    if (confirm('Are you sure you want to completely delete this vacation record?')) {
+    if (confirm(t('vacations.table.confirm_delete'))) {
         router.delete(route('vacations.destroy', id), { preserveScroll: true });
     }
 };

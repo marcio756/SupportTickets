@@ -1,16 +1,16 @@
 <template>
   <AppLayout>
-    <Head title="Users Management" />
+    <Head :title="$t('users.title')" />
 
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-      <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">Users Management</h1>
+      <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">{{ $t('users.title') }}</h1>
       <va-button 
         v-if="workSessionStatus === 'active'" 
         color="primary" 
         icon="add" 
         @click="openCreateModal"
       >
-        Add New User
+        {{ $t('users.add_new') }}
       </va-button>
     </div>
 
@@ -28,7 +28,7 @@
       <ResourceTable
           :resource-data="users"
           :columns="columns"
-          empty-message="No users found matching your filters."
+          :empty-message="$t('users.no_users_found')"
           @page-change="changePage"
       >
         <template #cell(name)="{ rowData }">
@@ -39,7 +39,7 @@
                 <s v-if="rowData.deleted_at">{{ rowData.name }}</s>
                 <span v-else>{{ rowData.name }}</span>
               </span>
-              <va-badge v-if="rowData.deleted_at" text="Deactivated" color="danger" size="small" class="mt-1 w-max" />
+              <va-badge v-if="rowData.deleted_at" :text="$t('users.status.deactivated')" color="danger" size="small" class="mt-1 w-max" />
             </div>
           </div>
         </template>
@@ -72,14 +72,14 @@
                 preset="plain" 
                 icon="restore" 
                 color="success" 
-                title="Restore User"
+                :title="$t('users.actions.restore_title')"
                 @click="restoreUser(rowData)" 
               />
             </template>
 
             <template v-else>
-              <va-button preset="plain" icon="edit" color="info" title="Edit User" @click="openEditModal(rowData)" />
-              <va-button preset="plain" icon="block" color="danger" title="Deactivate User" @click="openDeleteModal(rowData)" />
+              <va-button preset="plain" icon="edit" color="info" :title="$t('users.actions.edit_title')" @click="openEditModal(rowData)" />
+              <va-button preset="plain" icon="block" color="danger" :title="$t('users.actions.deactivate_title')" @click="openDeleteModal(rowData)" />
             </template>
           </div>
         </template>
@@ -103,8 +103,14 @@
 </template>
 
 <script setup>
+/**
+ * Users Management Index Component.
+ * Displays a paginated and filterable list of all registered system users.
+ * Supports CRUD operation triggers via embedded contextual actions.
+ */
 import { ref, computed } from 'vue';
 import { Head, usePage, useForm } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
 import ResourceTable from '@/Components/Common/ResourceTable.vue';
@@ -124,6 +130,8 @@ const props = defineProps({
 });
 
 const page = usePage();
+const { t } = useI18n();
+
 const currentUserIsAdmin = computed(() => {
   const user = page.props.auth?.user;
   return user && user.role === 'admin';
@@ -137,20 +145,28 @@ const selectedUser = ref(null);
 
 const restoreUserForm = useForm({});
 
+/**
+ * Prepares the role filtering options. 
+ * Re-uses the translations from the sidebar namespace if available.
+ */
 const roleOptions = computed(() => {
   return props.roles.map(role => ({
-    text: role.charAt(0).toUpperCase() + role.slice(1),
+    text: t(`sidebar.roles.${role}`) || role.charAt(0).toUpperCase() + role.slice(1),
     value: role
   }));
 });
 
-const columns = [
-  { key: 'name', label: 'Name', sortable: false },
-  { key: 'email', label: 'Email', sortable: false },
-  { key: 'role', label: 'Role', sortable: false },
-  { key: 'team', label: 'Team', sortable: false },
-  { key: 'actions', label: 'Actions', sortable: false, align: 'right' },
-];
+/**
+ * Computed columns definition to ensure table headers react properly 
+ * when the global locale is updated.
+ */
+const columns = computed(() => [
+  { key: 'name', label: t('users.columns.name'), sortable: false },
+  { key: 'email', label: t('users.columns.email'), sortable: false },
+  { key: 'role', label: t('users.columns.role'), sortable: false },
+  { key: 'team', label: t('users.columns.team'), sortable: false },
+  { key: 'actions', label: t('users.columns.actions'), sortable: false, align: 'right' },
+]);
 
 /**
  * Open modal to create a new user.
@@ -183,7 +199,7 @@ const openDeleteModal = (user) => {
  * @param {Object} user 
  */
 const restoreUser = (user) => {
-  if (confirm(`Are you sure you want to reactivate the account for ${user.name}?`)) {
+  if (confirm(t('users.actions.restore_confirm', { name: user.name }))) {
     restoreUserForm.patch(route('users.restore', user.id), {
       preserveScroll: true,
     });

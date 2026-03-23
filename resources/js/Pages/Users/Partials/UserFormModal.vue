@@ -1,6 +1,12 @@
 <script setup>
+/**
+ * User Form Modal Component.
+ * Unified interface for creating and updating user accounts.
+ * Includes role-based logic to handle team assignment dynamically.
+ */
 import { ref, watch, computed } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
     show: {
@@ -23,6 +29,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
+const { t } = useI18n();
 const currentPasswordInput = ref(null);
 
 const form = useForm({
@@ -35,7 +42,9 @@ const form = useForm({
     current_password: '',
 });
 
-// Map teams to Vuestic select format
+/**
+ * Maps the raw teams array into the expected format for Vuestic's Select component.
+ */
 const teamOptions = computed(() => {
     return props.teams.map(team => ({
         text: `${team.name} (${team.shift})`,
@@ -56,7 +65,10 @@ watch(() => props.show, (isShowing) => {
     }
 });
 
-// Automatically clear team_id if role is changed from supporter
+/**
+ * Automatically clears the team_id if the chosen role is not a 'supporter'.
+ * Prevents invalid data states being submitted to the backend.
+ */
 watch(() => form.role, (newRole) => {
     if (newRole !== 'supporter') {
         form.team_id = null;
@@ -108,13 +120,13 @@ const closeModal = () => {
         size="large"
     >
         <h3 class="va-h5 mb-6" style="color: var(--va-text-primary)">
-            {{ user ? 'Edit User' : 'Create New User' }}
+            {{ user ? $t('users.form.edit_title') : $t('users.form.create_title') }}
         </h3>
 
         <form @submit.prevent="submit" class="flex flex-col gap-4">
             <va-input
                 v-model="form.name"
-                label="Name"
+                :label="$t('users.form.name')"
                 :error="!!form.errors.name"
                 :error-messages="form.errors.name"
                 required
@@ -123,7 +135,7 @@ const closeModal = () => {
             <va-input
                 v-model="form.email"
                 type="email"
-                label="Email"
+                :label="$t('users.form.email')"
                 :error="!!form.errors.email"
                 :error-messages="form.errors.email"
                 required
@@ -134,7 +146,7 @@ const closeModal = () => {
                     v-if="roles.length > 1"
                     v-model="form.role"
                     :options="roles"
-                    label="Role"
+                    :label="$t('users.form.role')"
                     :error="!!form.errors.role"
                     :error-messages="form.errors.role"
                     required
@@ -144,7 +156,7 @@ const closeModal = () => {
                     v-if="form.role === 'supporter'"
                     v-model="form.team_id"
                     :options="teamOptions"
-                    label="Team Assignment"
+                    :label="$t('users.form.team_assignment')"
                     value-by="value"
                     :error="!!form.errors.team_id"
                     :error-messages="form.errors.team_id"
@@ -156,7 +168,7 @@ const closeModal = () => {
                 <va-input
                     v-model="form.password"
                     type="password"
-                    :label="user ? 'New Password (leave blank to keep current)' : 'Password'"
+                    :label="user ? $t('users.form.new_password') : $t('users.form.password')"
                     :error="!!form.errors.password"
                     :error-messages="form.errors.password"
                     :required="!user"
@@ -165,7 +177,7 @@ const closeModal = () => {
                 <va-input
                     v-model="form.password_confirmation"
                     type="password"
-                    label="Confirm New Password"
+                    :label="$t('users.form.confirm_password')"
                     :error="!!form.errors.password_confirmation"
                     :error-messages="form.errors.password_confirmation"
                     :required="!!form.password || !user"
@@ -174,16 +186,16 @@ const closeModal = () => {
 
             <div class="mt-4 p-4 rounded-lg border border-solid" style="background-color: var(--va-background-element); border-color: var(--va-background-border);">
                 <p class="mb-3 text-sm font-semibold" style="color: var(--va-text-primary)">
-                    Authorization Required
+                    {{ $t('users.form.auth_required') }}
                 </p>
                 <p class="mb-4 text-sm" style="color: var(--va-secondary)">
-                    Please enter your current password to confirm this action.
+                    {{ $t('users.form.auth_description') }}
                 </p>
                 <va-input
                     ref="currentPasswordInput"
                     v-model="form.current_password"
                     type="password"
-                    label="Your Current Password"
+                    :label="$t('users.form.current_password')"
                     :error="!!form.errors.current_password"
                     :error-messages="form.errors.current_password"
                     required
@@ -191,9 +203,9 @@ const closeModal = () => {
             </div>
 
             <div class="flex justify-end gap-3 mt-4">
-                <va-button preset="secondary" @click="closeModal"> Cancel </va-button>
+                <va-button preset="secondary" @click="closeModal">{{ $t('common.actions.cancel') }}</va-button>
                 <va-button type="submit" :loading="form.processing" :disabled="form.processing">
-                    {{ user ? 'Save Changes' : 'Create User' }}
+                    {{ user ? $t('common.actions.save_changes') : $t('users.form.create_btn') }}
                 </va-button>
             </div>
         </form>

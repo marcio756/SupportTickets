@@ -1,0 +1,26 @@
+{
+    "title": "Manage Tags",
+    "page_header": "Category Tags",
+    "add_new": "Create New Tag",
+    "no_tags": "No tags found matching your criteria.",
+    "columns": {
+        "preview": "Preview",
+        "name": "Name",
+        "color": "Color Code",
+        "actions": "Actions"
+    },
+    "form": {
+        "create_title": "Create Tag",
+        "edit_title": "Edit Tag",
+        "name_label": "Tag Name",
+        "name_placeholder": "e.g., Bug, Urgent, Billing",
+        "color_label": "Tag Color",
+        "save": "Save Changes",
+        "create": "Create"
+    },
+    "delete": {
+        "title": "Delete Tag",
+        "message": "Are you sure you want to delete this tag? This action will remove it from all associated tickets.",
+        "confirm_btn": "Delete"
+    }
+}

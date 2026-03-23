@@ -1,7 +1,8 @@
 <script setup>
 /**
- * ForgotPassword Page Component
+ * ForgotPassword Page Component.
  * Allows users to request a password reset link via email.
+ * Fully internationalized using the global vue-i18n instance.
  */
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
@@ -12,6 +13,7 @@ import BrandTitle from '@/Components/Common/BrandTitle.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
 /**
+ * Defines component props.
  * @typedef {Object} Props
  * @property {string} [status] - Success message from the session.
  */
@@ -21,13 +23,15 @@ defineProps({
     },
 });
 
-// Form state management using Inertia's utility
+/**
+ * Initializes the form state management using Inertia's utility.
+ */
 const form = useForm({
     email: '',
 });
 
 /**
- * Handle form submission.
+ * Handles form submission.
  * Sends the request to Laravel's password reset endpoint.
  */
 const submit = () => {
@@ -37,15 +41,14 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Forgot Password" />
+        <Head :title="$t('auth.forgot_password.title')" />
 
         <div class="mb-6 text-center">
             <BrandTitle />
         </div>
 
         <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-            Forgot your password? No problem. Just let us know your email address and we will email you a password reset
-            link that will allow you to choose a new one.
+            {{ $t('auth.forgot_password.description') }}
         </div>
 
         <div v-if="status" class="mb-4 text-sm font-medium text-green-600 dark:text-green-400">
@@ -54,7 +57,7 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" :value="$t('auth.forgot_password.email')" />
 
                 <TextInput
                     id="email"
@@ -64,7 +67,7 @@ const submit = () => {
                     required
                     autofocus
                     autocomplete="username"
-                    placeholder="Enter your registered email"
+                    :placeholder="$t('auth.forgot_password.email_placeholder')"
                 />
 
                 <InputError class="mt-2" :message="form.errors.email" />
@@ -72,7 +75,7 @@ const submit = () => {
 
             <div class="mt-4 flex items-center justify-end">
                 <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    Email Password Reset Link
+                    {{ $t('auth.forgot_password.submit') }}
                 </PrimaryButton>
             </div>
         </form>

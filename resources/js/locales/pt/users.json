@@ -1,0 +1,44 @@
+{
+    "title": "Gerenciamento de usuários",
+    "add_new": "Adicionar novo usuário",
+    "no_users_found": "Nenhum usuário encontrado que corresponda aos seus filtros.",
+    "status": {
+        "deactivated": "Desativado"
+    },
+    "columns": {
+        "name": "Nome",
+        "email": "E-mail",
+        "role": "Papel",
+        "team": "Equipe",
+        "actions": "Ações"
+    },
+    "actions": {
+        "restore_title": "Restaurar usuário",
+        "edit_title": "Editar usuário",
+        "deactivate_title": "Desativar usuário",
+        "restore_confirm": "Tem certeza de que deseja reativar a conta de {name}?"
+    },
+    "form": {
+        "edit_title": "Editar usuário",
+        "create_title": "Criar novo usuário",
+        "name": "Nome",
+        "email": "E-mail",
+        "role": "Papel",
+        "team_assignment": "Atribuição de equipe",
+        "password": "Senha",
+        "new_password": "Nova senha (deixe em branco para mantê-la atualizada)",
+        "confirm_password": "Confirme a nova senha",
+        "auth_required": "Autorização necessária",
+        "auth_description": "Por favor, digite sua senha atual para confirmar esta ação.",
+        "current_password": "Sua senha atual",
+        "create_btn": "Criar usuário"
+    },
+    "delete": {
+        "title": "Desativar usuário",
+        "confirm_msg": "Tem certeza de que deseja desativar",
+        "warning_msg": "Esta ação desabilitará seu acesso, mas seus tickets e histórico associados serão preservados.",
+        "password_prompt": "Por favor, digite sua senha para confirmar esta ação.",
+        "password_label": "Sua senha",
+        "submit_btn": "Desativar usuário"
+    }
+}

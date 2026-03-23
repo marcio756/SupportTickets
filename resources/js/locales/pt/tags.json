@@ -1,0 +1,26 @@
+{
+    "title": "Gerenciar tags",
+    "page_header": "Tags de categoria",
+    "add_new": "Criar nova etiqueta",
+    "no_tags": "Nenhuma tag encontrada que corresponda aos seus critérios.",
+    "columns": {
+        "preview": "Visualização",
+        "name": "Nome",
+        "color": "Código de cores",
+        "actions": "Ações"
+    },
+    "form": {
+        "create_title": "Criar etiqueta",
+        "edit_title": "Editar etiqueta",
+        "name_label": "Nome da etiqueta",
+        "name_placeholder": "por exemplo, Bug, Urgente, Faturamento",
+        "color_label": "Cor da etiqueta",
+        "save": "Salvar alterações",
+        "create": "Criar"
+    },
+    "delete": {
+        "title": "Excluir etiqueta",
+        "message": "Tem certeza de que deseja excluir esta tag? Esta ação irá removê-lo de todos os tickets associados.",
+        "confirm_btn": "Excluir"
+    }
+}

@@ -1,0 +1,61 @@
+{
+    "title": "Mapa de férias",
+    "book_vacation": "Reservar férias",
+    "summary": {
+        "global_total": "Total anual global",
+        "annual_total": "Total Anual",
+        "global_used": "Total de dias usados",
+        "used_days": "Dias usados",
+        "global_remaining": "Total de dias restantes",
+        "remaining_days": "Dias restantes"
+    },
+    "filters": {
+        "status": "Filtrar por status",
+        "supporter": "Filtrar por apoiador",
+        "date_from": "Da data",
+        "date_to": "A data",
+        "clear": "Limpar filtros",
+        "all": "Todos",
+        "pending": "Pendente",
+        "approved": "Aprovado",
+        "completed": "Concluído",
+        "rejected": "Rejeitado"
+    },
+    "table": {
+        "manage": "Gerenciar férias",
+        "supporter": "Apoiador",
+        "dates": "Datas",
+        "days": "Dias",
+        "status": "Status",
+        "actions": "Ações",
+        "quick_approve": "Aprovação rápida",
+        "quick_reject": "Rejeição rápida",
+        "edit_request": "Editar solicitação",
+        "delete_record": "Excluir registro",
+        "no_results": "Nenhuma solicitação de férias corresponde aos seus filtros atuais.",
+        "confirm_delete": "Tem certeza de que deseja excluir completamente este registro de férias?"
+    },
+    "calendar": {
+        "prev": "Anterior",
+        "next": "Próximo",
+        "supporter": "Apoiador",
+        "team": "Equipe",
+        "shift": "Mudança",
+        "used": "Usado",
+        "left": "Esquerda",
+        "unassigned": "Não atribuído",
+        "weekend": "Fim de semana (não deduzido)",
+        "pending": "Aprovação pendente",
+        "completed": "Concluído",
+        "approved": "Aprovado",
+        "no_supporters": "Nenhum apoiador corresponde aos filtros atuais."
+    },
+    "modals": {
+        "book_title": "Reservar férias",
+        "edit_title": "Editar solicitação de férias",
+        "start_date": "Data de início",
+        "end_date": "Data de término",
+        "status": "Status da solicitação"
+    },
+    "days_suffix": "dias"
+}

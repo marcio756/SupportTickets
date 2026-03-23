@@ -1,0 +1,34 @@
+{
+    "title": "Gestão de Equipes",
+    "add_new": "Adicionar nova equipe",
+    "no_teams": "Nenhuma equipe encontrada. Crie um acima!",
+    "assigned": "{contagem} Atribuído",
+    "columns": {
+        "id": "EU IA",
+        "name": "Nome",
+        "shift": "Mudança",
+        "members": "Membros",
+        "actions": "Ações"
+    },
+    "actions": {
+        "edit": "Editar e gerenciar membros",
+        "delete": "Excluir equipe"
+    },
+    "shifts": {
+        "morning": "Manhã",
+        "afternoon": "Tarde",
+        "night": "Noite"
+    },
+    "form": {
+        "create_title": "Criar nova equipe",
+        "edit_title": "Editar equipe e membros",
+        "name_label": "Nome da equipe",
+        "shift_label": "Mudança",
+        "assign_supporters": "Atribuir apoiadores",
+        "save": "Salvar alterações",
+        "cancel": "Cancelar"
+    },
+    "delete": {
+        "confirm_msg": "Tem certeza de que deseja excluir esta equipe? Todos os apoiadores designados ficarão sem designação."
+    }
+}

@@ -1,10 +1,10 @@
 {
+    "prevent_logout_msg": "You cannot log out while you have an active or paused work session. Please end your shift first.",
     "profile": "Profile",
-    "logout": "End Session",
-    "prevent_logout_msg": "You cannot log out while your turn is active. Please end the work session first.",
+    "logout": "Log Out",
     "modal": {
-        "title": "Blocked Action",
-        "subtitle": "End Session Canceled",
+        "title": "Action Required",
+        "subtitle": "Active Session Detected",
         "understood": "Understood"
     }
 }

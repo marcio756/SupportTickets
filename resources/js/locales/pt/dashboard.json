@@ -15,6 +15,9 @@
         "top_clients": "Principais Clientes (Por Tickets)",
         "tickets": "Tickets",
         "top_supporters": "Top 5 Suportes Produtivos",
-        "resolved": "Resolvidos"
+        "resolved": "Resolvidos",
+        "user": "Usuário",
+        "email": "E-mail",
+        "no_data": "Não há dados disponíveis."
     }
 }

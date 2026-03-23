@@ -67,6 +67,11 @@
 </template>
 
 <script setup>
+/**
+ * Dashboard Page Component.
+ * Acts as the primary landing interface post-authentication.
+ * Conditionally renders widgets and metrics based on user roles.
+ */
 import { computed } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';

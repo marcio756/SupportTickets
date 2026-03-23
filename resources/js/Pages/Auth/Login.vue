@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Authentication Login Component.
+ * Handles the user login UI and payload submission to the authentication endpoint.
+ * Fully internationalized using the global vue-i18n instance.
+ */
 import Checkbox from '@/Components/Checkbox.vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
@@ -22,6 +27,10 @@ const form = useForm({
     remember: false,
 });
 
+/**
+ * Submits the login form payload to the server.
+ * Ensures the password field is cleared from state upon request completion for security.
+ */
 const submit = () => {
     form.post(route('login'), {
         onFinish: () => form.reset('password'),
@@ -31,7 +40,7 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Log in" />
+        <Head :title="$t('auth.login.title')" />
 
         <div v-if="status" class="mb-4 font-medium text-sm text-green-600">
             {{ status }}
@@ -39,7 +48,7 @@ const submit = () => {
 
         <form @submit.prevent="submit" class="space-y-6">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" :value="$t('auth.login.email')" />
 
                 <TextInput
                     id="email"
@@ -55,7 +64,7 @@ const submit = () => {
             </div>
 
             <div>
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" :value="$t('auth.login.password')" />
 
                 <TextInput
                     id="password"
@@ -72,7 +81,7 @@ const submit = () => {
             <div class="block mt-4">
                 <label class="flex items-center w-fit cursor-pointer">
                     <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-3 text-sm text-gray-600 dark:text-gray-400 select-none">Remember me</span>
+                    <span class="ms-3 text-sm text-gray-600 dark:text-gray-400 select-none">{{ $t('auth.login.remember_me') }}</span>
                 </label>
             </div>
 
@@ -82,11 +91,11 @@ const submit = () => {
                     :href="route('password.request')"
                     class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors"
                 >
-                    Forgot your password?
+                    {{ $t('auth.login.forgot_password') }}
                 </Link>
 
                 <PrimaryButton class="ms-4 py-2.5 px-6" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    Log in
+                    {{ $t('auth.login.submit') }}
                 </PrimaryButton>
             </div>
         </form>

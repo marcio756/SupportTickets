@@ -5,8 +5,8 @@
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="border-b border-gray-200">
-                        <th class="py-2">User</th>
-                        <th class="py-2">Email</th>
+                        <th class="py-2">{{ $t('dashboard.rankings.user') }}</th>
+                        <th class="py-2">{{ $t('dashboard.rankings.email') }}</th>
                         <th class="py-2 text-right">{{ metricLabel }}</th>
                     </tr>
                 </thead>
@@ -31,7 +31,7 @@
                     </tr>
                     <tr v-if="!items.length">
                         <td colspan="3" class="py-4 text-center text-gray-500">
-                            No data available.
+                            {{ $t('dashboard.rankings.no_data') }}
                         </td>
                     </tr>
                 </tbody>
@@ -45,13 +45,13 @@ import { VaCard, VaCardTitle, VaCardContent } from 'vuestic-ui';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 
 /**
- * Componente genérico para tabelas de ranking (Top X).
- * Segue o princípio da Responsabilidade Única (SRP) na apresentação de dados tabulares.
+ * Generic component for Ranking tables (Top X).
+ * Adheres to the Single Responsibility Principle (SRP) by strictly handling tabular data presentation.
  */
 defineProps({
     title: { type: String, required: true },
     items: { type: Array, required: true, default: () => [] },
-    metricLabel: { type: String, required: true }, // Ex: "Tickets" ou "Resolved"
-    metricKey: { type: String, required: true }    // Ex: "tickets_count" ou "resolved_count"
+    metricLabel: { type: String, required: true }, // e.g., "Tickets" or "Resolved"
+    metricKey: { type: String, required: true }    // e.g., "tickets_count" or "resolved_count"
 });
 </script>

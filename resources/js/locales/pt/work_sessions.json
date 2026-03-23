@@ -1,0 +1,58 @@
+{
+    "index": {
+        "page_title": "Controle de tempo",
+        "header_title": "Calendário de Presença",
+        "all_supporters": "Todos os apoiadores",
+        "total_worked_week": "Tempo total trabalhado (semana)"
+    },
+    "badge": {
+        "active": "Ativo",
+        "paused": "Pausado",
+        "worked_time": "Tempo trabalhado",
+        "break_duration": "Duração do intervalo"
+    },
+    "widget": {
+        "offline": "Off-line",
+        "clock_in": "▶ Entrada do relógio",
+        "active": "Ativo",
+        "pause_shift": "Pausar turno",
+        "end_shift": "⏹ Fim do turno",
+        "total_worked_time": "Tempo total trabalhado",
+        "break_duration": "Duração do intervalo",
+        "paused": "Pausado",
+        "resume_shift": "Retomar turno",
+        "modal": {
+            "title": "Terminar a mudança de hoje?",
+            "message": "Tem certeza de que deseja marcar o ponto hoje?\n\nDevido às políticas do sistema, você não poderá reiniciar seu turno depois que ele terminar. Se você estiver fazendo uma pequena pausa, use o recurso 'Pausa'.",
+            "confirm": "Sim, turno final",
+            "cancel": "Continue trabalhando"
+        }
+    },
+    "calendar": {
+        "legend": "Lenda",
+        "completed_session": "Sessão concluída",
+        "active_session": "Sessão Ativa",
+        "pause_block": "Pausa (Bloqueio)",
+        "status_active": "ATIVO",
+        "status_completed": "CONCLUÍDO",
+        "pause_uppercase": "PAUSA",
+        "default_session_name": "Sessão",
+        "tooltip": {
+            "supporter": "Apoiador",
+            "status": "Status",
+            "time": "Tempo",
+            "worked": "Trabalhado",
+            "duration": "Duração"
+        }
+    },
+    "blocker": {
+        "paused_title": "Sessão de trabalho pausada",
+        "inactive_title": "Sessão de trabalho inativa",
+        "desc_start": "Para proteger a privacidade dos dados e registrar com precisão o seu tempo, você deve",
+        "action_resume": "retomar",
+        "action_start": "começar",
+        "desc_end": "seu turno antes de acessar esta seção.",
+        "resume_btn": "Retomar turno agora",
+        "start_btn": "Comece o turno agora"
+    }
+}

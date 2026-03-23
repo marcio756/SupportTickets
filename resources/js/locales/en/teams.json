@@ -1,0 +1,34 @@
+{
+    "title": "Teams Management",
+    "add_new": "Add New Team",
+    "no_teams": "No teams found. Create one above!",
+    "assigned": "{count} Assigned",
+    "columns": {
+        "id": "ID",
+        "name": "Name",
+        "shift": "Shift",
+        "members": "Members",
+        "actions": "Actions"
+    },
+    "actions": {
+        "edit": "Edit & Manage Members",
+        "delete": "Delete Team"
+    },
+    "shifts": {
+        "morning": "Morning",
+        "afternoon": "Afternoon",
+        "night": "Night"
+    },
+    "form": {
+        "create_title": "Create New Team",
+        "edit_title": "Edit Team & Members",
+        "name_label": "Team Name",
+        "shift_label": "Shift",
+        "assign_supporters": "Assign Supporters",
+        "save": "Save Changes",
+        "cancel": "Cancel"
+    },
+    "delete": {
+        "confirm_msg": "Are you sure you want to delete this team? All assigned supporters will be left unassigned."
+    }
+}

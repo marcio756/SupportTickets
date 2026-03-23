@@ -1,0 +1,33 @@
+{
+    "title": "Perfil",
+    "header": "Configurações de perfil",
+    "delete_account": {
+        "title": "Excluir conta",
+        "description": "Depois que sua conta for excluída, todos os seus recursos e dados serão excluídos permanentemente. Antes de excluir sua conta, baixe todos os dados ou informações que deseja reter.",
+        "modal_title": "Tem certeza de que deseja excluir sua conta?",
+        "modal_description": "Depois que sua conta for excluída, todos os seus recursos e dados serão excluídos permanentemente. Digite sua senha para confirmar que deseja excluir permanentemente sua conta.",
+        "password": "Senha",
+        "cancel": "Cancelar",
+        "confirm": "Excluir conta"
+    },
+    "update_password": {
+        "title": "Atualizar senha",
+        "description": "Certifique-se de que sua conta esteja usando uma senha longa e aleatória para permanecer segura.",
+        "current_password": "Senha atual",
+        "new_password": "Nova Senha",
+        "confirm_password": "Confirme sua senha",
+        "save": "Salvar",
+        "saved": "Salvo."
+    },
+    "update_information": {
+        "title": "Informações do perfil",
+        "description": "Atualize as informações de perfil e endereço de e-mail da sua conta.",
+        "name": "Nome",
+        "email": "E-mail",
+        "unverified_email": "Seu endereço de e-mail não foi verificado.",
+        "resend_verification": "Clique aqui para reenviar o e-mail de verificação.",
+        "verification_sent": "Um novo link de verificação foi enviado para seu endereço de e-mail.",
+        "save": "Salvar",
+        "saved": "Salvo."
+    }
+}

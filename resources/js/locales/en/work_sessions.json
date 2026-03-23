@@ -1,0 +1,58 @@
+{
+    "index": {
+        "page_title": "Time Tracking",
+        "header_title": "Attendance Calendar",
+        "all_supporters": "All Supporters",
+        "total_worked_week": "Total Worked Time (Week)"
+    },
+    "badge": {
+        "active": "Active",
+        "paused": "Paused",
+        "worked_time": "Worked Time",
+        "break_duration": "Break Duration"
+    },
+    "widget": {
+        "offline": "Offline",
+        "clock_in": "▶ Clock In",
+        "active": "Active",
+        "pause_shift": "Pause Shift",
+        "end_shift": "⏹ End Shift",
+        "total_worked_time": "Total Worked Time",
+        "break_duration": "Break Duration",
+        "paused": "Paused",
+        "resume_shift": "Resume Shift",
+        "modal": {
+            "title": "End Today's Shift?",
+            "message": "Are you sure you want to clock out for today?\n\nDue to system policies, you cannot restart your shift once it is ended. If you are taking a short break, please use the 'Pause' feature instead.",
+            "confirm": "Yes, End Shift",
+            "cancel": "Keep Working"
+        }
+    },
+    "calendar": {
+        "legend": "Legend",
+        "completed_session": "Completed Session",
+        "active_session": "Active Session",
+        "pause_block": "Pause (Block)",
+        "status_active": "ACTIVE",
+        "status_completed": "COMPLETED",
+        "pause_uppercase": "PAUSE",
+        "default_session_name": "Session",
+        "tooltip": {
+            "supporter": "Supporter",
+            "status": "Status",
+            "time": "Time",
+            "worked": "Worked",
+            "duration": "Duration"
+        }
+    },
+    "blocker": {
+        "paused_title": "Work Session Paused",
+        "inactive_title": "Inactive Work Session",
+        "desc_start": "To protect data privacy and accurately log your time, you must ",
+        "action_resume": "resume",
+        "action_start": "start",
+        "desc_end": " your shift before accessing this section.",
+        "resume_btn": "Resume Shift Now",
+        "start_btn": "Start Shift Now"
+    }
+}

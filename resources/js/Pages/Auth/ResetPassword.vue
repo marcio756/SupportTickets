@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * Reset Password Component.
+ * Provides the interface for users to define a new password using a valid reset token.
+ * Fully internationalized using the global vue-i18n instance.
+ */
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -6,6 +11,9 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
+/**
+ * Defines component properties required for the reset password process.
+ */
 const props = defineProps({
     email: {
         type: String,
@@ -17,6 +25,9 @@ const props = defineProps({
     },
 });
 
+/**
+ * Initializes the form state, pre-filling the token and email.
+ */
 const form = useForm({
     token: props.token,
     email: props.email,
@@ -24,6 +35,10 @@ const form = useForm({
     password_confirmation: '',
 });
 
+/**
+ * Submits the new password payload to the server.
+ * Ensures password fields are cleared from the state upon completion.
+ */
 const submit = () => {
     form.post(route('password.store'), {
         onFinish: () => form.reset('password', 'password_confirmation'),
@@ -33,11 +48,11 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Reset Password" />
+        <Head :title="$t('auth.reset_password.title')" />
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" :value="$t('auth.reset_password.email')" />
 
                 <TextInput
                     id="email"
@@ -53,7 +68,7 @@ const submit = () => {
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" :value="$t('auth.reset_password.password')" />
 
                 <TextInput
                     id="password"
@@ -70,7 +85,7 @@ const submit = () => {
             <div class="mt-4">
                 <InputLabel
                     for="password_confirmation"
-                    value="Confirm Password"
+                    :value="$t('auth.reset_password.password_confirmation')"
                 />
 
                 <TextInput
@@ -93,7 +108,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Reset Password
+                    {{ $t('auth.reset_password.submit') }}
                 </PrimaryButton>
             </div>
         </form>

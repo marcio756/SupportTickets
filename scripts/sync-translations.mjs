@@ -17,8 +17,8 @@ translate.engine = 'google';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const BASE_LOCALE = 'pt';
-const TARGET_LOCALE = 'en';
+const BASE_LOCALE = 'en';
+const TARGET_LOCALE = 'pt';
 const LOCALES_DIR = path.resolve(__dirname, '../resources/js/locales');
 
 /**

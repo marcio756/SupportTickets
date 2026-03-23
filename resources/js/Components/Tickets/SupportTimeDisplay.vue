@@ -10,6 +10,7 @@ import { computed } from 'vue';
 import { VaIcon } from 'vuestic-ui';
 
 /**
+ * Display component for countdown timers on tickets.
  * @property {Number} seconds - The remaining seconds to display.
  */
 const props = defineProps({
@@ -21,7 +22,7 @@ const props = defineProps({
 
 /**
  * Formats the raw seconds into a readable MM:SS layout.
- * * @returns {String}
+ * @returns {String}
  */
 const formattedTime = computed(() => {
     const m = Math.floor(props.seconds / 60).toString().padStart(2, '0');
@@ -31,7 +32,7 @@ const formattedTime = computed(() => {
 
 /**
  * Computes dynamic Vuestic utility classes based on urgency.
- * * @returns {String}
+ * @returns {String}
  */
 const badgeColorClass = computed(() => {
     if (props.seconds <= 0) return 'bg-red-100 text-red-700';

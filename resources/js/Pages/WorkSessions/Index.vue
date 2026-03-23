@@ -2,6 +2,7 @@
 /**
  * WorkSessions Index Page
  * Dashboard view integrating the DayPilot Weekly Calendar implementation.
+ * Fully internationalized using the vue-i18n instance.
  */
 import { ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
@@ -19,6 +20,8 @@ const page = usePage();
 
 /**
  * Calculates the start date (Monday) of a given date safely.
+ * @param {Date|string} dateObj - The reference date.
+ * @returns {string} The ISO formatted date string.
  */
 const getStartOfWeek = (dateObj) => {
     const date = new Date(dateObj);
@@ -45,11 +48,11 @@ watch([filterWeekStart, filterUser], () => {
 </script>
 
 <template>
-    <AppLayout title="Time Tracking">
+    <AppLayout :title="$t('work_sessions.index.page_title')">
         <template #header>
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h2 class="font-bold text-2xl text-gray-800 dark:text-gray-100 leading-tight">
-                    Attendance Calendar
+                    {{ $t('work_sessions.index.header_title') }}
                 </h2>
                 
                 <div class="flex items-center gap-4">
@@ -58,7 +61,7 @@ watch([filterWeekStart, filterUser], () => {
                             v-model="filterUser" 
                             class="block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-sm transition-colors duration-200"
                         >
-                            <option value="">All Supporters</option>
+                            <option value="">{{ $t('work_sessions.index.all_supporters') }}</option>
                             <option v-for="user in users" :key="user.id" :value="user.id">
                                 {{ user.name }}
                             </option>
@@ -73,7 +76,7 @@ watch([filterWeekStart, filterUser], () => {
                 
                 <div class="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white mb-6">
                     <div class="flex items-center justify-between mb-4">
-                        <span class="text-sm font-medium opacity-80 uppercase tracking-wider">Total Worked Time (Week)</span>
+                        <span class="text-sm font-medium opacity-80 uppercase tracking-wider">{{ $t('work_sessions.index.total_worked_week') }}</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>

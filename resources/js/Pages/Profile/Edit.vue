@@ -1,7 +1,8 @@
 <script setup>
 /**
  * Profile Edit Page.
- * Uses the unified AppLayout with fixed scrolling and English labels.
+ * Uses the unified AppLayout with fixed scrolling.
+ * Aggregates all profile-related forms into a single view for user convenience.
  */
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
@@ -20,11 +21,11 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Profile" />
+    <Head :title="$t('profile.title')" />
 
     <AppLayout>
         <template #header>
-            Profile Settings
+            {{ $t('profile.header') }}
         </template>
 
         <div class="py-6">

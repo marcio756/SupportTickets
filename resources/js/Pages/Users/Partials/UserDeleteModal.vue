@@ -1,4 +1,9 @@
 <script setup>
+/**
+ * User Delete Modal Component.
+ * Responsible for confirming the safe deactivation (soft delete) of users.
+ * Requires the administrator's password to prevent accidental security breaches.
+ */
 import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 
@@ -62,16 +67,16 @@ const closeModal = () => {
         size="small"
     >
         <h3 class="va-h5 mb-3" style="color: var(--va-text-primary)">
-            Deactivate User
+            {{ $t('users.delete.title') }}
         </h3>
 
         <p class="mb-4 leading-relaxed" style="color: var(--va-secondary)">
-            Are you sure you want to deactivate <strong>{{ user?.name }}</strong>?
-            <br>This action will disable their access, but their associated tickets and history will be preserved.
+            {{ $t('users.delete.confirm_msg') }} <strong>{{ user?.name }}</strong>?
+            <br>{{ $t('users.delete.warning_msg') }}
         </p>
 
         <p class="text-sm mb-4" style="color: var(--va-secondary)">
-            Please enter your password to confirm this action.
+            {{ $t('users.delete.password_prompt') }}
         </p>
 
         <form @submit.prevent="deleteUser" class="flex flex-col gap-4">
@@ -79,16 +84,16 @@ const closeModal = () => {
                 ref="currentPasswordInput"
                 v-model="form.current_password"
                 type="password"
-                label="Your Password"
+                :label="$t('users.delete.password_label')"
                 :error="!!form.errors.current_password"
                 :error-messages="form.errors.current_password"
                 required
             />
 
             <div class="flex justify-end gap-3 mt-2">
-                <va-button preset="secondary" @click="closeModal"> Cancel </va-button>
+                <va-button preset="secondary" @click="closeModal">{{ $t('common.actions.cancel') }}</va-button>
                 <va-button color="danger" type="submit" :loading="form.processing" :disabled="form.processing">
-                    Deactivate User
+                    {{ $t('users.delete.submit_btn') }}
                 </va-button>
             </div>
         </form>

@@ -1,0 +1,44 @@
+{
+    "title": "Users Management",
+    "add_new": "Add New User",
+    "no_users_found": "No users found matching your filters.",
+    "status": {
+        "deactivated": "Deactivated"
+    },
+    "columns": {
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "team": "Team",
+        "actions": "Actions"
+    },
+    "actions": {
+        "restore_title": "Restore User",
+        "edit_title": "Edit User",
+        "deactivate_title": "Deactivate User",
+        "restore_confirm": "Are you sure you want to reactivate the account for {name}?"
+    },
+    "form": {
+        "edit_title": "Edit User",
+        "create_title": "Create New User",
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "team_assignment": "Team Assignment",
+        "password": "Password",
+        "new_password": "New Password (leave blank to keep current)",
+        "confirm_password": "Confirm New Password",
+        "auth_required": "Authorization Required",
+        "auth_description": "Please enter your current password to confirm this action.",
+        "current_password": "Your Current Password",
+        "create_btn": "Create User"
+    },
+    "delete": {
+        "title": "Deactivate User",
+        "confirm_msg": "Are you sure you want to deactivate",
+        "warning_msg": "This action will disable their access, but their associated tickets and history will be preserved.",
+        "password_prompt": "Please enter your password to confirm this action.",
+        "password_label": "Your Password",
+        "submit_btn": "Deactivate User"
+    }
+}

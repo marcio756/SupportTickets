@@ -1,4 +1,10 @@
 <script setup>
+/**
+ * Confirm Password Component.
+ * Acts as a security checkpoint, requiring the user to confirm their password
+ * before accessing sensitive areas of the application.
+ * Fully internationalized using the global vue-i18n instance.
+ */
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -10,6 +16,10 @@ const form = useForm({
     password: '',
 });
 
+/**
+ * Submits the password confirmation payload to the server.
+ * Clears the password input field upon request completion for security.
+ */
 const submit = () => {
     form.post(route('password.confirm'), {
         onFinish: () => form.reset(),
@@ -19,16 +29,15 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Confirm Password" />
+        <Head :title="$t('auth.confirm_password.title')" />
 
         <div class="mb-4 text-sm text-gray-600">
-            This is a secure area of the application. Please confirm your
-            password before continuing.
+            {{ $t('auth.confirm_password.description') }}
         </div>
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" :value="$t('auth.confirm_password.password')" />
                 <TextInput
                     id="password"
                     type="password"
@@ -47,7 +56,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Confirm
+                    {{ $t('auth.confirm_password.submit') }}
                 </PrimaryButton>
             </div>
         </form>
