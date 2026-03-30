@@ -1,60 +1,70 @@
 <template>
   <div class="flex flex-col gap-5">
-    <div class="relative group">
-      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <va-icon name="search" class="text-gray-400 group-focus-within:text-indigo-500 transition-colors" size="small" />
-      </div>
-      <input 
-        type="text" 
+    <va-input 
         v-model="search" 
         :placeholder="t('announcements.search_placeholder')" 
-        class="w-full pl-10 pr-4 py-2 rounded-lg border-gray-300 shadow-sm transition-all duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200"
-      >
-    </div>
+        class="w-full"
+        color="indigo"
+        bordered
+        clearable
+    >
+        <template #prependInner>
+            <va-icon name="search" color="gray" size="small" />
+        </template>
+    </va-input>
     
-    <div class="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800 px-2">
-      <div class="flex items-center justify-center w-5 h-5 flex-shrink-0">
-        <input 
-          type="checkbox" 
-          id="selectAll" 
-          :checked="isAllSelected" 
-          @change="toggleAll"
-          class="form-checkbox w-4 h-4 aspect-square rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer transition-all duration-200"
-        >
-      </div>
-      <label for="selectAll" class="text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+    <div 
+        class="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800 px-2 cursor-pointer group"
+        @click="toggleAll"
+    >
+      <va-checkbox 
+        v-model="isAllSelected" 
+        color="indigo"
+        class="flex-shrink-0"
+        @click.stop
+      />
+      <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer select-none group-hover:text-indigo-600 transition-colors">
         {{ t('announcements.select_all') }}
       </label>
     </div>
 
-    <div class="relative bg-gray-50/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-2 min-h-[100px] max-h-72 overflow-y-auto custom-scrollbar">
+    <div 
+        class="relative border rounded-xl min-h-[150px] max-h-[450px] overflow-y-auto custom-scrollbar transition-all duration-300 bg-gray-50/50 dark:bg-gray-950/30"
+        :class="{
+            'border-red-300 dark:border-red-800 ring-1 ring-red-100 dark:ring-red-900/30': error,
+            'border-gray-100 dark:border-gray-800': !error
+        }"
+    >
       
       <transition name="fade" mode="out-in">
-        <div v-if="filteredCustomers.length === 0" class="absolute inset-0 flex items-center justify-center p-6 text-sm text-gray-500">
-          {{ t('announcements.no_customers_found') }}
+        <div v-if="filteredCustomers.length === 0" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-sm text-gray-500 gap-2">
+          <va-icon name="person_search" size="large" color="gray" />
+          <span>{{ t('announcements.no_customers_found') }}</span>
         </div>
         
-        <transition-group v-else name="list" tag="div" class="flex flex-col gap-1">
+        <transition-group v-else name="list-complete" tag="div" class="flex flex-col p-1.5">
           <div 
             v-for="customer in filteredCustomers" 
             :key="customer.id" 
-            class="flex items-center gap-3 p-2.5 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-all duration-200 cursor-pointer"
+            class="list-complete-item flex items-center gap-4 p-3 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all duration-200 cursor-pointer group"
+            :class="{ 'bg-indigo-50/50 dark:bg-indigo-900/20': internalSelection.includes(customer.id) }"
             @click="toggleSingleSelection(customer.id)"
           >
-            <div class="flex items-center justify-center w-5 h-5 flex-shrink-0" @click.stop>
-              <input 
-                type="checkbox" 
-                :id="`customer-${customer.id}`" 
-                :value="customer.id" 
-                v-model="internalSelection"
-                @change="emitSelection"
-                class="form-checkbox w-4 h-4 aspect-square rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer"
-              >
+            <va-checkbox 
+                :model-value="internalSelection.includes(customer.id)"
+                color="indigo"
+                class="flex-shrink-0"
+                @click.stop="toggleSingleSelection(customer.id)"
+            />
+            
+            <div class="flex-grow select-none">
+              <div class="font-semibold text-gray-950 dark:text-gray-50 text-sm flex items-center gap-2">
+                  {{ customer.name }}
+                  <span v-if="internalSelection.includes(customer.id)" class="text-xs text-indigo-500 font-medium">✓</span>
+              </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 font-mono">{{ customer.email }}</div>
             </div>
-            <label :for="`customer-${customer.id}`" class="text-sm text-gray-800 dark:text-gray-200 cursor-pointer w-full flex items-baseline gap-2 select-none" @click.stop>
-              <span class="font-semibold">{{ customer.name }}</span> 
-              <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ customer.email }}</span>
-            </label>
+            
           </div>
         </transition-group>
       </transition>
@@ -68,7 +78,8 @@ import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
   customers: { type: Array, required: true },
-  modelValue: { type: Array, default: () => [] }
+  modelValue: { type: Array, default: () => [] },
+  error: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -90,33 +101,39 @@ const filteredCustomers = computed(() => {
 });
 
 /**
- * Evaluates if all currently visible (filtered) customers are selected.
+ * Validates if all currently visible (filtered) customers are selected.
  */
-const isAllSelected = computed(() => {
-  if (filteredCustomers.value.length === 0) return false;
-  return filteredCustomers.value.every(c => internalSelection.value.includes(c.id));
+const isAllSelected = computed({
+  get() {
+      if (filteredCustomers.value.length === 0) return false;
+      return filteredCustomers.value.every(c => internalSelection.value.includes(c.id));
+  },
+  set(value) {
+      // This is handled by toggleAll, required for va-checkbox v-model binding compatibility
+  }
 });
 
 /**
  * Toggles the selection state for all currently visible (filtered) customers.
- * * @param {Event} event The native DOM change event.
  */
-const toggleAll = (event) => {
-  const isChecked = event.target.checked;
-  const filteredIds = filteredCustomers.value.map(c => c.id);
+const toggleAll = () => {
+  const currentFilteredIds = filteredCustomers.value.map(c => c.id);
+  const alreadySelectedFiltered = currentFilteredIds.filter(id => internalSelection.value.includes(id));
   
-  if (isChecked) {
-    const newSelection = new Set([...internalSelection.value, ...filteredIds]);
-    internalSelection.value = Array.from(newSelection);
+  if (alreadySelectedFiltered.length === currentFilteredIds.length) {
+    // All filtered are selected -> deselect them
+    internalSelection.value = internalSelection.value.filter(id => !currentFilteredIds.includes(id));
   } else {
-    internalSelection.value = internalSelection.value.filter(id => !filteredIds.includes(id));
+    // Some or none filtered are selected -> select all filtered
+    const newSelection = new Set([...internalSelection.value, ...currentFilteredIds]);
+    internalSelection.value = Array.from(newSelection);
   }
   emitSelection();
 };
 
 /**
  * Helper to toggle a single customer when clicking the row area.
- * * @param {number|string} id The customer identifier.
+ * @param {number|string} id The customer identifier.
  */
 const toggleSingleSelection = (id) => {
     const index = internalSelection.value.indexOf(id);
@@ -135,7 +152,32 @@ const emitSelection = () => {
   emit('update:modelValue', internalSelection.value);
 };
 
+// Sync external resets
 watch(() => props.modelValue, (newVal) => {
   internalSelection.value = [...newVal];
 }, { deep: true });
 </script>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 10px; }
+.dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #1f2937; }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* List Animations Premium */
+.list-complete-item {
+  transition: all 0.4s ease;
+}
+.list-complete-enter-from,
+.list-complete-leave-to {
+  opacity: 0;
+  transform: translateY(15px);
+}
+.list-complete-leave-active {
+  position: absolute;
+  width: 100%;
+}
+</style>

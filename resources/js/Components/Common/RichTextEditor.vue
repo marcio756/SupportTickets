@@ -1,81 +1,104 @@
 <template>
-  <div class="border rounded-lg shadow-sm overflow-visible border-gray-200 dark:border-gray-700 transition-all duration-300 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 bg-white dark:bg-gray-900">
-    <div class="bg-gray-50 dark:bg-gray-800 p-2 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-2 relative">
+  <div 
+    class="border rounded-xl shadow-sm overflow-visible transition-all duration-300 bg-white dark:bg-gray-900"
+    :class="{
+        'border-red-300 dark:border-red-800 ring-1 ring-red-100 dark:ring-red-900/30': error,
+        'border-gray-200 dark:border-gray-700 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500': !error
+    }"
+  >
+    <div class="bg-white dark:bg-gray-900 p-2.5 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-2 relative rounded-t-xl z-20">
       
-      <button 
-        type="button" 
-        @click.prevent="format('bold')" 
-        :title="t('announcements.editor.bold')"
-        :class="{
-          'bg-indigo-100 text-indigo-700 shadow-inner dark:bg-indigo-900/60 dark:text-indigo-300': activeFormats.bold,
-          'bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600': !activeFormats.bold
-        }"
-        class="flex items-center justify-center w-8 h-8 rounded shadow-sm text-sm font-bold transition-all duration-200"
-      >B</button>
+      <div class="flex items-center gap-1.5 border border-gray-200 dark:border-gray-700 rounded-lg p-1 bg-gray-50 dark:bg-gray-800 shadow-inner">
+          <button 
+            type="button" 
+            @click.prevent="format('bold')" 
+            :title="t('announcements.editor.bold')"
+            class="flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200"
+            :class="{
+                'bg-indigo-600 text-white shadow-md scale-105': activeFormats.bold,
+                'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600': !activeFormats.bold
+            }"
+          >
+            <va-icon name="format_bold" size="small" :color="activeFormats.bold ? 'white' : 'currentColor'" />
+          </button>
+          
+          <button 
+            type="button" 
+            @click.prevent="format('italic')" 
+            :title="t('announcements.editor.italic')"
+            class="flex items-center justify-center w-8 h-8 rounded-md transition-all duration-200"
+            :class="{
+                'bg-indigo-600 text-white shadow-md scale-105': activeFormats.italic,
+                'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600': !activeFormats.italic
+            }"
+          >
+             <va-icon name="format_italic" size="small" :color="activeFormats.italic ? 'white' : 'currentColor'" />
+          </button>
+      </div>
       
-      <button 
-        type="button" 
-        @click.prevent="format('italic')" 
-        :title="t('announcements.editor.italic')"
-        :class="{
-          'bg-indigo-100 text-indigo-700 shadow-inner dark:bg-indigo-900/60 dark:text-indigo-300': activeFormats.italic,
-          'bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600': !activeFormats.italic
-        }"
-        class="flex items-center justify-center w-8 h-8 rounded shadow-sm text-sm italic transition-all duration-200"
-      >I</button>
-      
-      <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 self-center mx-1"></div>
+      <div class="w-px h-6 bg-gray-200 dark:bg-gray-600 self-center mx-1"></div>
       
       <button 
         type="button" 
         @click.prevent="format('insertUnorderedList')" 
+        :title="t('announcements.editor.list')"
+        class="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 text-sm font-medium"
         :class="{
-          'bg-indigo-100 text-indigo-700 shadow-inner dark:bg-indigo-900/60 dark:text-indigo-300': activeFormats.list,
-          'bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600': !activeFormats.list
+            'bg-indigo-600 text-white border-indigo-700 shadow-md scale-105': activeFormats.list,
+            'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600': !activeFormats.list
         }"
-        class="px-3 py-1.5 rounded shadow-sm text-sm font-medium transition-all duration-200 flex items-center gap-1"
       >
-        <span>•</span> {{ t('announcements.editor.list') }}
+        <va-icon name="format_list_bulleted" size="small" :color="activeFormats.list ? 'white' : 'currentColor'" />
+        <span>{{ t('announcements.editor.list') }}</span>
       </button>
       
-      <button 
-        type="button" 
-        @click.prevent="promptLink" 
-        class="px-3 py-1.5 bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 rounded shadow-sm text-sm font-medium transition-all duration-200 relative"
-      >
-        {{ t('announcements.editor.link') }}
-      </button>
-
-      <transition name="pop">
-        <div v-if="showLinkModal" class="absolute top-12 left-2 z-20 w-72 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl">
-          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            {{ t('announcements.editor.prompt_link') }}
-          </label>
-          <input 
-            type="url" 
-            v-model="linkUrl" 
-            ref="linkInput"
-            @keyup.enter="confirmLink"
-            placeholder="https://" 
-            class="w-full text-sm rounded-md border-gray-300 dark:bg-gray-900 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 mb-3 shadow-sm"
+      <div class="relative">
+          <button 
+            type="button" 
+            @click.prevent="promptLink" 
+            class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200 text-sm font-medium"
+            ref="linkButton"
           >
-          <div class="flex justify-end gap-2">
-            <button type="button" @click="cancelLink" class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
-              {{ t('announcements.editor.btn_cancel') }}
-            </button>
-            <button type="button" @click="confirmLink" class="px-3 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded hover:bg-indigo-700 shadow-sm transition-colors">
-              {{ t('announcements.editor.btn_insert') }}
-            </button>
-          </div>
-        </div>
-      </transition>
+             <va-icon name="link" size="small" color="currentColor" />
+             <span>{{ t('announcements.editor.link') }}</span>
+          </button>
+
+          <transition name="pop">
+            <div v-if="showLinkModal" class="absolute top-12 left-0 z-30 w-80 p-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-black/30">
+              <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2.5">
+                {{ t('announcements.editor.prompt_link') }}
+              </label>
+              
+              <va-input 
+                type="url" 
+                v-model="linkUrl" 
+                ref="linkInput"
+                @keyup.enter="confirmLink"
+                placeholder="https://" 
+                class="w-full mb-4"
+                color="indigo"
+                bordered
+                size="small"
+              />
+              
+              <div class="flex justify-end gap-2.5">
+                <va-button type="button" preset="text" color="gray" size="small" @click="cancelLink">
+                  {{ t('announcements.editor.btn_cancel') }}
+                </va-button>
+                <va-button type="button" color="indigo" size="small" @click="confirmLink">
+                  {{ t('announcements.editor.btn_insert') }}
+                </va-button>
+              </div>
+            </div>
+          </transition>
+      </div>
       
     </div>
 
     <div
       ref="editor"
       contenteditable="true"
-      class="editor-content p-5 min-h-[250px] outline-none prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200 leading-relaxed relative z-10"
+      class="editor-content p-6 min-h-[300px] outline-none prose dark:prose-invert max-w-none text-gray-950 dark:text-gray-50 leading-relaxed relative z-10 bg-gray-50 dark:bg-gray-950/40 rounded-b-xl transition-colors duration-300"
       @input="updateContent"
       @keyup="syncActiveFormats"
       @mouseup="syncActiveFormats"
@@ -88,11 +111,13 @@ import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
-  modelValue: { type: String, default: '' }
+  modelValue: { type: String, default: '' },
+  error: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['update:modelValue']);
 const editor = ref(null);
+const linkButton = ref(null);
 const { t } = useI18n();
 
 // Tracking active text formats
@@ -128,7 +153,6 @@ const globalSelectionHandler = () => {
 
 /**
  * Executes standard browser commands to format the contenteditable area.
- * @param {string} command The standard DOM execCommand string.
  */
 const format = (command) => {
   document.execCommand(command, false, null);

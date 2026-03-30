@@ -1,80 +1,89 @@
 <template>
   <AppLayout :title="t('announcements.title')">
     <template #header>
-      <h2 class="font-bold text-2xl text-gray-800 dark:text-gray-100 tracking-tight">
-        {{ t('announcements.title') }}
-      </h2>
+      <div class="flex items-center justify-between gap-4">
+        <h2 class="font-extrabold text-3xl text-gray-950 dark:text-gray-50 tracking-tighter">
+          {{ t('announcements.title') }}
+        </h2>
+        
+        <va-button 
+          preset="primary"
+          icon="send"
+          :loading="form.processing"
+          :disabled="form.processing || form.customer_ids.length === 0"
+          @click="submit"
+          class="shadow-lg shadow-indigo-500/20"
+        >
+          {{ form.processing ? t('announcements.btn_sending') : t('announcements.btn_send') }}
+        </va-button>
+      </div>
     </template>
 
-    <div class="py-10">
-      <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+    <div class="py-8">
+      <div class="max-w-[1600px] mx-auto sm:px-6 lg:px-8">
         
-        <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 shadow-xl shadow-gray-200/50 dark:shadow-gray-900/50 sm:rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700">
-          <div class="p-8 text-gray-900 dark:text-gray-100 space-y-10">
-            
-            <section class="space-y-4">
-              <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 flex items-center justify-center font-bold text-sm">1</div>
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ t('announcements.step_1') }}</h3>
-              </div>
-              <div class="pl-10">
-                <CustomerSelector 
-                  :customers="customers" 
-                  v-model="form.customer_ids" 
-                />
-                <InputError :message="form.errors.customer_ids" class="mt-2" />
-              </div>
-            </section>
-
-            <div class="h-px bg-gray-100 dark:bg-gray-700 ml-10"></div>
-
-            <section class="space-y-4">
-               <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 flex items-center justify-center font-bold text-sm">2</div>
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100">{{ t('announcements.step_2') }}</h3>
-              </div>
+        <form @submit.prevent="submit" class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+          
+          <div class="md:col-span-2 space-y-8">
+            <va-card outlined class="!border-gray-200 dark:!border-gray-800 !bg-white dark:!bg-gray-900 !rounded-2xl shadow-sm">
+              <va-card-title class="flex items-center gap-3 !pt-6 !pb-2">
+                <va-icon name="edit_note" color="indigo" size="large" />
+                <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('announcements.step_2') }}</h3>
+              </va-card-title>
               
-              <div class="pl-10 space-y-6">
+              <va-card-content class="space-y-6 !pb-8">
                 <div>
-                  <InputLabel for="subject" :value="t('announcements.subject_label')" class="mb-1.5" />
-                  <TextInput
-                    id="subject"
-                    type="text"
-                    class="block w-full text-lg py-2.5 transition-shadow focus:ring-2 focus:ring-indigo-200"
+                  <va-input
                     v-model="form.subject"
+                    :label="t('announcements.subject_label')"
+                    pattern="text"
                     required
-                  />
-                  <InputError :message="form.errors.subject" class="mt-2" />
+                    autofocus
+                    class="w-full text-lg"
+                    :error="!!form.errors.subject"
+                    :error-messages="form.errors.subject"
+                    color="indigo"
+                    bordered
+                  >
+                    <template #prependInner>
+                      <va-icon name="mail_outline" color="gray" size="small" />
+                    </template>
+                  </va-input>
                 </div>
 
                 <div>
-                  <InputLabel :value="t('announcements.body_label')" class="mb-1.5" />
-                  <RichTextEditor v-model="form.content" />
+                  <InputLabel :value="t('announcements.body_label')" class="mb-2.5 text-gray-700 dark:text-gray-300 font-semibold" />
+                  <RichTextEditor v-model="form.content" :error="!!form.errors.content" />
                   <InputError :message="form.errors.content" class="mt-2" />
                 </div>
-              </div>
-            </section>
+              </va-card-content>
+            </va-card>
           </div>
 
-          <div class="bg-gray-50 dark:bg-gray-800/80 px-8 py-5 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
-              <transition name="fade">
-                <span v-if="form.customer_ids.length > 0">
-                  {{ t('announcements.customers_selected', { count: form.customer_ids.length }) }}
-                </span>
-              </transition>
-            </div>
-            
-            <PrimaryButton 
-              class="px-6 py-2.5 text-sm transition-all duration-300 transform"
-              :class="{ 'opacity-75 cursor-wait scale-95': form.processing, 'hover:-translate-y-0.5 shadow-md': !form.processing }" 
-              :disabled="form.processing || form.customer_ids.length === 0"
-            >
-              <va-icon v-if="form.processing" name="sync" class="mr-2 animate-spin" size="small" />
-              <va-icon v-else name="send" class="mr-2" size="small" />
-              {{ form.processing ? t('announcements.btn_sending') : t('announcements.btn_send') }}
-            </PrimaryButton>
+          <div class="md:col-span-1">
+            <va-card outlined class="!border-gray-200 dark:!border-gray-800 !bg-white dark:!bg-gray-900 !rounded-2xl shadow-sm">
+               <va-card-title class="flex items-center justify-between gap-3 !pt-6 !pb-2">
+                 <div class="flex items-center gap-3">
+                   <va-icon name="group_add" color="indigo" size="large" />
+                   <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('announcements.step_1') }}</h3>
+                 </div>
+                 
+                 <div class="px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-sm font-bold shadow-inner">
+                    {{ form.customer_ids.length }}
+                 </div>
+               </va-card-title>
+
+               <va-card-content class="!pb-6">
+                 <CustomerSelector 
+                    :customers="customers" 
+                    v-model="form.customer_ids" 
+                    :error="!!form.errors.customer_ids"
+                 />
+                 <InputError :message="form.errors.customer_ids" class="mt-3" />
+               </va-card-content>
+            </va-card>
           </div>
+          
         </form>
       </div>
     </div>
@@ -84,9 +93,7 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
 import RichTextEditor from '@/Components/Common/RichTextEditor.vue';
 import CustomerSelector from '@/Components/Common/CustomerSelector.vue';
 import { useForm } from '@inertiajs/vue3';
@@ -114,11 +121,8 @@ const submit = () => {
   form.post(route('announcements.store'), {
     preserveScroll: true,
     onSuccess: (page) => {
-      // Obtém a mensagem do flash ou usa a chave padrão
       const flashMessage = page.props.flash?.success;
       
-      // Lógica de Tradução Inteligente:
-      // Se a mensagem for a chave técnica ou não existir, traduzimos no frontend.
       const displayMessage = (flashMessage && flashMessage !== 'announcements.sent_successfully') 
         ? flashMessage 
         : t('announcements.sent_successfully');
@@ -137,7 +141,23 @@ const submit = () => {
 };
 </script>
 
-<style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+<style>
+/* Substituição do @apply por CSS nativo para resolver os avisos do linter */
+.va-input__label {
+    font-weight: 600 !important;
+    color: #374151 !important; /* equivalente ao text-gray-700 */
+}
+
+.dark .va-input__label {
+    color: #d1d5db !important; /* equivalente ao text-gray-300 */
+}
+
+.va-input-wrapper--bordered .va-input-wrapper__field {
+    border-radius: 0.75rem !important; /* equivalente ao rounded-xl */
+    border-color: #e5e7eb !important; /* equivalente ao border-gray-200 */
+}
+
+.dark .va-input-wrapper--bordered .va-input-wrapper__field {
+    border-color: #374151 !important; /* equivalente ao border-gray-700 */
+}
 </style>
