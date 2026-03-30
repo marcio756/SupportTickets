@@ -2,16 +2,17 @@
     "role": "Role",
     "roles": {
         "admin": "Administrator",
-        "supporter": "Support Agent",
+        "supporter": "Supporter",
         "customer": "Customer",
         "guest": "Guest"
     },
     "dashboard": "Dashboard",
     "time_tracking": "Time Tracking",
     "tickets": "Tickets",
+    "announcements": "Announcements",
     "users": "Users",
     "manage_tags": "Manage Tags",
-    "vacations": "Vacations",
+    "vacations": "Vacations Map",
     "teams": "Teams",
     "activity_logs": "Activity Logs"
 }

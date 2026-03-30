@@ -12,14 +12,14 @@
       >
     </div>
     
-    <div class="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
-      <div class="flex items-center justify-center w-5 h-5">
+    <div class="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800 px-2">
+      <div class="flex items-center justify-center w-5 h-5 flex-shrink-0">
         <input 
           type="checkbox" 
           id="selectAll" 
           :checked="isAllSelected" 
           @change="toggleAll"
-          class="w-4 h-4 rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer transition-all duration-200"
+          class="form-checkbox w-4 h-4 aspect-square rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer transition-all duration-200"
         >
       </div>
       <label for="selectAll" class="text-sm font-semibold text-gray-700 dark:text-gray-300 cursor-pointer select-none">
@@ -41,14 +41,14 @@
             class="flex items-center gap-3 p-2.5 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-all duration-200 cursor-pointer"
             @click="toggleSingleSelection(customer.id)"
           >
-            <div class="flex items-center justify-center w-5 h-5" @click.stop>
+            <div class="flex items-center justify-center w-5 h-5 flex-shrink-0" @click.stop>
               <input 
                 type="checkbox" 
                 :id="`customer-${customer.id}`" 
                 :value="customer.id" 
                 v-model="internalSelection"
                 @change="emitSelection"
-                class="w-4 h-4 rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer"
+                class="form-checkbox w-4 h-4 aspect-square rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 cursor-pointer"
               >
             </div>
             <label :for="`customer-${customer.id}`" class="text-sm text-gray-800 dark:text-gray-200 cursor-pointer w-full flex items-baseline gap-2 select-none" @click.stop>
@@ -135,21 +135,7 @@ const emitSelection = () => {
   emit('update:modelValue', internalSelection.value);
 };
 
-// Sync external resets
 watch(() => props.modelValue, (newVal) => {
   internalSelection.value = [...newVal];
 }, { deep: true });
 </script>
-
-<style scoped>
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-.dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #475569; }
-
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-
-.list-enter-active, .list-leave-active { transition: all 0.3s ease; }
-.list-enter-from, .list-leave-to { opacity: 0; transform: translateX(-10px); }
-</style>

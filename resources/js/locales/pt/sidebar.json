@@ -1,17 +1,18 @@
 {
-  "dashboard": "Painel",
-  "time_tracking": "Registo de Tempo",
-  "tickets": "Tickets",
-  "users": "Utilizadores",
-  "manage_tags": "Gerir Tags",
-  "vacations": "Férias",
-  "teams": "Equipas",
-  "activity_logs": "Registos de Atividade",
-  "role": "Cargo",
-  "roles": {
-    "guest": "Visitante",
-    "customer": "Cliente",
-    "supporter": "Assistente",
-    "admin": "Administrador"
-  }
+    "role": "Função",
+    "roles": {
+        "admin": "Administrador",
+        "supporter": "Suporte",
+        "customer": "Cliente",
+        "guest": "Convidado"
+    },
+    "dashboard": "Painel de Controlo",
+    "time_tracking": "Registo de Tempos",
+    "tickets": "Tickets",
+    "announcements": "Comunicados",
+    "users": "Utilizadores",
+    "manage_tags": "Gerir Etiquetas",
+    "vacations": "Mapa de Férias",
+    "teams": "Equipas",
+    "activity_logs": "Registos de Atividade"
 }

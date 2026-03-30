@@ -9,13 +9,6 @@
     <div class="py-10">
       <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
         
-        <transition name="toast">
-          <div v-if="page.props.flash?.success" class="mb-6 bg-emerald-50 border-l-4 border-emerald-500 p-4 rounded-r-lg shadow-sm flex items-start gap-3" role="alert">
-            <va-icon name="check_circle" class="text-emerald-500 mt-0.5" size="small" />
-            <span class="text-emerald-800 dark:text-emerald-900 font-medium text-sm">{{ page.props.flash.success }}</span>
-          </div>
-        </transition>
-
         <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 shadow-xl shadow-gray-200/50 dark:shadow-gray-900/50 sm:rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700">
           <div class="p-8 text-gray-900 dark:text-gray-100 space-y-10">
             
@@ -96,15 +89,16 @@ import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import RichTextEditor from '@/Components/Common/RichTextEditor.vue';
 import CustomerSelector from '@/Components/Common/CustomerSelector.vue';
-import { useForm, usePage } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
+import { useToast } from 'vuestic-ui';
 
 defineProps({
   customers: { type: Array, required: true }
 });
 
-const page = usePage();
 const { t } = useI18n();
+const { init: initToast } = useToast();
 
 const form = useForm({
   subject: '',
@@ -114,11 +108,29 @@ const form = useForm({
 
 /**
  * Triggers the form submission process using Inertia.
+ * Automatically dispatches a system-wide Vuestic toast on success.
  */
 const submit = () => {
   form.post(route('announcements.store'), {
     preserveScroll: true,
-    onSuccess: () => {
+    onSuccess: (page) => {
+      // Obtém a mensagem do flash ou usa a chave padrão
+      const flashMessage = page.props.flash?.success;
+      
+      // Lógica de Tradução Inteligente:
+      // Se a mensagem for a chave técnica ou não existir, traduzimos no frontend.
+      const displayMessage = (flashMessage && flashMessage !== 'announcements.sent_successfully') 
+        ? flashMessage 
+        : t('announcements.sent_successfully');
+
+      initToast({
+        message: displayMessage,
+        color: 'success',
+        position: 'bottom-right',
+        icon: 'check_circle',
+        duration: 5000
+      });
+      
       form.reset('subject', 'content', 'customer_ids');
     },
   });
@@ -126,10 +138,6 @@ const submit = () => {
 </script>
 
 <style scoped>
-.toast-enter-active, .toast-leave-active { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-.toast-enter-from { opacity: 0; transform: translateY(-10px) scale(0.98); }
-.toast-leave-to { opacity: 0; transform: translateY(-10px); }
-
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
