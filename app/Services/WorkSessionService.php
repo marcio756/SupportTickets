@@ -31,7 +31,7 @@ class WorkSessionService
 
         if ($openSession) {
             throw ValidationException::withMessages([
-                'status' => 'You already have an active work session.'
+                'status' => __('work_sessions.already_active')
             ]);
         }
 
@@ -42,7 +42,7 @@ class WorkSessionService
 
         if ($alreadyCompletedToday) {
             throw ValidationException::withMessages([
-                'status' => 'You have already completed your shift for today. Please wait until tomorrow to start a new shift.'
+                'status' => __('work_sessions.already_completed')
             ]);
         }
 
@@ -64,7 +64,7 @@ class WorkSessionService
         $session = $this->getCurrentActiveSession($user);
 
         if ($session->status === WorkSessionStatusEnum::PAUSED) {
-            throw ValidationException::withMessages(['status' => 'Your shift is already paused.']);
+            throw ValidationException::withMessages(['status' => __('work_sessions.already_paused')]);
         }
 
         $session->update(['status' => WorkSessionStatusEnum::PAUSED]);
@@ -89,7 +89,7 @@ class WorkSessionService
             ->first();
 
         if (!$session) {
-            throw ValidationException::withMessages(['status' => 'No paused session was found to resume.']);
+            throw ValidationException::withMessages(['status' => __('work_sessions.no_paused_session')]);
         }
 
         $openPause = $session->pauses()->whereNull('ended_at')->latest('started_at')->first();
@@ -116,7 +116,7 @@ class WorkSessionService
             ->first();
 
         if (!$session) {
-            throw ValidationException::withMessages(['status' => 'There is no active shift to end.']);
+            throw ValidationException::withMessages(['status' => __('work_sessions.no_active_shift')]);
         }
 
         $now = now();
@@ -147,7 +147,7 @@ class WorkSessionService
 
     /**
      * Retrieves and formats work session reports based on user permissions and filters.
-     * Includes pause data for calendar rendering.
+     * Includes pause data for calendar rendering. Does not paginate to ensure the calendar renders completely.
      *
      * @param User $user
      * @param array $filters
@@ -167,7 +167,11 @@ class WorkSessionService
             $query->where('user_id', $filters['user_id']);
         }
 
-        if (!empty($filters['date'])) {
+        if (!empty($filters['week_start'])) {
+            $start = Carbon::parse($filters['week_start'])->startOfDay();
+            $end = $start->copy()->addDays(6)->endOfDay();
+            $query->whereBetween('started_at', [$start, $end]);
+        } elseif (!empty($filters['date'])) {
             $query->whereDate('started_at', $filters['date']);
         }
 
@@ -175,9 +179,9 @@ class WorkSessionService
             ->where('status', WorkSessionStatusEnum::COMPLETED->value)
             ->sum('total_worked_seconds');
         
-        $sessions = $query->paginate(15);
+        $sessions = $query->get();
 
-        $sessions->getCollection()->transform(function ($session) {
+        $sessions->transform(function ($session) {
             $hours = $session->total_worked_seconds ? floor($session->total_worked_seconds / 3600) : 0;
             $minutes = $session->total_worked_seconds ? floor(($session->total_worked_seconds % 3600) / 60) : 0;
             
@@ -208,10 +212,11 @@ class WorkSessionService
         }
 
         return [
-            'sessions' => $sessions,
+            'sessions' => $sessions->toArray(),
             'users' => $usersList,
             'filters' => [
                 'user_id' => $filters['user_id'] ?? null,
+                'week_start' => $filters['week_start'] ?? null,
                 'date' => $filters['date'] ?? null,
             ],
             'summary' => [
@@ -241,7 +246,7 @@ class WorkSessionService
                             'total_seconds' => $session->total_worked_seconds
                         ]
                     ])
-                    ->log("Work session manually deleted by administrator.");
+                    ->log(__('work_sessions.log_deleted'));
             }
 
             $session->delete();
@@ -261,7 +266,7 @@ class WorkSessionService
             ->first();
 
         if (!$session) {
-            throw ValidationException::withMessages(['status' => 'You do not have an active work shift.']);
+            throw ValidationException::withMessages(['status' => __('work_sessions.not_active')]);
         }
 
         return $session;

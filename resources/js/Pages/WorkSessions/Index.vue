@@ -10,7 +10,10 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import WeeklyCalendar from '@/Components/WorkSession/WeeklyCalendar.vue';
 
 const props = defineProps({
-    sessions: Array,
+    sessions: {
+        type: Array,
+        required: true
+    },
     users: Array,
     filters: Object,
     summary: Object,

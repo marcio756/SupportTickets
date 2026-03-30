@@ -11,6 +11,10 @@ const props = defineProps({
     customers: {
         type: Array,
         default: () => [],
+    },
+    availableTags: {
+        type: Array,
+        default: () => [],
     }
 });
 
@@ -25,6 +29,8 @@ const form = useForm({
     title: '',
     message: '',
     customer_id: '',
+    tags: [],
+    attachment: null,
 });
 
 /**
@@ -51,14 +57,28 @@ const customerOptions = computed(() => {
 });
 
 /**
+ * Transforms the raw tags array into the structure expected by Vuestic Select.
+ */
+const tagOptions = computed(() => {
+    return props.availableTags.map(tag => ({
+        value: tag.id,
+        text: tag.name
+    }));
+});
+
+/**
  * Intercepts the form submission to normalize payload structures before dispatching to the backend.
  * Ensures the 'customer_id' is extracted correctly whether the Vuestic component emits an object or a primitive.
+ * Maps tags to only send the IDs array.
  */
 const submit = () => {
     form.transform((data) => {
         return {
             ...data,
             customer_id: data.customer_id?.value || data.customer_id,
+            tags: data.tags.map(tag => tag.value || tag),
+            // When dealing with files, passing the raw File object is required for Inertia to auto-configure multipart/form-data
+            attachment: data.attachment && data.attachment.length > 0 ? data.attachment[0] : null,
         };
     }).post(route('tickets.store'), {
         preserveScroll: true,
@@ -127,6 +147,20 @@ const closeModal = () => {
                 :error-messages="form.errors.title"
                 required
             />
+            
+            <va-select
+                v-if="isSupporter && tagOptions.length > 0"
+                v-model="form.tags"
+                :options="tagOptions"
+                :label="$t('tickets.form.tags_label')"
+                :placeholder="$t('tickets.form.tags_placeholder')"
+                multiple
+                searchable
+                text-by="text"
+                value-by="value"
+                :error="!!form.errors.tags"
+                :error-messages="form.errors.tags"
+            />
 
             <div>
                 <div class="mb-2 text-sm font-bold" style="color: var(--va-text-primary);">
@@ -142,6 +176,20 @@ const closeModal = () => {
                     required
                     class="w-full"
                 />
+            </div>
+
+            <div>
+                <va-file-upload
+                    v-model="form.attachment"
+                    type="single"
+                    :upload-button-text="$t('tickets.form.upload_attachment')"
+                    :error="!!form.errors.attachment"
+                    :error-messages="form.errors.attachment"
+                    class="w-full"
+                />
+                <div class="text-xs mt-1" style="color: var(--va-secondary)">
+                    {{ $t('tickets.form.attachment_limit') }}
+                </div>
             </div>
 
             <div class="flex justify-end gap-3 mt-2">

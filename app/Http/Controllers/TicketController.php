@@ -17,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Manages the core ticketing operations for the Web interface.
@@ -199,7 +200,7 @@ class TicketController extends Controller
         );
 
         return redirect()->route('tickets.show', $ticket)
-            ->with('success', 'Ticket created successfully.');
+            ->with('success', __('tickets.created_success'));
     }
 
     /**
@@ -215,10 +216,10 @@ class TicketController extends Controller
 
         if ($user->isStaff()) {
             if (!$user->isAdmin() && $this->getWorkSessionStatus($user) !== WorkSessionStatusEnum::ACTIVE->value) {
-                return redirect()->route('tickets.index')->with('error', 'You must start your shift to view ticket details.');
+                return redirect()->route('tickets.index')->with('error', __('tickets.shift_required'));
             }
         } elseif ($ticket->customer_id !== $user->id) {
-            abort(403, 'Unauthorized access to this ticket.');
+            abort(403, __('tickets.unauthorized_access'));
         }
 
         $ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants']);
@@ -253,7 +254,7 @@ class TicketController extends Controller
     public function syncTags(Request $request, Ticket $ticket): RedirectResponse
     {
         if (! $request->user()->isStaff()) {
-            abort(403, 'Unauthorized action.');
+            abort(403, __('tickets.unauthorized_action'));
         }
 
         $validated = $request->validate([
@@ -263,7 +264,7 @@ class TicketController extends Controller
 
         $ticket->tags()->sync($validated['tags'] ?? []);
 
-        return redirect()->back()->with('success', 'Ticket tags updated successfully.');
+        return redirect()->back()->with('success', __('tickets.tags_updated_success'));
     }
 
     /**
@@ -337,11 +338,11 @@ class TicketController extends Controller
         $user = $request->user();
 
         if (! $user->isStaff()) {
-            abort(403, 'Only staff can deduct time.');
+            abort(403, __('tickets.staff_only_time'));
         }
 
         // Must authorize against the policy to ensure the caller has rights (owner, participant or admin)
-        \Illuminate\Support\Facades\Gate::authorize('update', $ticket);
+        Gate::authorize('update', $ticket);
 
         if ($ticket->status !== TicketStatusEnum::IN_PROGRESS->value) {
             return response()->json(['status' => 'not_in_progress']);
@@ -374,6 +375,6 @@ class TicketController extends Controller
 
         $ticket->delete();
 
-        return redirect()->route('tickets.index')->with('success', 'Ticket deleted successfully.');
+        return redirect()->route('tickets.index')->with('success', __('tickets.deleted_success'));
     }
 }
