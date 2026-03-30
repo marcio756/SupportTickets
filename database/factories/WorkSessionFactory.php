@@ -31,7 +31,7 @@ class WorkSessionFactory extends Factory
             'status' => WorkSessionStatusEnum::ACTIVE->value,
             'started_at' => now(),
             'ended_at' => null,
-            'total_pause_time' => 0,
+            'total_worked_seconds' => null,
         ];
     }
 }
