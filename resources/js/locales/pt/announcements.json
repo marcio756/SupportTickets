@@ -1,0 +1,20 @@
+{
+    "title": "Enviar Comunicado",
+    "step_1": "1. Seleção de Destinatários",
+    "step_2": "2. Composição da Mensagem",
+    "search_placeholder": "Pesquisar clientes por nome ou e-mail...",
+    "select_all": "Selecionar Todos os Clientes Filtrados",
+    "no_customers_found": "Nenhum cliente encontrado com esses critérios.",
+    "subject_label": "Assunto do E-mail",
+    "body_label": "Corpo da Mensagem",
+    "customers_selected": "{count} cliente(s) selecionado(s)",
+    "btn_send": "Enviar Comunicados",
+    "btn_sending": "A processar envio...",
+    "editor": {
+        "bold": "Negrito",
+        "italic": "Itálico",
+        "list": "Lista com marcas",
+        "link": "Inserir Link",
+        "prompt_link": "Insere o URL completo do link:"
+    }
+}

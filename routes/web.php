@@ -11,8 +11,9 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\WorkSessionController;
-use App\Http\Middleware\EnsureActiveWorkSession;
 use App\Http\Controllers\WorkSessionReportController;
+use App\Http\Controllers\AnnouncementController;
+use App\Http\Middleware\EnsureActiveWorkSession;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -89,6 +90,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/tickets/{ticket}/tick-time', [TicketController::class, 'tickTime'])->name('tickets.tick-time');
         Route::put('/tickets/{ticket}/tags', [TicketController::class, 'syncTags'])->name('tickets.tags.sync');
     });
+
+    /**
+     * Announcements
+     */
+    Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
+    Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
 
     Route::resource('tags', TagController::class)->except(['create', 'show', 'edit']);
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');

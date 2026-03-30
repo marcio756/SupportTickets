@@ -1,0 +1,20 @@
+{
+    "title": "Send Announcement",
+    "step_1": "1. Recipient Selection",
+    "step_2": "2. Message Composition",
+    "search_placeholder": "Search customers by name or email...",
+    "select_all": "Select All Filtered Customers",
+    "no_customers_found": "No customers found matching the criteria.",
+    "subject_label": "Email Subject",
+    "body_label": "Message Body",
+    "customers_selected": "{count} customer(s) selected",
+    "btn_send": "Send Announcements",
+    "btn_sending": "Processing delivery...",
+    "editor": {
+        "bold": "Bold",
+        "italic": "Italic",
+        "list": "Bullet List",
+        "link": "Insert Link",
+        "prompt_link": "Enter the full URL for the link:"
+    }
+}

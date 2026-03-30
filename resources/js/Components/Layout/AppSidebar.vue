@@ -82,6 +82,7 @@ const navigationItems = computed(() => {
   items.push({ title: t('sidebar.tickets'), icon: 'confirmation_number', route: 'tickets.index' });
 
   if (role === 'supporter' || role === 'admin') {
+    items.push({ title: t('sidebar.announcements'), icon: 'campaign', route: 'announcements.create' });
     items.push({ title: t('sidebar.users'), icon: 'group', route: 'users.index' });
     items.push({ title: t('sidebar.manage_tags'), icon: 'local_offer', route: 'tags.index' });
     items.push({ title: t('sidebar.vacations'), icon: 'event', route: 'vacations.index' });
