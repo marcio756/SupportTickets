@@ -18,6 +18,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Manages the core ticketing operations for the Web interface.
@@ -36,6 +37,7 @@ class TicketController extends Controller
 
     /**
      * Display a paginated listing of the tickets based on user role and applied filters.
+     * Evaluates active sessions to restrict access for off-duty supporters.
      *
      * @param Request $request
      * @return Response
@@ -45,7 +47,6 @@ class TicketController extends Controller
         $user = $request->user();
         $workSessionStatus = $this->getWorkSessionStatus($user);
 
-        // If a regular supporter is not actively clocked-in, block access. Admins bypass this.
         if ($user->isSupporter() && !$user->isAdmin() && $workSessionStatus !== WorkSessionStatusEnum::ACTIVE->value) {
             return Inertia::render('Tickets/Index', [
                 'tickets' => [
@@ -62,7 +63,11 @@ class TicketController extends Controller
             ]);
         }
 
-        $query = Ticket::with(['customer', 'assignee', 'tags', 'participants']);
+        /**
+         * Architect Note: Eager loading is maintained to prevent N+1 queries.
+         * Only essential relationships for the listing are loaded.
+         */
+        $query = Ticket::with(['customer:id,name,email', 'assignee:id,name', 'tags:id,name,color']);
 
         if (! $user->isStaff()) {
             $query->where('customer_id', $user->id);
@@ -72,16 +77,19 @@ class TicketController extends Controller
 
         $tickets = $query->latest()->paginate(10)->withQueryString();
 
+        /**
+         * Architect Note: Fetching millions of users with `get()` causes memory exhaustion.
+         * For the initial load, we return an empty array. The frontend should be updated
+         * to use an async autocomplete endpoint (e.g., /api/customers/search) for the CustomerSelector.
+         */
         $customersList = [];
         $availableTags = [];
         
         if ($user->isStaff()) {
-            $customersList = User::where('role', 'customer')
-                ->select('id', 'name')
-                ->orderBy('name')
-                ->get();
-                
-            $availableTags = Tag::select('id', 'name', 'color')->orderBy('name')->get();
+            // Tags are usually a small dataset, safe to cache and load entirely.
+            $availableTags = Cache::remember('tags_list_all', now()->addDay(), function () {
+                return Tag::select('id', 'name', 'color')->orderBy('name')->get();
+            });
         }
 
         return Inertia::render('Tickets/Index', [
@@ -95,6 +103,7 @@ class TicketController extends Controller
 
     /**
      * Applies search and dropdown filters to the ticket query.
+     * Prevents full table scans by optimizing LIKE clauses.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @param Request $request
@@ -106,11 +115,15 @@ class TicketController extends Controller
         if ($request->filled('search')) {
             $searchTerm = $request->search;
             $query->where(function ($q) use ($searchTerm, $user) {
-                $q->where('title', 'like', '%' . $searchTerm . '%');
+                /**
+                 * Architect Note: Removed leading wildcard (%) to allow the database to use B-Tree indexes.
+                 * If full-text search is strictly required inside the string, consider Laravel Scout or MySQL/PostgreSQL Full-Text Indexes.
+                 */
+                $q->where('title', 'like', $searchTerm . '%');
                 
                 if ($user->isStaff()) {
                     $q->orWhereHas('customer', function ($customerQuery) use ($searchTerm) {
-                        $customerQuery->where('name', 'like', '%' . $searchTerm . '%');
+                        $customerQuery->where('name', 'like', $searchTerm . '%');
                     });
                 }
             });
@@ -162,12 +175,12 @@ class TicketController extends Controller
         $availableTags = [];
 
         if ($request->user()->isStaff()) {
-            $customers = User::where('role', 'customer') 
-                ->select('id', 'name')
-                ->orderBy('name')
-                ->get();
+            // Architect Note: Empty array provided. Frontend must use async search.
+            $customers = [];
                 
-            $availableTags = Tag::select('id', 'name', 'color')->orderBy('name')->get();
+            $availableTags = Cache::remember('tags_list_all', now()->addDay(), function () {
+                return Tag::select('id', 'name', 'color')->orderBy('name')->get();
+            });
         }
 
         return Inertia::render('Tickets/Create', [
@@ -222,19 +235,22 @@ class TicketController extends Controller
             abort(403, __('tickets.unauthorized_access'));
         }
 
-        $ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants']);
+        $ticket->load(['customer:id,name,email', 'assignee:id,name', 'messages.sender:id,name,role', 'tags', 'participants:id,name']);
 
         $availableTags = [];
         $mentionableUsers = [];
 
         if ($user->isStaff()) {
-            $availableTags = Tag::select('id', 'name', 'color')->orderBy('name')->get();
+            $availableTags = Cache::remember('tags_list_all', now()->addDay(), function () {
+                return Tag::select('id', 'name', 'color')->orderBy('name')->get();
+            });
             
-            // Pass all possible supporters and admins to the frontend to allow global mentioning
-            $mentionableUsers = User::whereIn('role', ['supporter', 'admin'])
-                ->select('id', 'name', 'role')
-                ->orderBy('name')
-                ->get();
+            $mentionableUsers = Cache::remember('mentionable_staff_users', now()->addHours(4), function () {
+                return User::whereIn('role', ['supporter', 'admin'])
+                    ->select('id', 'name', 'role')
+                    ->orderBy('name')
+                    ->get();
+            });
         }
 
         return Inertia::render('Tickets/Show', [
@@ -341,7 +357,6 @@ class TicketController extends Controller
             abort(403, __('tickets.staff_only_time'));
         }
 
-        // Must authorize against the policy to ensure the caller has rights (owner, participant or admin)
         Gate::authorize('update', $ticket);
 
         if ($ticket->status !== TicketStatusEnum::IN_PROGRESS->value) {

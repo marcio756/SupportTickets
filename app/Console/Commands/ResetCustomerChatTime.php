@@ -2,9 +2,15 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\RoleEnum;
 use App\Models\User;
 use Illuminate\Console\Command;
 
+/**
+ * Architect Note: Refactored to use Chunking. 
+ * Executing a single UPDATE statement on millions of records causes table locking 
+ * (blocking new registrations or logins) and transaction log exhaustion.
+ */
 class ResetCustomerChatTime extends Command
 {
     /**
@@ -28,10 +34,20 @@ class ResetCustomerChatTime extends Command
     {
         $this->info('Starting daily support time reset for customers...');
 
-        // Bulk update to optimize database queries instead of iterating through each user model
-        $updatedRows = User::where('role', 'customer')
-            ->update(['daily_support_seconds' => 1800]);
+        $totalUpdated = 0;
 
-        $this->info("Successfully reset support time for {$updatedRows} customers.");
+        // Process records in batches of 5000 to maintain database responsiveness
+        User::where('role', RoleEnum::CUSTOMER->value)
+            ->chunkById(5000, function ($users) use (&$totalUpdated) {
+                
+                $updated = User::whereIn('id', $users->pluck('id'))
+                    ->update(['daily_support_seconds' => 1800]);
+                
+                $totalUpdated += $updated;
+                
+                $this->info("Processed {$totalUpdated} records...");
+            });
+
+        $this->info("Successfully reset support time for {$totalUpdated} customers.");
     }
 }
