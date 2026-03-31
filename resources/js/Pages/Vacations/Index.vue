@@ -66,7 +66,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="vacation in filteredVacations" :key="vacation.id" class="hover:bg-gray-50/5" style="border-bottom: 1px solid var(--va-background-border);">
+                    <tr v-for="vacation in vacations?.data" :key="vacation.id" class="hover:bg-gray-50/5" style="border-bottom: 1px solid var(--va-background-border);">
                         <td class="py-3 px-4" style="color: var(--va-text-primary)">
                             {{ vacation.supporter?.name }}
                             <va-badge v-if="vacation.supporter?.team" :text="vacation.supporter.team.name" color="secondary" size="small" class="ml-2" />
@@ -89,16 +89,26 @@
                             <va-button preset="primary" color="danger" size="small" icon="delete" :title="$t('vacations.table.delete_record')" @click="deleteVacation(vacation.id)" />
                         </td>
                     </tr>
-                    <tr v-if="filteredVacations.length === 0">
+                    <tr v-if="!vacations?.data || vacations.data.length === 0">
                         <td colspan="5" class="py-6 text-center" style="color: var(--va-secondary)">{{ $t('vacations.table.no_results') }}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
+
+        <div v-if="vacations && vacations.last_page > 1" class="flex justify-center mt-6">
+            <va-pagination
+                v-model="currentPage"
+                :pages="vacations.last_page"
+                :visible-pages="5"
+                color="primary"
+                @update:modelValue="changePage"
+            />
+        </div>
     </div>
 
     <div class="p-6 rounded-lg border border-solid overflow-hidden" style="background-color: var(--va-background-secondary); border-color: var(--va-background-border);">
-      <VacationCalendar :supporters="filteredSupporters" :vacations="filteredVacations" />
+      <VacationCalendar :supporters="filteredSupporters" :vacations="calendarVacations" />
     </div>
 
     <BookVacationModal v-if="!isAdmin" :show="showBookModal" @close="showBookModal = false" />
@@ -107,11 +117,7 @@
 </template>
 
 <script setup>
-/**
- * Vacations Management Index Component.
- * Orchestrates the visual mapping, KPIs, and administrative actions for team vacations.
- */
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -122,8 +128,10 @@ import AdminEditVacationModal from '@/Components/Vacations/AdminEditVacationModa
 
 const props = defineProps({
     supporters: Array,
-    vacations: Array,
-    summary: Object
+    vacations: Object, // Agora é um objeto paginado
+    calendarVacations: Array, // Lista isolada para o calendário (Limitada a 1 ano)
+    summary: Object,
+    filters: Object
 });
 
 const { t } = useI18n();
@@ -132,10 +140,12 @@ const showBookModal = ref(false);
 const showEditModal = ref(false);
 const selectedVacation = ref(null);
 
-/**
- * Validates if the authenticated user has administrative privileges.
- * @returns {boolean}
- */
+const currentPage = ref(props.vacations?.current_page || 1);
+
+watch(() => props.vacations, (newVal) => {
+    if (newVal) currentPage.value = newVal.current_page;
+});
+
 const isAdmin = computed(() => {
     const role = page.props.auth?.user?.role;
     if (!role) return false;
@@ -143,20 +153,40 @@ const isAdmin = computed(() => {
 });
 
 // ==========================================
-// INSTANT FILTERS
+// SERVER-SIDE FILTERS & PAGINATION
 // ==========================================
 
 const filters = ref({
-    status: '',
-    supporter_id: '',
-    date_from: '',
-    date_to: ''
+    status: props.filters?.status || '',
+    supporter_id: props.filters?.supporter_id || '',
+    date_from: props.filters?.date_from || '',
+    date_to: props.filters?.date_to || ''
 });
 
-/**
- * Maps supporters to standard Vuestic select structure.
- * @returns {Array<{text: string, value: string|number}>}
- */
+let filterTimeout;
+
+// Executa requisições de forma reativa mas usando Debounce para não sobrecarregar
+watch(filters, () => {
+    clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+        router.get(route('vacations.index'), { ...filters.value, page: 1 }, { 
+            preserveState: true, 
+            preserveScroll: true 
+        });
+    }, 400);
+}, { deep: true });
+
+const changePage = (page) => {
+    router.get(route('vacations.index'), { ...filters.value, page }, { 
+        preserveState: true, 
+        preserveScroll: true 
+    });
+};
+
+const clearFilters = () => {
+    filters.value = { status: '', supporter_id: '', date_from: '', date_to: '' };
+};
+
 const supporterOptions = computed(() => {
     return props.supporters.map(s => ({
         text: s.name,
@@ -164,10 +194,6 @@ const supporterOptions = computed(() => {
     }));
 });
 
-/**
- * Reactive translated options for status filtering.
- * @returns {Array<{text: string, value: string}>}
- */
 const statusOptions = computed(() => [
     { text: t('vacations.filters.all'), value: '' },
     { text: t('vacations.filters.pending'), value: 'pending' },
@@ -176,41 +202,9 @@ const statusOptions = computed(() => [
     { text: t('vacations.filters.rejected'), value: 'rejected' }
 ]);
 
-/**
- * Resets all dashboard filters to their default empty states.
- */
-const clearFilters = () => {
-    filters.value = { status: '', supporter_id: '', date_from: '', date_to: '' };
-};
-
-/**
- * Evaluates the active filters to limit the dataset presented in tables and calendars.
- * @returns {Array<Object>}
- */
-const filteredVacations = computed(() => {
-    return props.vacations.filter(v => {
-        let match = true;
-
-        if (filters.value.status && v.status !== filters.value.status) match = false;
-        if (filters.value.supporter_id && v.supporter_id !== filters.value.supporter_id) match = false;
-        
-        const sDate = v.start_date.substring(0, 10);
-        const eDate = v.end_date.substring(0, 10);
-        
-        if (filters.value.date_from && eDate < filters.value.date_from) match = false;
-        if (filters.value.date_to && sDate > filters.value.date_to) match = false;
-        
-        return match;
-    });
-});
-
-/**
- * Filters the displayed supporters in the calendar to match the active search.
- * @returns {Array<Object>}
- */
 const filteredSupporters = computed(() => {
     if (filters.value.supporter_id) {
-        return props.supporters.filter(s => s.id === filters.value.supporter_id);
+        return props.supporters.filter(s => s.id == filters.value.supporter_id);
     }
     return props.supporters;
 });
@@ -219,11 +213,6 @@ const filteredSupporters = computed(() => {
 // ACTIONS AND COLORS
 // ==========================================
 
-/**
- * Maps the status enum to corresponding Vuestic contextual colors.
- * @param {string} status 
- * @returns {string}
- */
 const statusColor = (status) => {
     const colors = { 
         'pending': 'warning', 
@@ -234,28 +223,15 @@ const statusColor = (status) => {
     return colors[status] || 'info';
 };
 
-/**
- * Commits a quick status change to the backend.
- * @param {number|string} id 
- * @param {string} status 
- */
 const updateStatus = (id, status) => {
     router.patch(route('vacations.status', id), { status: status }, { preserveScroll: true });
 };
 
-/**
- * Populates and opens the administrative edit modal for a specific record.
- * @param {Object} vacation 
- */
 const openEditModal = (vacation) => {
     selectedVacation.value = vacation;
     showEditModal.value = true;
 };
 
-/**
- * Issues a hard-delete request for the targeted vacation instance.
- * @param {number|string} id 
- */
 const deleteVacation = (id) => {
     if (confirm(t('vacations.table.confirm_delete'))) {
         router.delete(route('vacations.destroy', id), { preserveScroll: true });

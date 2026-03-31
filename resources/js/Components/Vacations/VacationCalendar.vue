@@ -1,170 +1,198 @@
 <template>
-  <div class="overflow-hidden">
-    <div class="flex justify-between items-center mb-4 px-2">
-      <h3 class="text-lg font-medium font-mono capitalize" style="color: var(--va-text-primary)">
-          {{ monthName }} {{ currentYear }}
-      </h3>
-      <div class="flex space-x-2">
-          <va-button preset="secondary" size="small" @click="prevMonth">&larr; {{ $t('vacations.calendar.prev') }}</va-button>
-          <va-button preset="secondary" size="small" @click="nextMonth">{{ $t('vacations.calendar.next') }} &rarr;</va-button>
-      </div>
-    </div>
+    <div class="overflow-hidden flex flex-col h-full">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-4 px-2 gap-4">
+            <h3 class="text-lg font-medium font-mono capitalize" style="color: var(--va-text-primary);">
+                {{ formatMonthYear(currentDate) }}
+            </h3>
+            
+            <div class="flex items-center space-x-2">
+                <va-button preset="plain" size="small" icon="west" @click="previousMonth" color="primary">
+                    {{ $t('common.previous') }}
+                </va-button>
+                <va-button preset="plain" size="small" icon-right="east" @click="nextMonth" color="primary">
+                    {{ $t('common.next') }}
+                </va-button>
+            </div>
+        </div>
 
-    <div class="overflow-x-auto border rounded-lg border-solid" style="border-color: var(--va-background-border);">
-      <table class="min-w-full text-sm border-collapse">
-        <thead style="background-color: var(--va-background-element); border-bottom: 1px solid var(--va-background-border);">
-            <tr>
-                <th class="px-4 py-3 text-left font-medium sticky left-0 z-10 w-48" style="color: var(--va-secondary); background-color: var(--va-background-element);">{{ $t('vacations.calendar.supporter') }}</th>
-                <th class="px-4 py-3 text-left font-medium" style="color: var(--va-secondary);">{{ $t('vacations.calendar.team') }}</th>
-                <th class="px-3 py-3 text-center font-medium" style="color: var(--va-secondary);">{{ $t('vacations.calendar.shift') }}</th>
-                <th class="px-3 py-3 text-center font-medium" style="color: var(--va-secondary);">{{ $t('vacations.calendar.used') }}</th>
-                <th class="px-3 py-3 text-center font-medium" style="color: var(--va-secondary);">{{ $t('vacations.calendar.left') }}</th>
-                <th v-for="day in daysInMonth" :key="day" class="px-1 py-3 text-center font-medium min-w-[32px]" style="color: var(--va-secondary);">
-                    {{ day }}
-                </th>
-            </tr>
-        </thead>
-        <tbody style="background-color: var(--va-background-secondary);">
-            <tr v-for="supporter in mappedSupporters" :key="supporter.id" style="border-bottom: 1px solid var(--va-background-border);">
-                <td class="px-4 py-2 font-medium sticky left-0 z-10 truncate border-r border-solid" style="color: var(--va-text-primary); background-color: var(--va-background-secondary); border-color: var(--va-background-border);">
-                    {{ supporter.name }}
-                </td>
-                <td class="px-4 py-2 truncate max-w-[120px]" style="color: var(--va-secondary);">
-                    {{ supporter.team?.name || $t('vacations.calendar.unassigned') }}
-                </td>
-                <td class="px-3 py-2 text-center capitalize" style="color: var(--va-secondary);">
-                    <va-badge v-if="supporter.team?.shift" :text="$t(`teams.shifts.${supporter.team.shift}`)" color="info" size="small" />
-                    <span v-else>-</span>
-                </td>
-                <td class="px-3 py-2 text-center font-bold" style="color: var(--va-danger);">{{ supporter.usedDays }}</td>
-                <td class="px-3 py-2 text-center font-bold border-r border-solid" style="color: var(--va-success); border-color: var(--va-background-border);">{{ supporter.remainingDays }}</td>
-                
-                <td v-for="day in daysInMonth" :key="day" class="p-1 border-r border-solid relative" style="border-color: var(--va-background-border);">
-                    
-                    <div v-if="isWeekend(day)" class="absolute inset-0" style="background-color: rgba(0,0,0,0.05); pointer-events: none;"></div>
-
-                    <template v-if="getVacationDay(supporter.id, day)">
+        <div class="overflow-x-auto border rounded-lg border-solid mb-4" style="border-color: var(--va-background-border);">
+            <table class="min-w-full text-sm border-collapse">
+                <thead style="background-color: var(--va-background-element); border-bottom: 1px solid var(--va-background-border);">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-medium sticky left-0 z-10 w-48" style="color: var(--va-secondary); background-color: var(--va-background-element);">
+                            {{ $t('vacations.table.supporter') || 'Apoiador' }}
+                        </th>
+                        <th class="px-4 py-3 text-left font-medium" style="color: var(--va-secondary);">
+                            {{ $t('vacations.table.team') || 'Equipa' }}
+                        </th>
+                        <th class="px-3 py-3 text-center font-medium" style="color: var(--va-secondary);">
+                            {{ $t('vacations.table.change') || 'Mudança' }}
+                        </th>
+                        <th class="px-3 py-3 text-center font-medium" style="color: var(--va-secondary);">
+                            {{ $t('vacations.table.used') || 'Usado' }}
+                        </th>
+                        <th class="px-3 py-3 text-center font-medium" style="color: var(--va-secondary);">
+                            {{ $t('vacations.table.left') || 'Restante' }}
+                        </th>
+                        <th v-for="day in daysInMonth" :key="day" class="px-1 py-3 text-center font-medium min-w-[32px]" style="color: var(--va-secondary);">
+                            {{ day }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody style="background-color: var(--va-background-secondary);">
+                    <tr v-for="supporter in paginatedSupporters" :key="supporter.id" style="border-bottom: 1px solid var(--va-background-border);">
+                        <td class="px-4 py-2 font-medium sticky left-0 z-10 truncate border-r border-solid" style="color: var(--va-text-primary); background-color: var(--va-background-secondary); border-color: var(--va-background-border);">
+                            {{ supporter.name }}
+                        </td>
+                        <td class="px-4 py-2 truncate max-w-[120px]" style="color: var(--va-secondary);">
+                            {{ supporter.team ? supporter.team.name : '-' }}
+                        </td>
+                        <td class="px-3 py-2 text-center capitalize" style="color: var(--va-secondary);">
+                            <span>-</span>
+                        </td>
                         
-                        <div v-if="isWeekend(day)" 
-                             class="absolute left-0 right-0 flex items-center justify-center shadow-sm" 
-                             style="top: 38%; bottom: 38%; opacity: 0.6;"
-                             :style="{ 
-                                backgroundColor: getVacationDay(supporter.id, day).status === 'pending' ? 'var(--va-warning)' : 
-                                                 getVacationDay(supporter.id, day).status === 'completed' ? 'var(--va-secondary)' : 'var(--va-primary)'
-                             }"
-                             :title="$t('vacations.calendar.weekend')">
-                        </div>
+                        <td class="px-3 py-2 text-center font-bold" style="color: var(--va-danger);">
+                            {{ calculateUsedDays(supporter.id) }}
+                        </td>
+                        <td class="px-3 py-2 text-center font-bold border-r border-solid" style="color: var(--va-success); border-color: var(--va-background-border);">
+                            {{ Math.max(0, 22 - calculateUsedDays(supporter.id)) }}
+                        </td>
+                        
+                        <td v-for="day in daysInMonth" :key="day" class="p-1 border-r border-solid relative" style="border-color: var(--va-background-border);">
+                            <div v-if="isWeekend(day)" class="absolute inset-0" style="background-color: rgba(0, 0, 0, 0.05); pointer-events: none;"></div>
+                            
+                            <va-popover v-if="getVacationForDay(supporter.id, day)" :message="$t(`vacations.filters.${getVacationForDay(supporter.id, day).status}`)">
+                                <div 
+                                    class="w-full h-6 rounded-sm cursor-pointer shadow-sm" 
+                                    :class="getStatusColorClass(getVacationForDay(supporter.id, day).status)"
+                                ></div>
+                            </va-popover>
+                        </td>
+                    </tr>
 
-                        <div v-else-if="getVacationDay(supporter.id, day).status === 'pending'" 
-                             class="absolute inset-1 rounded-sm shadow-sm border border-dashed" 
-                             style="border-color: var(--va-warning); background-color: rgba(225, 190, 50, 0.2);" 
-                             :title="$t('vacations.calendar.pending')">
-                        </div>
+                    <tr v-if="paginatedSupporters.length === 0">
+                        <td :colspan="5 + daysInMonth" class="py-8 text-center text-gray-500 font-medium">
+                            {{ $t('vacations.table.no_results') || 'Nenhum resultado encontrado.' }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-                        <div v-else-if="getVacationDay(supporter.id, day).status === 'completed'" 
-                             class="absolute inset-1 rounded-sm shadow-sm" 
-                             style="background-color: var(--va-secondary); opacity: 0.6;" 
-                             :title="$t('vacations.calendar.completed')">
-                        </div>
-
-                        <div v-else 
-                             class="absolute inset-1 rounded-sm shadow-sm" 
-                             style="background-color: var(--va-primary);" 
-                             :title="$t('vacations.calendar.approved')">
-                        </div>
-
-                    </template>
-                </td>
-            </tr>
-            <tr v-if="mappedSupporters.length === 0">
-                <td :colspan="5 + daysInMonth" class="px-6 py-8 text-center" style="color: var(--va-secondary);">
-                    {{ $t('vacations.calendar.no_supporters') }}
-                </td>
-            </tr>
-        </tbody>
-      </table>
+        <div v-if="totalPages > 1" class="flex flex-col sm:flex-row justify-between items-center px-2 py-2 gap-4 border-t border-solid pt-4" style="border-color: var(--va-background-border);">
+            <span class="text-sm font-medium" style="color: var(--va-secondary);">
+                A mostrar {{ paginationStart + 1 }} a {{ paginationEnd }} de {{ supporters.length }} elementos
+            </span>
+            <va-pagination
+                v-model="currentPage"
+                :pages="totalPages"
+                :visible-pages="5"
+                color="primary"
+            />
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup>
-/**
- * Vacation Calendar Component.
- * Refactored to utilize an O(1) dictionary mapping to prevent main thread freezing.
- */
-import { ref, computed } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
-    supporters: { type: Array, required: true },
-    vacations: { type: Array, required: true },
+    supporters: { type: Array, default: () => [] },
+    vacations: { type: Array, default: () => [] }
 });
 
-const { locale } = useI18n();
+// ==========================================
+// PAGINATION LOGIC (PERFORMANCE OPTIMIZATION)
+// ==========================================
+const currentPage = ref(1);
+const itemsPerPage = ref(10); // Carrega apenas 10 por página para garantir rendering rápido
 
-const currentDate = new Date();
-const currentMonth = ref(currentDate.getMonth());
-const currentYear = ref(currentDate.getFullYear());
+// Reseta a página quando os filtros ou apoiadores mudam
+watch(() => props.supporters, () => {
+    currentPage.value = 1;
+}, { deep: true });
 
-const monthName = computed(() => {
-    return new Date(currentYear.value, currentMonth.value).toLocaleString(locale.value, { month: 'long' });
+const totalPages = computed(() => {
+    return Math.ceil(props.supporters.length / itemsPerPage.value) || 1;
 });
+
+const paginatedSupporters = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage.value;
+    const end = start + itemsPerPage.value;
+    return props.supporters.slice(start, end);
+});
+
+const paginationStart = computed(() => (currentPage.value - 1) * itemsPerPage.value);
+const paginationEnd = computed(() => Math.min(currentPage.value * itemsPerPage.value, props.supporters.length));
+
+
+// ==========================================
+// CALENDAR & DATE LOGIC
+// ==========================================
+const currentDate = ref(new Date());
+
+const formatMonthYear = (date) => {
+    const options = { month: 'long', year: 'numeric' };
+    // Presumindo ambiente PT
+    return date.toLocaleDateString('pt-PT', options);
+};
 
 const daysInMonth = computed(() => {
-    return new Date(currentYear.value, currentMonth.value + 1, 0).getDate();
-});
-
-/**
- * Pre-computes a highly optimized O(1) lookup dictionary.
- * Maps: [supporter_id][date_string] -> vacation_object
- */
-const vacationsMap = computed(() => {
-    const map = {};
-    
-    props.vacations.forEach(v => {
-        if (v.status === 'rejected') return;
-        
-        if (!map[v.supporter_id]) {
-            map[v.supporter_id] = {};
-        }
-        
-        const startDate = new Date(v.start_date.substring(0, 10));
-        const endDate = new Date(v.end_date.substring(0, 10));
-        
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            map[v.supporter_id][dateStr] = v;
-        }
-    });
-    
-    return map;
-});
-
-const mappedSupporters = computed(() => {
-    return props.supporters.map(supporter => {
-        const usedDays = props.vacations
-            .filter(v => v.supporter_id === supporter.id && v.year === currentYear.value && v.status !== 'rejected')
-            .reduce((sum, v) => sum + v.total_days, 0);
-
-        return { ...supporter, usedDays, remainingDays: Math.max(0, 22 - usedDays) };
-    });
+    const year = currentDate.value.getFullYear();
+    const month = currentDate.value.getMonth() + 1;
+    return new Date(year, month, 0).getDate();
 });
 
 const isWeekend = (day) => {
-    const date = new Date(currentYear.value, currentMonth.value, day);
+    const year = currentDate.value.getFullYear();
+    const month = currentDate.value.getMonth();
+    const date = new Date(year, month, day);
     const dayOfWeek = date.getDay();
-    return dayOfWeek === 0 || dayOfWeek === 6; 
+    return dayOfWeek === 0 || dayOfWeek === 6; // 0 = Domingo, 6 = Sábado
 };
 
-/**
- * Instantly retrieves a vacation record using the pre-computed dictionary.
- * Complexity: O(1) instead of O(N) array scans inside nested loops.
- */
-const getVacationDay = (supporterId, day) => {
-    const targetStr = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return vacationsMap.value[supporterId]?.[targetStr];
+const previousMonth = () => {
+    currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() - 1, 1);
 };
 
-const prevMonth = () => { if (currentMonth.value === 0) { currentMonth.value = 11; currentYear.value--; } else { currentMonth.value--; } };
-const nextMonth = () => { if (currentMonth.value === 11) { currentMonth.value = 0; currentYear.value++; } else { currentMonth.value++; } };
+const nextMonth = () => {
+    currentDate.value = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 1);
+};
+
+
+// ==========================================
+// VACATIONS DATA MAPPING
+// ==========================================
+const calculateUsedDays = (supporterId) => {
+    return props.vacations
+        .filter(v => v.supporter_id === supporterId && v.status !== 'rejected')
+        .reduce((sum, v) => sum + (v.total_days || 0), 0);
+};
+
+const getVacationForDay = (supporterId, day) => {
+    const year = currentDate.value.getFullYear();
+    const month = currentDate.value.getMonth();
+    // Forçar a hora a meio do dia para evitar bugs de fuso horário (T00:00 vs GMT)
+    const targetDate = new Date(year, month, day, 12, 0, 0).toISOString().split('T')[0];
+
+    return props.vacations.find(v => {
+        if (v.supporter_id !== supporterId || v.status === 'rejected') return false;
+        
+        // Assegurar compatibilidade estrutural com o formato string da DB 'YYYY-MM-DD'
+        const start = typeof v.start_date === 'string' ? v.start_date.substring(0, 10) : v.start_date;
+        const end = typeof v.end_date === 'string' ? v.end_date.substring(0, 10) : v.end_date;
+        
+        return targetDate >= start && targetDate <= end;
+    });
+};
+
+const getStatusColorClass = (status) => {
+    switch(status) {
+        case 'approved': return 'bg-green-500 shadow-green-200';
+        case 'pending': return 'bg-yellow-400 shadow-yellow-200';
+        case 'completed': return 'bg-gray-500 shadow-gray-200';
+        case 'rejected': return 'bg-red-500 shadow-red-200';
+        default: return 'bg-blue-500';
+    }
+};
 </script>

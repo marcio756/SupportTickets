@@ -127,6 +127,7 @@
                     multiple
                     clearable
                     searchable
+                    virtual-scroller
                     class="w-full"
                 >
                     <template #content="{ valueArray }">
@@ -187,7 +188,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import TicketStatusBadge from '@/Components/Tickets/TicketStatusBadge.vue';
 import SupportTimeDisplay from '@/Components/Tickets/SupportTimeDisplay.vue';
 import TagBadge from '@/Components/Common/TagBadge.vue';
-import TicketChatArea from '@/Components/Tickets/TicketChatArea.vue';
+import TicketChatArea from '@/Pages/Tickets/TicketChatArea.vue';
 import { 
     VaButton, VaDropdown, VaDropdownContent, 
     VaList, VaListItem, VaListItemSection, VaCard, VaCardContent, 

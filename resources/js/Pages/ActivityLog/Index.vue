@@ -20,6 +20,7 @@
                 :label="$t('activity_log.filters.user')"
                 multiple
                 clearable
+                virtual-scroller
                 class="w-full xl:w-48 flex-none"
                 preset="bordered"
             >
@@ -36,6 +37,7 @@
                 :label="$t('activity_log.filters.event')"
                 multiple
                 clearable
+                virtual-scroller
                 class="w-full xl:w-48 flex-none"
                 preset="bordered"
             >
@@ -53,6 +55,7 @@
                 :label="$t('activity_log.filters.target')"
                 multiple
                 clearable
+                virtual-scroller
                 class="w-full xl:w-56 flex-none"
                 preset="bordered"
             >

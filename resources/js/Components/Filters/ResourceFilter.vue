@@ -29,6 +29,7 @@
           :placeholder="$t('filters.all_statuses')"
           clearable
           preset="bordered"
+          virtual-scroller
           class="w-full xl:w-48 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -47,6 +48,7 @@
           :placeholder="$t('filters.all_sources')"
           clearable
           preset="bordered"
+          virtual-scroller
           class="w-full xl:w-48 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -65,6 +67,7 @@
           :placeholder="$t('filters.all_roles')"
           clearable
           preset="bordered"
+          virtual-scroller
           class="w-full xl:w-48 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -87,6 +90,7 @@
           :placeholder="$t('filters.customers')"
           clearable
           preset="bordered"
+          virtual-scroller
           class="w-full xl:w-56 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -108,6 +112,7 @@
           :placeholder="$t('filters.assignment')"
           clearable
           preset="bordered"
+          virtual-scroller
           class="w-full xl:w-56 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -131,6 +136,7 @@
           clearable
           searchable
           preset="bordered"
+          virtual-scroller
           class="w-full xl:w-64 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -266,7 +272,7 @@ const fetchCustomersOnType = async (query) => {
     
     isLoadingCustomers.value = true;
     try {
-        const response = await axios.get(route('api.users.search'), { params: { q: query, role: 'customer' } });
+        const response = await axios.get(route('api.users.index'), { params: { search: query, role: 'customer' } });
         asyncCustomerOptions.value = response.data.data || response.data;
     } catch (error) {
         console.error("Error fetching customers dynamically", error);

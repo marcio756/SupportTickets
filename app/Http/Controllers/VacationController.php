@@ -36,46 +36,78 @@ class VacationController extends Controller
         $user = $request->user();
         $currentYear = Carbon::now()->year;
 
-        /**
-         * Architectural Note: 
-         * Strict column selection prevents loading massive user objects into RAM.
-         */
+        // 1. Carregar apenas a lista estática de Supporters
         $supporters = User::where('role', RoleEnum::SUPPORTER->value)
             ->with('team:id,name')
             ->get(['id', 'name', 'team_id']);
         
-        $globalVacations = Vacation::with('supporter.team:id,name')
-            ->select(['id', 'supporter_id', 'start_date', 'end_date', 'total_days', 'status', 'year'])
-            ->orderBy('created_at', 'desc')
-            ->get();
-        
-        if ($user->isAdmin()) {
-            $totalSupporters = $supporters->count();
-            $globalAllowed = $totalSupporters * 22;
-            $globalUsed = $globalVacations->where('year', $currentYear)->where('status', '!=', 'rejected')->sum('total_days');
+        // 2. Cálculos de KPI otimizados (Agregação direta na DB sem carregar os registos)
+        $summaryQuery = Vacation::where('year', $currentYear)->where('status', '!=', 'rejected');
+        if (!$user->isAdmin()) {
+            $summaryQuery->where('supporter_id', $user->id);
+        }
+        $usedDays = (int) $summaryQuery->sum('total_days');
 
+        if ($user->isAdmin()) {
+            $globalAllowed = $supporters->count() * 22;
             $summary = [
                 'total_allowed' => $globalAllowed,
-                'used_days' => $globalUsed,
-                'remaining_days' => max(0, $globalAllowed - $globalUsed),
+                'used_days' => $usedDays,
+                'remaining_days' => max(0, $globalAllowed - $usedDays),
                 'year' => $currentYear,
             ];
         } else {
-            $myVacations = $globalVacations->where('supporter_id', $user->id);
-            $myUsedDays = $myVacations->where('year', $currentYear)->where('status', '!=', 'rejected')->sum('total_days');
-
             $summary = [
                 'total_allowed' => 22,
-                'used_days' => $myUsedDays,
-                'remaining_days' => max(0, 22 - $myUsedDays),
+                'used_days' => $usedDays,
+                'remaining_days' => max(0, 22 - $usedDays),
                 'year' => $currentYear,
             ];
         }
 
+        // 3. Paginação Server-Side EXCLUSIVA para a tabela (Apenas os Admins a veem)
+        $vacations = null;
+        if ($user->isAdmin()) {
+            $query = Vacation::with('supporter.team:id,name')
+                ->select(['id', 'supporter_id', 'start_date', 'end_date', 'total_days', 'status', 'year']);
+            
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+            if ($request->filled('supporter_id')) {
+                $query->where('supporter_id', $request->supporter_id);
+            }
+            if ($request->filled('date_from')) {
+                $query->where('end_date', '>=', $request->date_from);
+            }
+            if ($request->filled('date_to')) {
+                $query->where('start_date', '<=', $request->date_to);
+            }
+
+            // A BD devolve apenas os 10 registos solicitados e a meta-informação das páginas
+            $vacations = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+        }
+
+        // 4. Extração contida para o Calendário (Restringimos sempre ao Ano para não explodir a memória)
+        $calendarQuery = Vacation::with('supporter.team:id,name')
+            ->select(['id', 'supporter_id', 'start_date', 'end_date', 'status', 'year'])
+            ->where('status', '!=', 'rejected');
+            
+        if ($request->filled('supporter_id')) {
+            $calendarQuery->where('supporter_id', $request->supporter_id);
+        }
+        
+        $yearToFetch = $request->filled('date_from') ? Carbon::parse($request->date_from)->year : $currentYear;
+        $calendarQuery->where('year', $yearToFetch);
+
+        $calendarVacations = $calendarQuery->get();
+
         return Inertia::render('Vacations/Index', [
             'supporters' => $supporters,
-            'vacations' => $globalVacations,
-            'summary' => $summary
+            'vacations' => $vacations, 
+            'calendarVacations' => $calendarVacations,
+            'summary' => $summary,
+            'filters' => $request->only(['status', 'supporter_id', 'date_from', 'date_to'])
         ]);
     }
 

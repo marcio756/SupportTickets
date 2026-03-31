@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Activitylog\Models\Activity;
@@ -81,9 +83,35 @@ class ActivityLogController extends Controller
             'created_at'   => $log->created_at,
         ]);
 
-        $usersList = User::select('id', 'name')->orderBy('name')->get();
-        $events = Activity::select('event')->distinct()->pluck('event');
-        $targets = Activity::select('subject_type')->distinct()->pluck('subject_type');
+        // Arquitetura: Utilizar DB::table em vez do Eloquent Model impede que o Laravel
+        // "hidrate" dezenas de milhares de objetos pesados, o que consome os 512MB de RAM.
+        // O ->toArray() converte tudo para arrays básicos e leves para a Cache Store.
+        $usersList = Cache::remember('activity_users_list', 300, function () {
+            return DB::table('users')
+                ->select('id', 'name')
+                ->whereNull('deleted_at')
+                ->orderBy('name')
+                ->get()
+                ->toArray();
+        });
+
+        $events = Cache::remember('activity_events_list', 86400, function () {
+            return DB::table('activity_log')
+                ->select('event')
+                ->whereNotNull('event')
+                ->distinct()
+                ->pluck('event')
+                ->toArray();
+        });
+
+        $targets = Cache::remember('activity_targets_list', 86400, function () {
+            return DB::table('activity_log')
+                ->select('subject_type')
+                ->whereNotNull('subject_type')
+                ->distinct()
+                ->pluck('subject_type')
+                ->toArray();
+        });
 
         return Inertia::render('ActivityLog/Index', [
             'logs' => $logs,
