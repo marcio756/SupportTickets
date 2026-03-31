@@ -14,8 +14,8 @@ class WorkSessionReportController extends Controller
 {
     /**
      * Renders the work session log with summary statistics for a weekly calendar view.
-     * Architect Note: Mathematical logic delegated to the Model layer via 
-     * the 'total_duration_seconds' accessor to ensure DRY principles and prevent 500 errors.
+     * Architect Note: Mathematical logic handled explicitly to prevent TypeError 500 errors
+     * caused by active sessions without an ended_at date or missing model accessors.
      *
      * @param Request $request
      * @return Response
@@ -54,21 +54,30 @@ class WorkSessionReportController extends Controller
         $totalSeconds = 0;
 
         $transformedSessions = $sessionsData->map(function ($session) use (&$totalSeconds) {
-            // Architect Note: Utilizing the pre-calculated logic from the Model.
-            // This prevents complex loop calculations inside the controller and resolves
-            // the 500 errors caused by incorrect Enum comparisons.
-            $secs = $session->total_duration_seconds; 
-            
+            // Architect Note: Manual calculation ensures no 500 errors if the model accessor fails
+            $grossSeconds = $session->started_at->diffInSeconds($session->ended_at ?? now());
+            $pausedSeconds = $session->pauses->sum(function ($pause) {
+                return $pause->started_at->diffInSeconds($pause->ended_at ?? now());
+            });
+
+            $secs = max(0, $grossSeconds - $pausedSeconds);
             $totalSeconds += $secs;
 
             $hours = floor($secs / 3600);
             $minutes = floor(($secs % 3600) / 60);
             
+            // Architect Note: Safe read of the Enum value regardless of how Eloquent casts it
+            $statusValue = 'unknown';
+            if (is_object($session->status) && property_exists($session->status, 'value')) {
+                $statusValue = $session->status->value;
+            } elseif (is_string($session->status)) {
+                $statusValue = $session->status;
+            }
+            
             return [
                 'id' => $session->id,
                 'user' => $session->user,
-                // Ensure safe access to the enum value
-                'status' => $session->status ? $session->status->value : 'unknown',
+                'status' => $statusValue,
                 'started_at_iso' => $session->started_at->toIso8601String(),
                 'ended_at_iso' => $session->ended_at ? $session->ended_at->toIso8601String() : null,
                 'total_time_formatted' => $secs > 0 ? "{$hours}h {$minutes}m" : '-',

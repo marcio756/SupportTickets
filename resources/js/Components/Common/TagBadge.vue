@@ -1,26 +1,42 @@
 <template>
-    <span 
-        class="px-2 py-1 text-xs font-semibold rounded-full border whitespace-nowrap inline-flex items-center justify-center w-fit"
-        :style="{ 
-            backgroundColor: tag.color + '20', 
-            color: tag.color, 
-            borderColor: tag.color + '40' 
-        }"
-    >
-        {{ tag.name }}
-    </span>
+  <va-badge
+    :text="tag.name"
+    :color="mappedColor"
+    class="text-xs uppercase font-bold"
+  />
 </template>
 
 <script setup>
+import { computed } from 'vue';
+
+const props = defineProps({
+  tag: {
+    type: Object,
+    required: true
+  }
+});
+
 /**
- * Renders a visual pill/badge for a given tag object.
- * Applies custom inline styles based on the tag's configured hex color.
- * The Tailwind class "w-fit" prevents external flex containers from forcing height/width stretches.
+ * Intercepts common string color names stored in the database
+ * and converts them to precise Hex values to prevent Vuestic UI warnings.
+ *
+ * @returns {string} The precise Hex color code or the default Vuestic theme color.
  */
-defineProps({
-    tag: {
-        type: Object,
-        required: true
-    }
+const mappedColor = computed(() => {
+  const dbColor = props.tag?.color?.toLowerCase() || '';
+  
+  const colorMap = {
+    'indigo': '#4f46e5',
+    'gray': '#6b7280',
+    'red': '#ef4444',
+    'blue': '#3b82f6',
+    'green': '#22c55e',
+    'yellow': '#eab308',
+    'purple': '#a855f7',
+    'pink': '#ec4899',
+    'orange': '#f97316'
+  };
+
+  return colorMap[dbColor] || dbColor || 'primary';
 });
 </script>

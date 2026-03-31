@@ -13,67 +13,50 @@ use Illuminate\Support\Facades\Log;
  */
 class FetchSupportEmails extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'app:fetch-support-emails';
-
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Fetches unread emails from the IMAP server and processes them into support tickets.';
 
-    /**
-     * Executes the console command.
-     * Orchestrates the IMAP connection, mailbox polling, and ticket creation flow.
-     *
-     * @param \App\Services\EmailTicketService $ticketService
-     * @return int
-     */
     public function handle(EmailTicketService $ticketService): int
     {
         $this->info('Starting to fetch support emails...');
 
         try {
-            // Retrieves the default account configured in config/imap.php
             $client = Client::account('default');
             $client->connect();
 
-            // Accesses the primary inbox folder
             $folder = $client->getFolder('INBOX');
-            
-            // Filters only messages that haven't been read yet
             $messages = $folder->query()->unseen()->get();
 
             $this->info('Found ' . $messages->count() . ' unread messages.');
 
             foreach ($messages as $message) {
-                // Extracts plain text body; falls back to HTML if plain text is unavailable
-                $body = $message->getTextBody() ?? $message->getHTMLBody() ?? '';
-                
-                // Fetch RFC 2822 threading headers safely
-                $inReplyTo = $message->getInReplyTo();
-                $references = $message->getReferences();
-                
-                $emailData = [
-                    'subject'     => $message->getSubject()[0] ?? 'No Subject',
-                    'body'        => trim($body),
-                    'from_email'  => $message->getFrom()[0]->mail ?? null,
-                    'in_reply_to' => is_iterable($inReplyTo) ? implode(' ', $inReplyTo->toArray()) : (string) $inReplyTo,
-                    'references'  => is_iterable($references) ? implode(' ', $references->toArray()) : (string) $references,
-                ];
+                // Architect Note: Wrapped single email processing in a try/catch block.
+                // If one badly formatted email throws an exception, it prevents the entire
+                // command from crashing and successfully processes the remaining queue.
+                try {
+                    $body = $message->getTextBody() ?? $message->getHTMLBody() ?? '';
+                    
+                    $inReplyTo = $message->getInReplyTo();
+                    $references = $message->getReferences();
+                    
+                    $emailData = [
+                        'subject'     => (string) ($message->getSubject()[0] ?? 'No Subject'),
+                        'body'        => is_string($body) ? trim($body) : '',
+                        'from_email'  => $message->getFrom()[0]->mail ?? null,
+                        'in_reply_to' => is_iterable($inReplyTo) ? implode(' ', $inReplyTo->toArray()) : (string) $inReplyTo,
+                        'references'  => is_iterable($references) ? implode(' ', $references->toArray()) : (string) $references,
+                    ];
 
-                if ($emailData['from_email']) {
-                    $ticketService->processEmail($emailData);
-                    
-                    // Flags the message as 'Seen' on the mail server to prevent duplicate processing
-                    $message->setFlag('Seen');
-                    
-                    $this->info("Successfully processed email from: {$emailData['from_email']}");
+                    if ($emailData['from_email']) {
+                        $ticketService->processEmail($emailData);
+                        
+                        $message->setFlag('Seen');
+                        
+                        $this->info("Successfully processed email from: {$emailData['from_email']}");
+                    }
+                } catch (\Exception $emailException) {
+                    Log::error('Error processing single IMAP message: ' . $emailException->getMessage());
+                    $this->error('Failed on an email, check logs. Continuing to next message.');
                 }
             }
 

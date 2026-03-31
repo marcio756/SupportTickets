@@ -100,6 +100,7 @@
         "subject_placeholder": "Brief description of the issue",
         "message_label": "Message",
         "message_placeholder": "Provide detailed information about your issue...",
-        "submit": "Submit Ticket"
+        "submit": "Submit Ticket",
+        "reply_placeholder": "Type your reply here... (Use {'@'} to mention someone)"
     }
 }

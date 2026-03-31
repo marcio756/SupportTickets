@@ -102,6 +102,7 @@
         "subject_placeholder": "Breve descrição do problema",
         "message_label": "Mensagem",
         "message_placeholder": "Forneça informações detalhadas sobre o seu problema...",
-        "submit": "Enviar tíquete"
+        "submit": "Enviar tíquete",
+        "reply_placeholder": "Escreve a tua resposta aqui... (Usa {'@'} para mencionar)"
     }
 }

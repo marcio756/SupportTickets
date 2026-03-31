@@ -10,27 +10,11 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Symfony\Component\Mime\Email;
 
-/**
- * Handles ticket updates and chat messages via email and database.
- * Architect Note: Implements ShouldQueue to ensure notification dispatching 
- * does not block database transactions or HTTP requests under high load.
- */
 class TicketNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * Define the number of times the job may be attempted.
-     *
-     * @var int
-     */
     public $tries = 3;
-
-    /**
-     * Define the maximum number of exceptions to allow before failing.
-     *
-     * @var int
-     */
     public $maxExceptions = 3;
 
     public function __construct(
@@ -38,9 +22,8 @@ class TicketNotification extends Notification implements ShouldQueue
         public string $content,
         public string $type = 'new_message'
     ) {
-        // Architect Note: Explicitly setting the connection to 'redis' (or whatever queue driver is configured)
-        // Ensure you have a queue worker running (e.g., `php artisan queue:work redis`)
-        $this->connection = 'redis'; 
+        // Architect Note: Removida a obrigatoriedade da conexão 'redis' para evitar crash em ambientes sem a extensão PHP instalada.
+        // O Laravel vai agora respeitar a variável QUEUE_CONNECTION do ficheiro .env
         $this->queue = 'notifications';
     }
 
