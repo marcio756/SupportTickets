@@ -9,34 +9,33 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class WorkSessionReportController extends Controller
 {
-    /**
-     * Renders the work session log with summary statistics for a weekly calendar view.
-     * Architect Note: Enclosed in a bulletproof try-catch sequence to absolutely 
-     * prevent any TypeErrors or Carbon parsing exceptions from bubbling up and 
-     * causing a 500 white-screen crash on the frontend.
-     *
-     * @param Request $request
-     * @return Response
-     */
     public function index(Request $request): Response
     {
         try {
+            // Prevenção de segurança para Fatal Errors derivados de Memory Leaks de dados pesados
+            ini_set('memory_limit', '512M');
+            
             $user = $request->user();
 
-            if ($user->isCustomer()) {
+            if (!$user || $user->isCustomer()) {
                 abort(403, 'Unauthorized access.');
             }
 
-            // Fallback safe date parsing
             $weekStartInput = $request->input('week_start');
             if (empty($weekStartInput) || $weekStartInput === 'null' || $weekStartInput === 'undefined') {
                 $weekStartInput = Carbon::now()->startOfWeek()->toDateString();
             }
 
-            $weekStart = Carbon::parse($weekStartInput)->startOfDay();
+            try {
+                $weekStart = Carbon::parse($weekStartInput)->startOfDay();
+            } catch (\Exception $e) {
+                $weekStart = Carbon::now()->startOfWeek()->startOfDay();
+            }
+            
             $weekEnd = $weekStart->copy()->endOfWeek()->endOfDay();
 
             $query = WorkSession::with([
@@ -56,11 +55,11 @@ class WorkSessionReportController extends Controller
                 $query->where('user_id', $request->input('user_id'));
             }
 
-            $sessionsData = $query->get();
+            // Limitado a 500 para evitar bloqueios no servidor e crashes
+            $sessionsData = $query->limit(500)->get();
             $totalSeconds = 0;
             $transformedSessions = [];
 
-            // Utilizar loop normal em vez de map() melhora a legibilidade e permite usar continue de forma limpa.
             foreach ($sessionsData as $session) {
                 if (empty($session->started_at)) continue;
 
@@ -73,24 +72,18 @@ class WorkSessionReportController extends Controller
                     $pauses = $session->pauses ?? collect();
                     $pausedSeconds = $pauses->sum(function ($pause) {
                         if (empty($pause->started_at)) return 0;
-                        
                         $pauseStart = Carbon::parse($pause->started_at);
                         $pauseEnd = $pause->ended_at ? Carbon::parse($pause->ended_at) : now();
-                        return $pauseStart->diffInSeconds($pauseEnd);
+                        return max(0, $pauseStart->diffInSeconds($pauseEnd));
                     });
 
-                    $secs = max(0, $grossSeconds - $pausedSeconds);
+                    $secs = (int) max(0, $grossSeconds - $pausedSeconds);
                     $totalSeconds += $secs;
 
                     $hours = floor($secs / 3600);
                     $minutes = floor(($secs % 3600) / 60);
                     
-                    $statusValue = 'unknown';
-                    if ($session->status instanceof \BackedEnum) {
-                        $statusValue = $session->status->value;
-                    } elseif (is_string($session->status)) {
-                        $statusValue = $session->status;
-                    }
+                    $statusValue = $session->status instanceof \BackedEnum ? $session->status->value : (string) $session->status;
                     
                     $transformedPauses = [];
                     foreach ($pauses as $pause) {
@@ -116,15 +109,17 @@ class WorkSessionReportController extends Controller
                         'pauses' => $transformedPauses,
                     ];
                 } catch (\Throwable $err) {
-                    // Ignora silenciosamente esta sessão específica corrompida e continua o loop em vez de rebentar tudo.
-                    logger()->warning('Erro ao formatar WorkSession no relatório: ' . $err->getMessage());
+                    try { logger()->warning('Erro ao formatar sessão: ' . $err->getMessage()); } catch (\Throwable $logErr) {}
                     continue;
                 }
             }
 
             $usersList = [];
             if ($user->isAdmin()) {
-                $usersList = User::whereIn('role', [RoleEnum::SUPPORTER->value, RoleEnum::ADMIN->value])
+                $usersList = User::whereIn('role', [
+                        RoleEnum::SUPPORTER->value ?? 'supporter', 
+                        RoleEnum::ADMIN->value ?? 'admin'
+                    ])
                     ->select('id', 'name')
                     ->orderBy('name')
                     ->get()
@@ -145,9 +140,11 @@ class WorkSessionReportController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            logger()->error('CRITICAL: WorkSessionReportController global falhou: ' . $e->getMessage());
+            // Garante que não disparamos 500 quando apenas o utilizador não tem autorização
+            if ($e instanceof HttpException) throw $e;
+
+            try { logger()->error('CRITICAL: WorkSessionReportController global falhou: ' . $e->getMessage()); } catch (\Throwable $logErr) {}
             
-            // Retorna a página mesmo se houver catástrofe com os dados, assim o frontend nunca mais devolve ecrã branco.
             return Inertia::render('WorkSessions/Index', [
                 'sessions' => [],
                 'users' => [],

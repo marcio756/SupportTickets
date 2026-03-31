@@ -7,43 +7,45 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
-    /**
-     * The root template that is loaded on the first page visit.
-     *
-     * @var string
-     */
     protected $rootView = 'app';
 
-    /**
-     * Determine the current asset version.
-     */
     public function version(Request $request): ?string
     {
         return parent::version($request);
     }
 
-    /**
-     * Define the props that are shared by default.
-     *
-     * @return array<string, mixed>
-     */
     public function share(Request $request): array
     {
-        // Check if there is an active work session for the supporter
-        $activeSession = null;
-        if ($request->user() && $request->user()->isSupporter()) {
-            $activeSession = \App\Models\WorkSession::where('user_id', $request->user()->id)
-                ->whereIn('status', [\App\Enums\WorkSessionStatusEnum::ACTIVE->value, \App\Enums\WorkSessionStatusEnum::PAUSED->value])
-                ->first();
+        $activeSessionData = null;
+
+        try {
+            if ($request->user() && $request->user()->isSupporter()) {
+                $session = \App\Models\WorkSession::where('user_id', $request->user()->id)
+                    ->whereIn('status', [\App\Enums\WorkSessionStatusEnum::ACTIVE->value, \App\Enums\WorkSessionStatusEnum::PAUSED->value])
+                    ->first();
+                
+                if ($session) {
+                    // Arquitetura: Passar um array simples impede que o Inertia tente serializar
+                    // Modelos Eloquent completos, cortando a raiz do Memory Leak e do Erro 500.
+                    $activeSessionData = [
+                        'id' => $session->id,
+                        'status' => $session->status instanceof \BackedEnum ? $session->status->value : $session->status,
+                        'total_duration_seconds' => $session->total_duration_seconds,
+                        'started_at' => $session->started_at,
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silencia qualquer falha durante a verificação isolando o logger
+            try { logger()->error('Erro no HandleInertiaRequests: ' . $e->getMessage()); } catch (\Throwable $log) {}
         }
 
         return [
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
-                'work_session' => $activeSession, 
+                'work_session' => $activeSessionData, 
             ],
-            // Shares the current backend locale state to initialize the frontend translation
             'locale' => app()->getLocale(),
         ];
     }
