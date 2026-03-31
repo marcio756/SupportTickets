@@ -12,11 +12,19 @@ use Illuminate\Http\RedirectResponse;
 
 class TeamController extends Controller
 {
-    public function index(): Response
+    /**
+     * Architectural Note:
+     * Switched from `get()` to `paginate()` to prevent out-of-memory errors on large datasets.
+     * Supporters collection is initialized empty to delegate population to asynchronous frontend queries.
+     */
+    public function index(Request $request): Response
     {
-        $teams = Team::with('supporters')->get();
-        // Send all supporters so the Admin can assign them to teams
-        $supporters = User::where('role', RoleEnum::SUPPORTER->value)->get();
+        $teams = Team::with(['supporters' => function($query) {
+            $query->select('id', 'name', 'team_id');
+        }])->paginate(15)->withQueryString();
+        
+        // Return empty array to enforce async loading on the UI layer.
+        $supporters = [];
         
         return Inertia::render('Teams/Index', [
             'teams' => $teams,

@@ -13,6 +13,9 @@ use Inertia\Response;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Http\RedirectResponse;
 
+/**
+ * Handles vacation requests and administrative overviews.
+ */
 class VacationController extends Controller
 {
     private VacationService $vacationService;
@@ -22,18 +25,29 @@ class VacationController extends Controller
         $this->vacationService = $vacationService;
     }
 
+    /**
+     * Renders the vacations dashboard.
+     * * Architectural Note: 
+     * The legacy update query was removed from this GET request to respect SRP and prevent DB locks.
+     * Use a scheduled Laravel Command (Cron) to transition approved vacations to completed.
+     */
     public function index(Request $request): Response
     {
-        // Transforma todas as férias aprovadas que já passaram em 'completed'
-        Vacation::where('status', 'approved')
-            ->where('end_date', '<', Carbon::today()->toDateString())
-            ->update(['status' => 'completed']);
-
         $user = $request->user();
         $currentYear = Carbon::now()->year;
 
-        $supporters = User::where('role', RoleEnum::SUPPORTER->value)->with('team')->get();
-        $globalVacations = Vacation::with('supporter.team')->orderBy('created_at', 'desc')->get();
+        /**
+         * Architectural Note: 
+         * Strict column selection prevents loading massive user objects into RAM.
+         */
+        $supporters = User::where('role', RoleEnum::SUPPORTER->value)
+            ->with('team:id,name')
+            ->get(['id', 'name', 'team_id']);
+        
+        $globalVacations = Vacation::with('supporter.team:id,name')
+            ->select(['id', 'supporter_id', 'start_date', 'end_date', 'total_days', 'status', 'year'])
+            ->orderBy('created_at', 'desc')
+            ->get();
         
         if ($user->isAdmin()) {
             $totalSupporters = $supporters->count();

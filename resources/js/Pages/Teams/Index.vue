@@ -19,7 +19,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="team in teams" :key="team.id" style="border-bottom: 1px solid var(--va-background-border);">
+          <tr v-for="team in teams.data" :key="team.id" style="border-bottom: 1px solid var(--va-background-border);">
             <td class="py-3 px-4" style="color: var(--va-text-primary)">#{{ team.id }}</td>
             <td class="py-3 px-4 font-medium" style="color: var(--va-text-primary)">{{ team.name }}</td>
             <td class="py-3 px-4 capitalize" style="color: var(--va-secondary)">
@@ -36,11 +36,19 @@
               <va-button preset="plain" icon="delete" color="danger" @click="deleteTeam(team.id)" :title="$t('teams.actions.delete')" />
             </td>
           </tr>
-          <tr v-if="teams.length === 0">
+          <tr v-if="teams.data && teams.data.length === 0">
             <td colspan="5" class="py-6 text-center" style="color: var(--va-secondary)">{{ $t('teams.no_teams') }}</td>
           </tr>
         </tbody>
       </table>
+      
+      <div v-if="teams.last_page > 1" class="mt-4 flex justify-center">
+        <va-pagination
+          v-model="currentPage"
+          :pages="teams.last_page"
+          @update:modelValue="changePage"
+        />
+      </div>
     </div>
 
     <va-modal v-model="showModal" hide-default-actions size="small">
@@ -70,7 +78,10 @@
 
         <va-select 
             v-model="form.supporter_ids" 
-            :options="supporterOptions" 
+            :options="supporterOptions"
+            @search="fetchSupportersOnType"
+            searchable
+            :loading="isLoadingSupporters"
             :label="$t('teams.form.assign_supporters')" 
             multiple
             value-by="value"
@@ -94,18 +105,14 @@
 </template>
 
 <script setup>
-/**
- * Teams Management Component.
- * Handles the CRUD operations for support teams and their member assignments.
- * Fully internationalized and isolated via the global vue-i18n instance.
- */
 import { ref, computed } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import axios from 'axios';
 
 const props = defineProps({ 
-    teams: Array,
+    teams: Object, // Atualizado para esperar o objeto de paginação (Paginator)
     supporters: Array,
 });
 
@@ -114,6 +121,7 @@ const { t } = useI18n();
 const showModal = ref(false);
 const isEditing = ref(false);
 const editingTeamId = ref(null);
+const currentPage = ref(props.teams.current_page);
 
 const form = useForm({ 
     name: '', 
@@ -121,31 +129,36 @@ const form = useForm({
     supporter_ids: []
 });
 
-/**
- * Maps the globally available shifts into the standardized object structure 
- * expected by the Vuestic Select component, injecting localized labels.
- * @returns {Array<{text: string, value: string}>}
- */
 const shiftOptions = computed(() => [
     { text: t('teams.shifts.morning'), value: 'morning' },
     { text: t('teams.shifts.afternoon'), value: 'afternoon' },
     { text: t('teams.shifts.night'), value: 'night' }
 ]);
 
-/**
- * Maps the supporters payload into a compatible format for selection binding.
- * @returns {Array<{text: string, value: number|string}>}
- */
+// Lógica de pesquisa assíncrona para supporters para evitar carregar toda a base de dados
+const asyncSupporterOptions = ref(props.supporters);
+const isLoadingSupporters = ref(false);
+
 const supporterOptions = computed(() => {
-    return props.supporters.map(s => ({
+    return asyncSupporterOptions.value.map(s => ({
         text: s.name,
         value: s.id
     }));
 });
 
-/**
- * Initializes and opens the modal for creating a new team.
- */
+const fetchSupportersOnType = async (query) => {
+    if (!query || query.length < 2) return;
+    isLoadingSupporters.value = true;
+    try {
+        const response = await axios.get(route('api.users.search'), { params: { q: query, role: 'supporter' } });
+        asyncSupporterOptions.value = response.data.data || response.data;
+    } catch (error) {
+        console.error("Error fetching supporters", error);
+    } finally {
+        isLoadingSupporters.value = false;
+    }
+};
+
 const openCreateModal = () => {
     isEditing.value = false;
     editingTeamId.value = null;
@@ -154,25 +167,25 @@ const openCreateModal = () => {
     showModal.value = true;
 };
 
-/**
- * Initializes and opens the modal for editing an existing team.
- * Pre-fills the form state including associated team members.
- * @param {Object} team - The team entity to edit.
- */
 const openEditModal = (team) => {
     isEditing.value = true;
     editingTeamId.value = team.id;
     form.name = team.name;
     form.shift = team.shift;
-    // Pre-populates the select binding with assigned supporters IDs
+    
+    // Injectamos os supporters pre-existentes nas opções para não se perderem se não houver query
+    if (team.supporters) {
+        const existingIds = asyncSupporterOptions.value.map(s => s.id);
+        team.supporters.forEach(s => {
+            if (!existingIds.includes(s.id)) asyncSupporterOptions.value.push(s);
+        });
+    }
+
     form.supporter_ids = team.supporters ? team.supporters.map(s => s.id) : [];
     form.clearErrors();
     showModal.value = true;
 };
 
-/**
- * Dispatches the active form payload to the backend to create or update a team.
- */
 const submitTeam = () => {
     if (isEditing.value) {
         form.put(route('teams.update', editingTeamId.value), {
@@ -185,13 +198,16 @@ const submitTeam = () => {
     }
 };
 
-/**
- * Prompts the user and safely issues a delete request for the selected team.
- * @param {number|string} id - The team ID to delete.
- */
 const deleteTeam = (id) => {
     if (confirm(t('teams.delete.confirm_msg'))) {
         router.delete(route('teams.destroy', id));
     }
+};
+
+/**
+ * Força a transição correta na arquitetura Inertia preservando o estado de navegação e Scroll.
+ */
+const changePage = (page) => {
+    router.get(route('teams.index'), { page }, { preserveState: true });
 };
 </script>

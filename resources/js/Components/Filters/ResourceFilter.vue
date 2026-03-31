@@ -75,11 +75,13 @@
         </va-select>
 
         <va-select
-          v-if="isSupporter && customerOptions && customerOptions.length > 0"
+          v-if="isSupporter"
           v-model="internalCustomers"
-          :options="customerOptions"
-          multiple
+          :options="asyncCustomerOptions"
+          :loading="isLoadingCustomers"
+          @search="fetchCustomersOnType"
           searchable
+          multiple
           text-by="name"
           value-by="id"
           :placeholder="$t('filters.customers')"
@@ -173,10 +175,11 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import axios from 'axios';
 
 /**
  * Reusable layout and logic component for resource filtering.
- * Emits unified events to maintain a Single Source of Truth for list queries.
+ * Refactored to support Lazy Loading for high volume dropdowns (e.g. Customers).
  */
 const props = defineProps({
   query: { type: String, default: '' },
@@ -211,6 +214,10 @@ const internalRole = ref(props.role);
 const internalCustomers = ref(props.customers);
 const internalAssignees = ref(props.assignees);
 const internalTags = ref(props.tags);
+
+// Architectural Note: Manage dynamic state internally to prevent memory bloat
+const asyncCustomerOptions = ref(props.customerOptions);
+const isLoadingCustomers = ref(false);
 
 watch(() => props.query, (newVal) => { internalQuery.value = newVal; });
 watch(() => props.status, (newVal) => { internalStatus.value = newVal; });
@@ -248,6 +255,24 @@ const resolveTagName = (val) => {
         return val.text || val.name || getDetailedTag(val.value || val.id).name;
     }
     return getDetailedTag(val).name;
+};
+
+/**
+ * Dynamically queries the API to populate the customers dropdown based on user input.
+ * Replaces the need to inject all database users into memory simultaneously.
+ */
+const fetchCustomersOnType = async (query) => {
+    if (!query || query.length < 2) return;
+    
+    isLoadingCustomers.value = true;
+    try {
+        const response = await axios.get(route('api.users.search'), { params: { q: query, role: 'customer' } });
+        asyncCustomerOptions.value = response.data.data || response.data;
+    } catch (error) {
+        console.error("Error fetching customers dynamically", error);
+    } finally {
+        isLoadingCustomers.value = false;
+    }
 };
 
 const clearAllFilters = () => {

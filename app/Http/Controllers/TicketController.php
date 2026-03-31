@@ -86,7 +86,6 @@ class TicketController extends Controller
         $availableTags = [];
         
         if ($user->isStaff()) {
-            // Tags are usually a small dataset, safe to cache and load entirely.
             $availableTags = Cache::remember('tags_list_all', now()->addDay(), function () {
                 return Tag::select('id', 'name', 'color')->orderBy('name')->get();
             });
@@ -115,10 +114,6 @@ class TicketController extends Controller
         if ($request->filled('search')) {
             $searchTerm = $request->search;
             $query->where(function ($q) use ($searchTerm, $user) {
-                /**
-                 * Architect Note: Removed leading wildcard (%) to allow the database to use B-Tree indexes.
-                 * If full-text search is strictly required inside the string, consider Laravel Scout or MySQL/PostgreSQL Full-Text Indexes.
-                 */
                 $q->where('title', 'like', $searchTerm . '%');
                 
                 if ($user->isStaff()) {
@@ -175,7 +170,6 @@ class TicketController extends Controller
         $availableTags = [];
 
         if ($request->user()->isStaff()) {
-            // Architect Note: Empty array provided. Frontend must use async search.
             $customers = [];
                 
             $availableTags = Cache::remember('tags_list_all', now()->addDay(), function () {
@@ -235,28 +229,24 @@ class TicketController extends Controller
             abort(403, __('tickets.unauthorized_access'));
         }
 
-        $ticket->load(['customer:id,name,email', 'assignee:id,name', 'messages.sender:id,name,role', 'tags', 'participants:id,name']);
+        /**
+         * Architect Note: Removed 'messages' eager loading. Loading 500+ messages at once
+         * causes memory exhaustion and slow DOM rendering. The frontend must now fetch
+         * messages asynchronously via pagination. Mentionable users global loading was also removed.
+         */
+        $ticket->load(['customer:id,name,email', 'assignee:id,name', 'tags', 'participants:id,name']);
 
         $availableTags = [];
-        $mentionableUsers = [];
 
         if ($user->isStaff()) {
             $availableTags = Cache::remember('tags_list_all', now()->addDay(), function () {
                 return Tag::select('id', 'name', 'color')->orderBy('name')->get();
-            });
-            
-            $mentionableUsers = Cache::remember('mentionable_staff_users', now()->addHours(4), function () {
-                return User::whereIn('role', ['supporter', 'admin'])
-                    ->select('id', 'name', 'role')
-                    ->orderBy('name')
-                    ->get();
             });
         }
 
         return Inertia::render('Tickets/Show', [
             'ticket' => $ticket,
             'availableTags' => $availableTags,
-            'mentionableUsers' => $mentionableUsers,
         ]);
     }
 

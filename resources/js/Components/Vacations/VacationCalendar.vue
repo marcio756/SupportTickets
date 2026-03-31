@@ -90,8 +90,7 @@
 <script setup>
 /**
  * Vacation Calendar Component.
- * Renders an interactive matrix tracking employee absence states dynamically by month.
- * Localizes time strings using native Intl APIS driven by vue-i18n.
+ * Refactored to utilize an O(1) dictionary mapping to prevent main thread freezing.
  */
 import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -107,30 +106,42 @@ const currentDate = new Date();
 const currentMonth = ref(currentDate.getMonth());
 const currentYear = ref(currentDate.getFullYear());
 
-/**
- * Derives the localized full name of the targeted month.
- * @returns {string} The localized month string.
- */
 const monthName = computed(() => {
     return new Date(currentYear.value, currentMonth.value).toLocaleString(locale.value, { month: 'long' });
 });
 
-/**
- * Calculates total available days in the current localized matrix.
- * @returns {number}
- */
 const daysInMonth = computed(() => {
     return new Date(currentYear.value, currentMonth.value + 1, 0).getDate();
 });
 
 /**
- * Aggregates supporters array with computed allowance metrics.
- * Limits computations strictly to ongoing cycles excluding rejections.
- * @returns {Array<Object>}
+ * Pre-computes a highly optimized O(1) lookup dictionary.
+ * Maps: [supporter_id][date_string] -> vacation_object
  */
+const vacationsMap = computed(() => {
+    const map = {};
+    
+    props.vacations.forEach(v => {
+        if (v.status === 'rejected') return;
+        
+        if (!map[v.supporter_id]) {
+            map[v.supporter_id] = {};
+        }
+        
+        const startDate = new Date(v.start_date.substring(0, 10));
+        const endDate = new Date(v.end_date.substring(0, 10));
+        
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            map[v.supporter_id][dateStr] = v;
+        }
+    });
+    
+    return map;
+});
+
 const mappedSupporters = computed(() => {
     return props.supporters.map(supporter => {
-        // Ignores rejections for quota math. Pending and completed subtract availability.
         const usedDays = props.vacations
             .filter(v => v.supporter_id === supporter.id && v.year === currentYear.value && v.status !== 'rejected')
             .reduce((sum, v) => sum + v.total_days, 0);
@@ -139,11 +150,6 @@ const mappedSupporters = computed(() => {
     });
 });
 
-/**
- * Boolean check for standard weekend offset rendering (Sat/Sun).
- * @param {number} day 
- * @returns {boolean}
- */
 const isWeekend = (day) => {
     const date = new Date(currentYear.value, currentMonth.value, day);
     const dayOfWeek = date.getDay();
@@ -151,25 +157,12 @@ const isWeekend = (day) => {
 };
 
 /**
- * Locates an active vacation node crossing the target matrix cell.
- * @param {number|string} supporterId 
- * @param {number} day 
- * @returns {Object|undefined} The matching vacation record if exists.
+ * Instantly retrieves a vacation record using the pre-computed dictionary.
+ * Complexity: O(1) instead of O(N) array scans inside nested loops.
  */
 const getVacationDay = (supporterId, day) => {
     const targetStr = `${currentYear.value}-${String(currentMonth.value + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-    return props.vacations.find(v => {
-        if (v.supporter_id !== supporterId) return false;
-        if (v.status === 'rejected') return false; 
-        
-        // Remove timestamps to strictly compare YYYY-MM-DD
-        const sDate = v.start_date.substring(0, 10);
-        const eDate = v.end_date.substring(0, 10);
-        
-        // Weekend filtering omitted to render continuous HTML bridges
-        return targetStr >= sDate && targetStr <= eDate;
-    });
+    return vacationsMap.value[supporterId]?.[targetStr];
 };
 
 const prevMonth = () => { if (currentMonth.value === 0) { currentMonth.value = 11; currentYear.value--; } else { currentMonth.value--; } };
