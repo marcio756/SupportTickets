@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class WorkSession extends Model
 {
@@ -23,7 +25,6 @@ class WorkSession extends Model
     protected function casts(): array
     {
         return [
-            // Architect Note: status enum cast removed to prevent ValueError 500
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
             'total_worked_seconds' => 'integer',
@@ -31,48 +32,56 @@ class WorkSession extends Model
     }
 
     /**
-     * By appending this, the JSON response will always include the dynamically 
-     * calculated 'total_duration_seconds' so the Flutter app can resume its timer accurately.
+     * Appends calculated duration for real-time tracking.
      */
     protected $appends = ['total_duration_seconds'];
 
     /**
      * Calculates the real-time active duration dynamically.
+     * Hardened against serialization failures and missing Log facade.
      *
      * @return int
      */
     public function getTotalDurationSecondsAttribute(): int
     {
-        $statusValue = $this->status instanceof \BackedEnum ? $this->status->value : $this->status;
+        try {
+            // Defensive check for status to handle both enums and strings safely
+            $statusValue = $this->status instanceof \BackedEnum ? $this->status->value : (string) $this->status;
 
-        // If it's finished, simply return the database recorded total.
-        if ($statusValue === WorkSessionStatusEnum::COMPLETED->value) {
-            return (int) ($this->total_worked_seconds ?? 0);
-        }
+            if ($statusValue === WorkSessionStatusEnum::COMPLETED->value) {
+                return (int) ($this->total_worked_seconds ?? 0);
+            }
 
-        // Architect Note: Guard against calling diffInSeconds on null which crashes with 500
-        if (empty($this->started_at)) {
+            if (!$this->started_at) {
+                return 0;
+            }
+
+            $now = now();
+            $pauses = $this->relationLoaded('pauses') ? $this->pauses : $this->pauses()->get(); 
+            
+            $totalPauseSeconds = 0;
+            foreach ($pauses as $pause) {
+                if (!$pause->started_at) continue;
+                
+                $start = Carbon::parse($pause->started_at);
+                $end = $pause->ended_at ? Carbon::parse($pause->ended_at) : $now;
+                $totalPauseSeconds += $start->diffInSeconds($end);
+            }
+
+            $startSession = Carbon::parse($this->started_at);
+            $grossSeconds = $startSession->diffInSeconds($now);
+            
+            return (int) max(0, $grossSeconds - $totalPauseSeconds);
+
+        } catch (\Throwable $e) {
+            // Use global helper to avoid class-not-found issues during critical serialization
+            logger()->error("Fail-safe triggered in WorkSession model (ID: {$this->id}): " . $e->getMessage());
             return 0;
         }
-
-        $now = now();
-        $pauses = $this->pauses ?? collect(); 
-        
-        $totalPauseSeconds = $pauses->sum(function ($pause) use ($now) {
-            if (empty($pause->started_at)) return 0;
-            
-            $end = $pause->ended_at ?? $now;
-            return $pause->started_at->diffInSeconds($end);
-        });
-
-        $grossSeconds = $this->started_at->diffInSeconds($now);
-        return max(0, $grossSeconds - $totalPauseSeconds);
     }
 
     /**
-     * The supporter this session belongs to.
-     *
-     * @return BelongsTo
+     * Relationship: Supporter/Staff who owns the session.
      */
     public function user(): BelongsTo
     {
@@ -80,9 +89,7 @@ class WorkSession extends Model
     }
 
     /**
-     * All pause intervals recorded within this session.
-     *
-     * @return HasMany
+     * Relationship: Recorded pauses within this session.
      */
     public function pauses(): HasMany
     {

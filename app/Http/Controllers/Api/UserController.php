@@ -24,15 +24,18 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        if (!$request->user()->isSupporter() && !$request->user()->isAdmin()) {
+        if (!$request->user()->isSupporter() && (!$request->user()->isAdmin())) {
             return response()->json(['message' => 'Unauthorized access.'], 403);
         }
 
         // Include soft-deleted users so the frontend can display and restore them
         $query = User::withTrashed();
 
-        if ($request->filled('query')) {
-            $searchTerm = '%' . $request->input('query') . '%';
+        // Aceita 'search' (usado pelo CustomerSelector) ou 'query'
+        $searchTermInput = $request->input('search', $request->input('query'));
+
+        if (!empty($searchTermInput)) {
+            $searchTerm = '%' . $searchTermInput . '%';
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('name', 'like', $searchTerm)
                   ->orWhere('email', 'like', $searchTerm);
@@ -43,7 +46,9 @@ class UserController extends Controller
             $query->where('role', $request->input('role'));
         }
 
-        $users = $query->paginate(15);
+        // Limite ajustado para 20 resultados por página conforme solicitado
+        $limit = $request->input('limit', 20);
+        $users = $query->paginate($limit);
 
         return response()->json($users);
     }

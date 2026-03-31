@@ -8,6 +8,7 @@
         bordered
         clearable
         @update:modelValue="debouncedSearch"
+        @clear="clearSearch"
     >
         <template #prependInner>
             <va-icon name="search" :color="isLoading ? 'primary' : '#9ca3af'" size="small" :class="{ 'animate-pulse': isLoading }" />
@@ -15,7 +16,7 @@
     </va-input>
     
     <div 
-        v-if="asyncCustomers.length > 0 && !isLoading"
+        v-if="asyncCustomers.length > 0 && !isLoading && !apiError"
         class="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-800 px-2 cursor-pointer group transition-opacity"
         @click="toggleAll"
     >
@@ -31,16 +32,24 @@
     </div>
 
     <div 
-        class="relative border rounded-xl min-h-[150px] max-h-[450px] overflow-y-auto custom-scrollbar transition-all duration-300 bg-gray-50/50 dark:bg-gray-950/30"
+        class="relative border rounded-xl min-h-[250px] max-h-[450px] overflow-y-auto custom-scrollbar transition-all duration-300 bg-gray-50/50 dark:bg-gray-950/30"
         :class="{
-            'border-red-300 dark:border-red-800 ring-1 ring-red-100 dark:ring-red-900/30': error,
-            'border-gray-100 dark:border-gray-800': !error
+            'border-red-300 dark:border-red-800 ring-1 ring-red-100 dark:ring-red-900/30': error || apiError,
+            'border-gray-100 dark:border-gray-800': !error && !apiError
         }"
+        @scroll="handleScroll"
     >
-      
       <transition name="fade" mode="out-in">
-        <div v-if="isLoading" class="flex flex-col p-1.5 gap-2">
-            <div v-for="i in 4" :key="`skeleton-${i}`" class="flex items-center gap-4 p-3 rounded-lg animate-pulse bg-gray-100/50 dark:bg-gray-800/50">
+        <div v-if="apiError" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-sm text-red-500 gap-3 text-center">
+            <va-icon name="error_outline" size="large" color="danger" />
+            <span class="font-medium">{{ apiError }}</span>
+            <va-button preset="secondary" size="small" color="danger" @click="fetchCustomers(1)">
+                Tentar Novamente
+            </va-button>
+        </div>
+
+        <div v-else-if="isLoading && currentPage === 1 && asyncCustomers.length === 0" class="flex flex-col p-1.5 gap-2">
+            <div v-for="i in 5" :key="`skeleton-${i}`" class="flex items-center gap-4 p-3 rounded-lg animate-pulse bg-gray-100/50 dark:bg-gray-800/50">
                 <div class="w-5 h-5 bg-gray-300 dark:bg-gray-700 rounded"></div>
                 <div class="flex-grow space-y-2">
                     <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/3"></div>
@@ -49,49 +58,51 @@
             </div>
         </div>
 
-        <div v-else-if="asyncCustomers.length === 0 && search.length > 0" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-sm text-gray-500 gap-2">
-          <va-icon name="person_search" size="large" color="#9ca3af" />
-          <span>{{ t('announcements.no_customers_found') }}</span>
-        </div>
-
-        <div v-else-if="asyncCustomers.length === 0 && search.length === 0" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-sm text-gray-500 gap-2">
-          <va-icon name="search" size="large" color="#9ca3af" />
-          <span>Escreva para pesquisar clientes...</span>
+        <div v-else-if="asyncCustomers.length === 0" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-sm text-gray-500 gap-2">
+          <va-icon :name="search.length > 0 ? 'person_search' : 'group'" size="large" color="#9ca3af" />
+          <span>{{ search.length > 0 ? t('announcements.no_customers_found') : 'Nenhum utilizador encontrado.' }}</span>
         </div>
         
-        <transition-group v-else name="list-complete" tag="div" class="flex flex-col p-1.5">
-          <div 
-            v-for="customer in asyncCustomers" 
-            :key="customer.id" 
-            class="list-complete-item flex items-center gap-4 p-3 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all duration-200 cursor-pointer group"
-            :class="{ 'bg-blue-50/50 dark:bg-blue-900/20': internalSelection.includes(customer.id) }"
-            @click="toggleSingleSelection(customer.id)"
-          >
-            <va-checkbox 
-                :model-value="internalSelection.includes(customer.id)"
-                color="primary"
-                class="flex-shrink-0"
-                @click.stop="toggleSingleSelection(customer.id)"
-            />
-            
-            <div class="flex-grow select-none">
-              <div class="font-semibold text-gray-950 dark:text-gray-50 text-sm flex items-center gap-2">
-                  {{ customer.name }}
-                  <transition name="drill">
-                    <span v-if="internalSelection.includes(customer.id)" class="text-xs text-blue-500 font-medium">✓</span>
-                  </transition>
+        <div v-else>
+            <transition-group name="list-complete" tag="div" class="flex flex-col p-1.5">
+              <div 
+                v-for="customer in asyncCustomers" 
+                :key="customer.id" 
+                class="list-complete-item flex items-center gap-4 p-3 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-all duration-200 cursor-pointer group"
+                :class="{ 'bg-indigo-50/50 dark:bg-indigo-900/20': internalSelection.includes(customer.id) }"
+                @click="toggleSingleSelection(customer.id)"
+              >
+                <va-checkbox 
+                    :model-value="internalSelection.includes(customer.id)"
+                    color="primary"
+                    class="flex-shrink-0"
+                    @click.stop="toggleSingleSelection(customer.id)"
+                />
+                
+                <div class="flex-grow select-none">
+                  <div class="font-semibold text-gray-950 dark:text-gray-50 text-sm flex items-center gap-2">
+                      {{ customer.name }}
+                      <transition name="drill">
+                        <span v-if="internalSelection.includes(customer.id)" class="text-xs text-indigo-500 font-medium">✓</span>
+                      </transition>
+                  </div>
+                  <div class="text-xs text-gray-600 dark:text-gray-400 font-mono">{{ customer.email }}</div>
+                </div>
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 font-mono">{{ customer.email }}</div>
+            </transition-group>
+
+            <div v-if="isLoadingMore" class="p-4 flex justify-center items-center gap-2 text-sm text-gray-500 border-t border-gray-50 dark:border-gray-900">
+                <va-icon name="loop" class="animate-spin" size="small" color="primary" />
+                <span>{{ t('common.loading') }}...</span>
             </div>
-          </div>
-        </transition-group>
+        </div>
       </transition>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onUnmounted } from 'vue';
+import { ref, computed, watch, onUnmounted, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 
@@ -106,41 +117,90 @@ const { t } = useI18n();
 
 const search = ref('');
 const isLoading = ref(false);
-const asyncCustomers = ref([...props.customers]);
+const isLoadingMore = ref(false);
+const apiError = ref(null);
 const internalSelection = ref([...props.modelValue]);
 let searchTimeout = null;
+
+// Initial state from props to avoid empty screen
+const asyncCustomers = ref([...props.customers]);
+const currentPage = ref(1);
+const lastPage = ref(1);
 
 const isAllSelected = computed({
   get() {
       if (asyncCustomers.value.length === 0) return false;
-      return asyncCustomers.value.every(c => internalSelection.value.includes(c.id));
+      const currentVisibleIds = asyncCustomers.value.map(c => c.id);
+      return currentVisibleIds.every(id => internalSelection.value.includes(id));
   },
   set() {}
 });
 
-const debouncedSearch = (query) => {
-    clearTimeout(searchTimeout);
+/**
+ * Core fetch function with 20 items per page limit as requested.
+ * Contains fail-safes for unauthorized API calls commonly found in SPA setups.
+ */
+const fetchCustomers = async (page = 1, append = false) => {
+    if (page === 1) isLoading.value = true;
+    else isLoadingMore.value = true;
     
-    if (!query || query.length < 2) {
-        asyncCustomers.value = props.customers; 
-        isLoading.value = false;
-        return;
-    }
+    apiError.value = null;
 
-    isLoading.value = true;
-    
-    searchTimeout = setTimeout(async () => {
-        try {
-            const response = await axios.get('/api/users', { 
-                params: { search: query, role: 'customer', limit: 50 } 
-            });
-            asyncCustomers.value = response.data.data || response.data;
-        } catch (error) {
-            console.error('Search failed:', error);
-        } finally {
-            isLoading.value = false;
+    try {
+        const response = await axios.get('/api/users', { 
+            params: { 
+                search: search.value, 
+                role: 'customer', 
+                limit: 20,
+                page: page
+            }
+        });
+        
+        const data = response.data;
+        const newItems = data.data || [];
+        
+        if (append) {
+            const existingIds = new Set(asyncCustomers.value.map(c => c.id));
+            const filtered = newItems.filter(item => !existingIds.has(item.id));
+            asyncCustomers.value = [...asyncCustomers.value, ...filtered];
+        } else {
+            asyncCustomers.value = newItems;
         }
-    }, 400); 
+        
+        currentPage.value = data.current_page || 1;
+        lastPage.value = data.last_page || 1;
+        
+    } catch (err) {
+        console.error('Customer fetch failed:', err);
+        // Architectural UX enhancement: Graceful UI feedback for HTTP errors
+        if (err.response && err.response.status === 401) {
+            apiError.value = 'Acesso não autorizado (401). Verifica o SANCTUM_STATEFUL_DOMAINS no teu ficheiro .env para permitir pedidos API.';
+        } else {
+            apiError.value = 'Falha na comunicação com o servidor ao procurar clientes.';
+        }
+    } finally {
+        isLoading.value = false;
+        isLoadingMore.value = false;
+    }
+};
+
+const debouncedSearch = () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => fetchCustomers(1, false), 400); 
+};
+
+const clearSearch = () => {
+    search.value = '';
+    fetchCustomers(1, false);
+};
+
+const handleScroll = (e) => {
+    if (isLoadingMore.value || currentPage.value >= lastPage.value || apiError.value) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    if (scrollTop + clientHeight >= scrollHeight - 50) {
+        fetchCustomers(currentPage.value + 1, true);
+    }
 };
 
 const toggleAll = () => {
@@ -158,11 +218,8 @@ const toggleAll = () => {
 
 const toggleSingleSelection = (id) => {
     const index = internalSelection.value.indexOf(id);
-    if (index === -1) {
-        internalSelection.value.push(id);
-    } else {
-        internalSelection.value.splice(index, 1);
-    }
+    if (index === -1) internalSelection.value.push(id);
+    else internalSelection.value.splice(index, 1);
     emitSelection();
 };
 
@@ -174,35 +231,26 @@ watch(() => props.modelValue, (newVal) => {
   internalSelection.value = [...newVal];
 }, { deep: true });
 
-onUnmounted(() => {
-    clearTimeout(searchTimeout);
+onMounted(() => {
+    fetchCustomers(1, false);
 });
+
+onUnmounted(() => clearTimeout(searchTimeout));
 </script>
 
 <style scoped>
-/* Scrollbar optimization for UI continuity */
 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e2e8f0; border-radius: 10px; }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #1f2937; }
 
-/* Transitions */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
 .drill-enter-active, .drill-leave-active { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
 .drill-enter-from, .drill-leave-to { opacity: 0; transform: scale(0.8); }
 
-.list-complete-item {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.list-complete-enter-from,
-.list-complete-leave-to {
-  opacity: 0;
-  transform: translateX(-10px);
-}
-.list-complete-leave-active {
-  position: absolute;
-  width: calc(100% - 12px);
-}
+.list-complete-item { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+.list-complete-enter-from, .list-complete-leave-to { opacity: 0; transform: translateX(-10px); }
+.list-complete-leave-active { position: absolute; width: calc(100% - 12px); }
 </style>

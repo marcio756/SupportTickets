@@ -12,7 +12,7 @@
           :loading="form.processing"
           :disabled="form.processing || form.customer_ids.length === 0"
           @click="submit"
-          class="shadow-lg shadow-indigo-500/20"
+          class="shadow-lg shadow-primary/20"
         >
           {{ form.processing ? t('announcements.btn_sending') : t('announcements.btn_send') }}
         </va-button>
@@ -27,7 +27,7 @@
           <div class="md:col-span-2 space-y-8">
             <va-card outlined class="!border-gray-200 dark:!border-gray-800 !bg-white dark:!bg-gray-900 !rounded-2xl shadow-sm">
               <va-card-title class="flex items-center gap-3 !pt-6 !pb-2">
-                <va-icon name="edit_note" color="indigo" size="large" />
+                <va-icon name="edit_note" color="primary" size="large" />
                 <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('announcements.step_2') }}</h3>
               </va-card-title>
               
@@ -42,11 +42,11 @@
                     class="w-full text-lg"
                     :error="!!form.errors.subject"
                     :error-messages="form.errors.subject"
-                    color="indigo"
+                    color="primary"
                     bordered
                   >
                     <template #prependInner>
-                      <va-icon name="mail_outline" color="gray" size="small" />
+                      <va-icon name="mail_outline" color="#9ca3af" size="small" />
                     </template>
                   </va-input>
                 </div>
@@ -64,7 +64,7 @@
             <va-card outlined class="!border-gray-200 dark:!border-gray-800 !bg-white dark:!bg-gray-900 !rounded-2xl shadow-sm">
                <va-card-title class="flex items-center justify-between gap-3 !pt-6 !pb-2">
                  <div class="flex items-center gap-3">
-                   <va-icon name="group_add" color="indigo" size="large" />
+                   <va-icon name="group_add" color="primary" size="large" />
                    <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ t('announcements.step_1') }}</h3>
                  </div>
                  

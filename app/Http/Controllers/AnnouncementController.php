@@ -25,9 +25,11 @@ class AnnouncementController extends Controller
     {
         $this->authorizeAccess($request);
 
+        // Limitamos a 50 para evitar esgotar a memória. O frontend usa pesquisa assíncrona para o resto.
         $customers = User::where('role', RoleEnum::CUSTOMER->value)
             ->select('id', 'name', 'email')
             ->orderBy('name')
+            ->limit(50) 
             ->get();
 
         return Inertia::render('Announcements/Create', [
