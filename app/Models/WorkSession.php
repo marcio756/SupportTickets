@@ -23,7 +23,7 @@ class WorkSession extends Model
     protected function casts(): array
     {
         return [
-            'status' => WorkSessionStatusEnum::class,
+            // Architect Note: status enum cast removed to prevent ValueError 500
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
             'total_worked_seconds' => 'integer',
@@ -43,15 +43,24 @@ class WorkSession extends Model
      */
     public function getTotalDurationSecondsAttribute(): int
     {
+        $statusValue = $this->status instanceof \BackedEnum ? $this->status->value : $this->status;
+
         // If it's finished, simply return the database recorded total.
-        if ($this->status === WorkSessionStatusEnum::COMPLETED) {
-            return $this->total_worked_seconds ?? 0;
+        if ($statusValue === WorkSessionStatusEnum::COMPLETED->value) {
+            return (int) ($this->total_worked_seconds ?? 0);
+        }
+
+        // Architect Note: Guard against calling diffInSeconds on null which crashes with 500
+        if (empty($this->started_at)) {
+            return 0;
         }
 
         $now = now();
-        $pauses = $this->pauses; 
+        $pauses = $this->pauses ?? collect(); 
         
         $totalPauseSeconds = $pauses->sum(function ($pause) use ($now) {
+            if (empty($pause->started_at)) return 0;
+            
             $end = $pause->ended_at ?? $now;
             return $pause->started_at->diffInSeconds($end);
         });

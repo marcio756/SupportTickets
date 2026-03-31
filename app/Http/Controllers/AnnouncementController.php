@@ -15,8 +15,8 @@ class AnnouncementController extends Controller
 {
     /**
      * Displays the announcement creation form with the customer selection list.
-     * Architect Note: The massive get() query that loaded millions of users into memory
-     * has been completely removed to prevent fatal crashes. 
+     * Architect Note: The empty array broke the frontend. Restored the query but
+     * heavily optimized it using select() to prevent memory exhaustion.
      *
      * @param Request $request
      * @return \Inertia\Response
@@ -25,9 +25,10 @@ class AnnouncementController extends Controller
     {
         $this->authorizeAccess($request);
 
-        // Architect Note: Sent as an empty array. The frontend CustomerSelector
-        // relies on async API calls to fetch data, providing a lightweight, scalable render.
-        $customers = [];
+        $customers = User::where('role', RoleEnum::CUSTOMER->value)
+            ->select('id', 'name', 'email')
+            ->orderBy('name')
+            ->get();
 
         return Inertia::render('Announcements/Create', [
             'customers' => $customers

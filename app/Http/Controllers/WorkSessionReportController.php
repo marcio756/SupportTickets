@@ -54,10 +54,22 @@ class WorkSessionReportController extends Controller
         $totalSeconds = 0;
 
         $transformedSessions = $sessionsData->map(function ($session) use (&$totalSeconds) {
-            // Architect Note: Manual calculation ensures no 500 errors if the model accessor fails
-            $grossSeconds = $session->started_at->diffInSeconds($session->ended_at ?? now());
+            // Architect Note: Guard against corrupted records without started_at
+            if (empty($session->started_at)) {
+                return null;
+            }
+
+            $startedAt = Carbon::parse($session->started_at);
+            $endedAt = $session->ended_at ? Carbon::parse($session->ended_at) : now();
+
+            $grossSeconds = $startedAt->diffInSeconds($endedAt);
+            
             $pausedSeconds = $session->pauses->sum(function ($pause) {
-                return $pause->started_at->diffInSeconds($pause->ended_at ?? now());
+                if (empty($pause->started_at)) return 0;
+                
+                $pauseStart = Carbon::parse($pause->started_at);
+                $pauseEnd = $pause->ended_at ? Carbon::parse($pause->ended_at) : now();
+                return $pauseStart->diffInSeconds($pauseEnd);
             });
 
             $secs = max(0, $grossSeconds - $pausedSeconds);
@@ -66,9 +78,9 @@ class WorkSessionReportController extends Controller
             $hours = floor($secs / 3600);
             $minutes = floor(($secs % 3600) / 60);
             
-            // Architect Note: Safe read of the Enum value regardless of how Eloquent casts it
+            // Architect Note: Correct BackedEnum parsing in PHP 8.1+
             $statusValue = 'unknown';
-            if (is_object($session->status) && property_exists($session->status, 'value')) {
+            if ($session->status instanceof \BackedEnum) {
                 $statusValue = $session->status->value;
             } elseif (is_string($session->status)) {
                 $statusValue = $session->status;
@@ -76,20 +88,22 @@ class WorkSessionReportController extends Controller
             
             return [
                 'id' => $session->id,
-                'user' => $session->user,
+                // Extraction via 'only' prevents implicit full-model serialization errors
+                'user' => $session->user ? $session->user->only(['id', 'name', 'email']) : null,
                 'status' => $statusValue,
-                'started_at_iso' => $session->started_at->toIso8601String(),
-                'ended_at_iso' => $session->ended_at ? $session->ended_at->toIso8601String() : null,
+                'started_at_iso' => $startedAt->toIso8601String(),
+                'ended_at_iso' => $session->ended_at ? Carbon::parse($session->ended_at)->toIso8601String() : null,
                 'total_time_formatted' => $secs > 0 ? "{$hours}h {$minutes}m" : '-',
                 'pauses' => $session->pauses->map(function ($pause) {
+                    if (empty($pause->started_at)) return null;
                     return [
                         'id' => $pause->id,
-                        'started_at_iso' => $pause->started_at->toIso8601String(),
-                        'ended_at_iso' => $pause->ended_at ? $pause->ended_at->toIso8601String() : null,
+                        'started_at_iso' => Carbon::parse($pause->started_at)->toIso8601String(),
+                        'ended_at_iso' => $pause->ended_at ? Carbon::parse($pause->ended_at)->toIso8601String() : null,
                     ];
-                }),
+                })->filter()->values(),
             ];
-        });
+        })->filter()->values();
 
         $usersList = [];
         if ($user->isAdmin()) {

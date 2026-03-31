@@ -50,7 +50,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'role' => RoleEnum::class,
+            // Architect Note: role enum cast removed to prevent ValueError 500 crashes
+            // from un-sanitized or legacy string data in the database during hydration.
             'daily_support_seconds' => 'integer',
         ];
     }
@@ -77,17 +78,17 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === RoleEnum::ADMIN || $this->role === RoleEnum::ADMIN->value;
+        return $this->role === RoleEnum::ADMIN || $this->role === RoleEnum::ADMIN->value || $this->role === 'admin';
     }
 
     public function isSupporter(): bool
     {
-        return $this->role === RoleEnum::SUPPORTER || $this->role === RoleEnum::SUPPORTER->value;
+        return $this->role === RoleEnum::SUPPORTER || $this->role === RoleEnum::SUPPORTER->value || $this->role === 'supporter';
     }
 
     public function isCustomer(): bool
     {
-        return $this->role === RoleEnum::CUSTOMER || $this->role === RoleEnum::CUSTOMER->value;
+        return $this->role === RoleEnum::CUSTOMER || $this->role === RoleEnum::CUSTOMER->value || $this->role === 'customer';
     }
 
     /**

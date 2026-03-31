@@ -93,7 +93,8 @@ class UserController extends Controller
         ]);
 
         // Prevent changing the role of the last remaining admin
-        if ($user->role === RoleEnum::ADMIN->value && $request->role !== RoleEnum::ADMIN->value) {
+        $currentRole = $user->role instanceof RoleEnum ? $user->role->value : $user->role;
+        if ($currentRole === RoleEnum::ADMIN->value && $request->role !== RoleEnum::ADMIN->value) {
             $adminCount = User::where('role', RoleEnum::ADMIN->value)->count();
             if ($adminCount <= 1) {
                 return response()->json(['message' => 'Cannot change the role of the last admin user.'], 422);
@@ -124,7 +125,8 @@ class UserController extends Controller
         }
 
         // Prevent an admin from deleting the last admin in the system
-        if ($user->role === RoleEnum::ADMIN->value) {
+        $currentRole = $user->role instanceof RoleEnum ? $user->role->value : $user->role;
+        if ($currentRole === RoleEnum::ADMIN->value) {
             $adminCount = User::where('role', RoleEnum::ADMIN->value)->count();
             if ($adminCount <= 1) {
                 return response()->json(['message' => 'Cannot deactivate the last admin user.'], 422);

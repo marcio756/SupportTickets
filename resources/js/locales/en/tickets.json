@@ -53,7 +53,7 @@
         "open_status_alert": "This ticket is open. Please review the details.",
         "no_messages": "No messages yet.",
         "input_disabled_placeholder": "You cannot reply to this ticket at this time.",
-        "input_placeholder": "Type your message here... Use @ to mention someone.",
+        "input_placeholder": "Type your message here... Use {'@'} to mention someone.",
         "view_attachment": "View Attachment",
         "email_message_tooltip": "Message via Email"
     },

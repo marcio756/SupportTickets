@@ -32,7 +32,7 @@
         "open_status_alert": "O ticket encontra-se \"Aberto\". Por favor, altera-o para \"Em Curso\" no menu de ações para começares a responder e a registar tempo.",
         "no_messages": "Ainda não existem mensagens.",
         "input_disabled_placeholder": "O chat está bloqueado. O ticket tem de estar Em Curso.",
-        "input_placeholder": "Escreve a tua resposta aqui... (Usa @ para mencionar)",
+        "input_placeholder": "Escreve a tua resposta aqui... (Usa {'@'} para mencionar)",
         "view_attachment": "Ver anexo",
         "email_message_tooltip": "Mensagem por e-mail"
     },
