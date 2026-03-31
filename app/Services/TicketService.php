@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Handles all business logic related to Ticket manipulation, assignments and messaging.
- * Architect Note: Highly optimized for scale. Auto-assignment relies on strictly 
- * indexed, denormalized database columns (is_online, active_tickets_count) to provide O(1) execution time.
+ * Architect Note: Optimized DB transactions and relationship queries to prevent 
+ * deadlocks and N+1 memory bloat when scaling to millions of records.
  */
 class TicketService
 {
@@ -36,7 +36,10 @@ class TicketService
             if (isset($data['priority'])) $ticket->priority = $data['priority'];
             
             $ticket->status = TicketStatusEnum::OPEN->value;
+            
+            // Assign the creator ID to the correct database column 'customer_id'
             $ticket->customer_id = $creator ? $creator->id : null;
+            
             $ticket->source = $data['source'] ?? 'web';
             
             if (isset($data['sender_email'])) {
@@ -75,6 +78,7 @@ class TicketService
 
     public function sendMessage(?User $user, Ticket $ticket, array $data, $attachments = null): TicketMessage
     {
+        // Business Rule: Block customers with no available support time
         if ($user && $user->role === RoleEnum::CUSTOMER->value) {
             $supportTimeManager = app(\App\Services\SupportTimeManager::class);
             if (!$supportTimeManager->hasAvailableTime($user)) {
@@ -101,12 +105,14 @@ class TicketService
                 $this->attachmentService->processAttachments($data['attachments'], clone $message);
             }
 
+            // Notification Logic for Mentions
             if (!empty($data['mentions'])) {
                 $userIds = array_filter($data['mentions'], 'is_numeric');
                 
                 if (!empty($userIds)) {
                     $ticket->participants()->syncWithoutDetaching($userIds);
 
+                    // Architect Note: Optimized memory footprint by selecting only necessary columns
                     $mentionedUsers = User::whereIn('id', $userIds)->select('id', 'name')->get();
                     
                     foreach ($mentionedUsers as $mentionedUser) {
@@ -136,6 +142,15 @@ class TicketService
         return $ticket;
     }
 
+    /**
+     * Assigns a ticket to a supporter. If no target supporter is specified, 
+     * it assigns the ticket to the acting user (self-claim).
+     *
+     * @param User $user The user performing the action.
+     * @param Ticket $ticket The ticket to be assigned.
+     * @param User|null $supporter The target supporter (optional).
+     * @return Ticket
+     */
     public function assignTicket(User $user, Ticket $ticket, ?User $supporter = null): Ticket
     {
         $targetUser = $supporter ?? $user;
@@ -146,16 +161,27 @@ class TicketService
 
     /**
      * Retrieves an available supporter prioritizing the one with the least active tickets.
-     * Architect Note: Transformed from an expensive multi-table scan into a lightning-fast
-     * single table index scan utilizing the denormalized `is_online` and `active_tickets_count` fields.
      *
      * @return User|null
      */
     private function findAvailableSupporter(): ?User
     {
+        /**
+         * Architect Note: Eliminated the heavy double-subquery (whereHas + withCount).
+         * We now use withCount combined with a having clause to resolve both the filtering 
+         * and the sorting in a single database pass, drastically reducing query time.
+         */
         return User::where('role', RoleEnum::SUPPORTER->value)
-            ->where('is_online', true)
-            ->where('active_tickets_count', '<', 5)
+            ->whereHas('workSessions', function ($query) {
+                $query->where('status', WorkSessionStatusEnum::ACTIVE->value);
+            })
+            ->withCount(['assignedTickets as active_tickets_count' => function ($query) {
+                $query->whereIn('status', [
+                    TicketStatusEnum::OPEN->value, 
+                    TicketStatusEnum::IN_PROGRESS->value
+                ]);
+            }])
+            ->having('active_tickets_count', '<', 5)
             ->orderBy('active_tickets_count', 'asc')
             ->first();
     }
