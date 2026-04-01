@@ -11,6 +11,7 @@
 7. Perceção de Velocidade e UX Premium: Substituir ecrãs vazios ou indicadores básicos de carregamento por Skeleton Screens enquanto o conteúdo é acedido. Incorporar Optimistic UI nas ações do utilizador (como alterar o estado de um ticket), assumindo o sucesso localmente para oferecer uma resposta imediata na interface, reduzindo a frustração da espera.
 8. Movimento e Continuidade: Aplicar Context Transitions e Drill Transitions suaves ao navegar das listagens gerais de tickets para os detalhes, mantendo as Continuity Transitions entre menus. Isto simplifica a navegação e reforça a criação de um design claro e user-friendly.
 9. Componentização e Decomposição (DRY): Inspecionar as vistas Vue com excesso de linhas ou lógicas misturadas. Extrair lógicas e designs repetidos para módulos granulares (ex: mover tags, avatares ou modals genéricos para resources/js/Components/Common e manter lógica específica em resources/js/Features/Tickets).
+-FEITO
 
 10. Particionamento de Dados Exponenciais: Preparar estratégias e índices avançados em tabelas de auditoria (como activity_log) que gerarão dezenas de milhões de registos ao longo dos meses.
 11. Padrões de Documentação: Implementar JSDoc e DocBlocks no código (comentários em Inglês) para expor publicamente a justificação de blocos lógicos complexos ou controladores, evitando documentar código óbvio.
