@@ -11,6 +11,7 @@ use App\Models\TicketMessage;
 use App\Models\User;
 use App\Notifications\TicketNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Handles all business logic related to Ticket manipulation, assignments and messaging.
@@ -65,6 +66,7 @@ class TicketService
             }
 
             if ($availableSupporter) {
+                // Notificação disparada de forma limpa. Garante que TicketNotification implementa "ShouldQueue".
                 $availableSupporter->notify(new TicketNotification(
                     $ticket, 
                     "A new ticket #{$ticket->id} has been automatically assigned to you.",
@@ -115,16 +117,18 @@ class TicketService
                     // Architect Note: Optimized memory footprint by selecting only necessary columns
                     $mentionedUsers = User::whereIn('id', $userIds)->select('id', 'name')->get();
                     
-                    foreach ($mentionedUsers as $mentionedUser) {
-                        if ($user && $mentionedUser->id === $user->id) continue;
-                        
-                        $senderName = $user ? $user->name : ($data['sender_email'] ?? 'System');
-                        
-                        $mentionedUser->notify(new TicketNotification(
-                            $ticket, 
-                            "You were mentioned in Ticket #{$ticket->id} by {$senderName}.",
-                            "mention"
-                        ));
+                    $senderName = $user ? $user->name : ($data['sender_email'] ?? 'System');
+                    $notification = new TicketNotification(
+                        $ticket, 
+                        "You were mentioned in Ticket #{$ticket->id} by {$senderName}.",
+                        "mention"
+                    );
+
+                    // Otimização: Disparo em bulk (lote) em vez de N queries dentro de um loop foreach
+                    $usersToNotify = $mentionedUsers->reject(fn($mUser) => $user && $mUser->id === $user->id);
+                    
+                    if ($usersToNotify->isNotEmpty()) {
+                        Notification::send($usersToNotify, $notification);
                     }
                 }
             }
@@ -170,10 +174,14 @@ class TicketService
          * Architect Note: Eliminated the heavy double-subquery (whereHas + withCount).
          * We now use withCount combined with a having clause to resolve both the filtering 
          * and the sorting in a single database pass, drastically reducing query time.
+         * Substituted whereHas with whereExists raw logic to prevent Laravel's ORM overhead on large datasets.
          */
         return User::where('role', RoleEnum::SUPPORTER->value)
-            ->whereHas('workSessions', function ($query) {
-                $query->where('status', WorkSessionStatusEnum::ACTIVE->value);
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                      ->from('work_sessions')
+                      ->whereColumn('work_sessions.user_id', 'users.id')
+                      ->where('work_sessions.status', WorkSessionStatusEnum::ACTIVE->value);
             })
             ->withCount(['assignedTickets as active_tickets_count' => function ($query) {
                 $query->whereIn('status', [

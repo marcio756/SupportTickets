@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * API Controller for work session management.
+ * Handled with high performance cursor pagination for large datasets.
  */
 class WorkSessionController extends Controller
 {
@@ -40,10 +41,11 @@ class WorkSessionController extends Controller
             return $this->errorResponse('Unauthorized.', 403);
         }
 
+        // Using cursorPaginate to prevent O(N) performance issues on millions of rows
         $sessions = $request->user()->workSessions()
             ->with('pauses')
-            ->latest('started_at')
-            ->paginate(15);
+            ->orderByDesc('started_at')
+            ->cursorPaginate(15);
 
         return $this->successResponse($sessions, 'Histórico de sessões carregado.');
     }

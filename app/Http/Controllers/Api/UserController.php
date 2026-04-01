@@ -46,9 +46,11 @@ class UserController extends Controller
             $query->where('role', $request->input('role'));
         }
 
-        // Limite ajustado para 20 resultados por página conforme solicitado
         $limit = $request->input('limit', 20);
-        $users = $query->paginate($limit);
+        
+        // Architect Note: Substituído paginate() por simplePaginate()
+        // para suportar milhões de clientes sem executar um SELECT COUNT(*) lento na BD.
+        $users = $query->latest('id')->simplePaginate($limit);
 
         return response()->json($users);
     }

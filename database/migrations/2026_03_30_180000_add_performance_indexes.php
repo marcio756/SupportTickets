@@ -14,30 +14,40 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     * This method adds all user-defined indexes plus composite optimizations.
      */
     public function up(): void
     {
         Schema::table('tickets', function (Blueprint $table) {
-            $table->index(['status', 'created_at']);
-            $table->index('customer_id');
-            $table->index('assigned_to');
+            // User's original indexes
+            $table->index(['status', 'created_at'], 'idx_tickets_status_created');
+            $table->index('customer_id', 'idx_tickets_customer_id');
+            $table->index('assigned_to', 'idx_tickets_assigned_to');
+            
+            // Optimization for the Controller filters (Composite indexes)
+            // This speeds up queries that filter by customer and status simultaneously.
+            $table->index(['customer_id', 'status'], 'idx_tickets_cust_status_comp');
+            $table->index(['assigned_to', 'status'], 'idx_tickets_assig_status_comp');
         });
 
         Schema::table('ticket_messages', function (Blueprint $table) {
-            $table->index('ticket_id');
-            $table->index('user_id');
-            $table->index('created_at');
+            // User's original indexes
+            $table->index('ticket_id', 'idx_messages_ticket_id');
+            $table->index('user_id', 'idx_messages_user_id');
+            $table->index('created_at', 'idx_messages_created_at');
         });
 
         Schema::table('work_sessions', function (Blueprint $table) {
-            $table->index('user_id');
-            $table->index('status');
-            $table->index('started_at');
+            // User's original indexes
+            $table->index('user_id', 'idx_sessions_user_id');
+            $table->index('status', 'idx_sessions_status');
+            $table->index('started_at', 'idx_sessions_started_at');
         });
 
         Schema::table('users', function (Blueprint $table) {
-            $table->index('role');
-            $table->index('team_id');
+            // User's original indexes
+            $table->index('role', 'idx_users_role');
+            $table->index('team_id', 'idx_users_team_id');
         });
     }
 
@@ -47,26 +57,28 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('tickets', function (Blueprint $table) {
-            $table->dropIndex(['status', 'created_at']);
-            $table->dropIndex(['customer_id']);
-            $table->dropIndex(['assigned_to']);
+            $table->dropIndex('idx_tickets_status_created');
+            $table->dropIndex('idx_tickets_customer_id');
+            $table->dropIndex('idx_tickets_assigned_to');
+            $table->dropIndex('idx_tickets_cust_status_comp');
+            $table->dropIndex('idx_tickets_assig_status_comp');
         });
 
         Schema::table('ticket_messages', function (Blueprint $table) {
-            $table->dropIndex(['ticket_id']);
-            $table->dropIndex(['user_id']);
-            $table->dropIndex(['created_at']);
+            $table->dropIndex('idx_messages_ticket_id');
+            $table->dropIndex('idx_messages_user_id');
+            $table->dropIndex('idx_messages_created_at');
         });
 
         Schema::table('work_sessions', function (Blueprint $table) {
-            $table->dropIndex(['user_id']);
-            $table->dropIndex(['status']);
-            $table->dropIndex(['started_at']);
+            $table->dropIndex('idx_sessions_user_id');
+            $table->dropIndex('idx_sessions_status');
+            $table->dropIndex('idx_sessions_started_at');
         });
 
         Schema::table('users', function (Blueprint $table) {
-            $table->dropIndex(['role']);
-            $table->dropIndex(['team_id']);
+            $table->dropIndex('idx_users_role');
+            $table->dropIndex('idx_users_team_id');
         });
     }
 };

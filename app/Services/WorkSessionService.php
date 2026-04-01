@@ -155,6 +155,13 @@ class WorkSessionService
      */
     public function getReportsData(User $user, array $filters): array
     {
+        // Architect Note: PREVENT OOM (Out of Memory) crash. 
+        // Se nenhum filtro de data for passado e o admin abrir os relatórios, milhões de registos 
+        // seriam carregados para a RAM pela ausência de paginação. Forçamos uma semana padrão.
+        if (empty($filters['week_start']) && empty($filters['date'])) {
+            $filters['week_start'] = now()->startOfWeek()->toDateString();
+        }
+
         $query = WorkSession::with(['user:id,name,email', 'pauses'])
             ->withCount('pauses')
             ->latest('started_at');
@@ -179,7 +186,8 @@ class WorkSessionService
             ->where('status', WorkSessionStatusEnum::COMPLETED->value)
             ->sum('total_worked_seconds');
         
-        $sessions = $query->get();
+        // Architect Note: Limitador rígido para proteger a infraestrutura.
+        $sessions = $query->limit(1000)->get();
 
         $sessions->transform(function ($session) {
             $hours = $session->total_worked_seconds ? floor($session->total_worked_seconds / 3600) : 0;

@@ -13,6 +13,7 @@ use App\Traits\ApiResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -20,12 +21,21 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 /**
  * Full API Controller for managing Support Tickets.
  * Delegates business logic to TicketService and wraps errors in ApiResponser format.
+ * Optimized for high performance and scalability with cursor pagination and caching.
  */
 class TicketController extends Controller
 {
     use ApiResponser;
 
     /**
+     * Cache duration in seconds (1 hour).
+     * @var int
+     */
+    protected const CACHE_TTL = 3600;
+
+    /**
+     * Constructor to inject dependencies.
+     *
      * @param TicketService $ticketService
      */
     public function __construct(
@@ -34,6 +44,7 @@ class TicketController extends Controller
 
     /**
      * List all tickets relevant to the authenticated user, applying search and filters.
+     * Uses cursorPaginate to ensure constant performance regardless of table size.
      *
      * @param Request $request
      * @return AnonymousResourceCollection
@@ -50,13 +61,16 @@ class TicketController extends Controller
 
         $this->applyIndexFilters($query, $request, $user);
 
-        $tickets = $query->latest()->paginate(15);
+        // cursorPaginate is significantly faster than paginate() for large datasets 
+        // as it avoids the expensive SELECT COUNT(*) query.
+        $tickets = $query->latest('id')->cursorPaginate(15);
 
         return TicketResource::collection($tickets);
     }
 
     /**
      * Applies search and dropdown filters to the ticket query.
+     * Logic preserved from the original implementation to maintain site features.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @param Request $request
@@ -113,7 +127,7 @@ class TicketController extends Controller
     }
 
     /**
-     * Store a newly created ticket and its initial message via API
+     * Store a newly created ticket and its initial message via API.
      *
      * @param Request $request
      * @return JsonResponse
@@ -156,7 +170,8 @@ class TicketController extends Controller
     }
 
     /**
-     * Display a specific ticket thread
+     * Display a specific ticket thread.
+     * Uses Redis/Cache to avoid database overhead on high-traffic threads.
      *
      * @param Ticket $ticket
      * @return TicketResource
@@ -165,11 +180,17 @@ class TicketController extends Controller
     {
         Gate::authorize('view', $ticket);
 
-        return new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants']));
+        $cacheKey = "ticket_api_show_{$ticket->id}";
+
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($ticket) {
+            return $ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants']);
+        });
+
+        return new TicketResource($data);
     }
 
     /**
-     * Delete a specific ticket via API
+     * Delete a specific ticket via API.
      *
      * @param Ticket $ticket
      * @return JsonResponse
@@ -180,6 +201,7 @@ class TicketController extends Controller
 
         try {
             $ticket->delete();
+            $this->clearTicketCache($ticket->id);
 
             return $this->successResponse(
                 null,
@@ -192,7 +214,7 @@ class TicketController extends Controller
     }
 
     /**
-     * Assigns the ticket to the authenticated supporter via API
+     * Assigns the ticket to the authenticated supporter via API.
      *
      * @param Request $request
      * @param Ticket $ticket
@@ -202,6 +224,7 @@ class TicketController extends Controller
     {
         try {
             $ticket = $this->ticketService->assignTicket($request->user(), $ticket);
+            $this->clearTicketCache($ticket->id);
 
             return $this->successResponse(
                 new TicketResource($ticket->load(['customer', 'assignee', 'tags', 'participants'])),
@@ -214,7 +237,7 @@ class TicketController extends Controller
     }
 
     /**
-     * Update the status of a specific ticket via API
+     * Update the status of a specific ticket via API.
      *
      * @param Request $request
      * @param Ticket $ticket
@@ -228,6 +251,7 @@ class TicketController extends Controller
 
         try {
             $ticket = $this->ticketService->updateStatus($request->user(), $ticket, $validated['status']);
+            $this->clearTicketCache($ticket->id);
 
             return $this->successResponse(
                 new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants'])),
@@ -240,7 +264,7 @@ class TicketController extends Controller
     }
 
     /**
-     * Store a new message on the ticket thread and deduct time if necessary
+     * Store a new message on the ticket thread and deduct time if necessary.
      *
      * @param Request $request
      * @param Ticket $ticket
@@ -264,6 +288,8 @@ class TicketController extends Controller
                 $validated,
                 $request->file('attachment')
             );
+            
+            $this->clearTicketCache($ticket->id);
 
             return $this->successResponse(
                 new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants'])), 
@@ -276,7 +302,7 @@ class TicketController extends Controller
     }
 
     /**
-     * API Heartbeat to deduct support time
+     * API Heartbeat to deduct support time.
      *
      * @param Request $request
      * @param Ticket $ticket
@@ -306,7 +332,7 @@ class TicketController extends Controller
     }
 
     /**
-     * Sync tags for a specific ticket via API
+     * Sync tags for a specific ticket via API.
      *
      * @param Request $request
      * @param Ticket $ticket
@@ -323,6 +349,7 @@ class TicketController extends Controller
 
         try {
             $ticket->tags()->sync($validated['tags'] ?? []);
+            $this->clearTicketCache($ticket->id);
 
             return $this->successResponse(
                 new TicketResource($ticket->load(['customer', 'assignee', 'messages.sender', 'tags', 'participants'])),
@@ -332,5 +359,16 @@ class TicketController extends Controller
             $code = $e instanceof HttpException ? $e->getStatusCode() : 500;
             return $this->errorResponse($e->getMessage(), $code);
         }
+    }
+
+    /**
+     * Helper to clear the cache when a ticket is updated.
+     *
+     * @param int $id
+     * @return void
+     */
+    protected function clearTicketCache(int $id): void
+    {
+        Cache::forget("ticket_api_show_{$id}");
     }
 }

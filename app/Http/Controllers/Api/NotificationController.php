@@ -9,6 +9,8 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * Handle fetching and managing notifications for the mobile app.
+ * Architect Note: Replaced standard pagination with cursor pagination to prevent 
+ * database stalling on the typically massive notifications table.
  */
 class NotificationController extends Controller
 {
@@ -22,7 +24,9 @@ class NotificationController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $notifications = $request->user()->notifications()->paginate(15);
+        // Architect Note: Substituído paginate(15) por cursorPaginate(15).
+        // Evita a query "SELECT COUNT(*)" lenta numa tabela que cresce exponencialmente.
+        $notifications = $request->user()->notifications()->cursorPaginate(15);
         
         return $this->successResponse($notifications, 'Notificações carregadas com sucesso.');
     }
