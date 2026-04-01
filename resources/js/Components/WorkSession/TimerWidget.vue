@@ -6,7 +6,7 @@
  */
 import { usePage, router } from '@inertiajs/vue3';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
-import ActionConfirmModal from 'ActionConfirmModal.vue';
+import ActionConfirmModal from '@/Components/Common/ActionConfirmModal.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);

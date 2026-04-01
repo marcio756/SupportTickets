@@ -9,6 +9,6 @@
     "include": [
         "resources/js/**/*",
         "jsconfig.json"
-, "ActionConfirmModal.vue"    ],
+, "resources/js/Components/ActionConfirmModal.vue"    ],
     "exclude": ["node_modules", "public", "vendor"]
 }

@@ -1,7 +1,5 @@
-// routes/api.php
 <?php
 
-use App\Enums\RoleEnum;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;

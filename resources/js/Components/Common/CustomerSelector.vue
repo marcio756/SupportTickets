@@ -147,7 +147,7 @@ const fetchCustomers = async (page = 1, append = false) => {
     apiError.value = null;
 
     try {
-        const response = await axios.get('/api/users', { 
+        const response = await axios.get('/api/v1/users', { 
             params: { 
                 search: search.value, 
                 role: 'customer', 
