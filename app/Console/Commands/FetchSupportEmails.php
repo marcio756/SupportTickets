@@ -33,7 +33,7 @@ class FetchSupportEmails extends Command
             foreach ($messages as $message) {
                 try {
                     // Instantly push the UID to Redis/Queue without loading bodies or attachments
-                    ProcessIncomingEmailJob::dispatch($message->getUid());
+                    ProcessIncomingEmailJob::dispatch($message->getUid())->onQueue('emails');
                     $this->info("Queued Message UID: {$message->getUid()}");
                 } catch (\Exception $emailException) {
                     Log::error('Error queuing IMAP UID: ' . $emailException->getMessage());

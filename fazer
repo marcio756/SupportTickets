@@ -1,10 +1,12 @@
 1. Paginação Obrigatória em Coleções Massivas: Substituir as chamadas diretas como User::where('role', ...)->get() (presentes em routes/api.php) por métodos de paginação, como paginate(50) ou cursorPaginate(). O carregamento integral de milhões de clientes esgotará a memória (RAM) do servidor PHP numa única requisição e causará falhas sistémicas irrecuperáveis.
 2. Migração do Motor de Base de Dados: Mudar imediatamente de SQLite para PostgreSQL ou MySQL (InnoDB). O SQLite bloqueia em operações simultâneas de escrita (erros de Database Locked), sendo incompatível com um ambiente que suporta milhares de utilizadores simultâneos.
 3. Implementação de Rate Limiting: Aplicar middlewares de throttle globais nas APIs abertas e definir limites extremamente rigorosos nas rotas de autenticação (ex: login, reset de password). Sem isto, a infraestrutura colapsa rapidamente face a ataques DDoS na camada aplicacional ou tentativas de força bruta.
+-FEITO
 
 4. Remoção de Closures nas Rotas (SRP): Extrair toda a lógica de negócio dos closures no ficheiro de rotas (routes/api.php) para controladores independentes, promovendo o Princípio da Responsabilidade Única. Esta separação permite ao Laravel cachear as rotas nativamente, reduzindo os tempos de resposta no arranque de cada pedido.
 5. Isolamento de Processos Bloqueantes (I/O): Configurar processos de sincronização externa, como o laravel-imap para leitura de e-mails, em workers e filas dedicadas. Estes não devem partilhar os recursos da fila principal para não paralisarem o processamento de eventos prioritários.
 6. Versionamento Estrito da API: Mover as rotas de consumo externo para dentro de um prefixo e grupo lógico (ex: /api/v1/). Qualquer alteração futura nos pacotes de dados causaria disrupção total nos clientes ligados se esta prática não estiver assegurada desde o primeiro dia.
+-FEITO
 
 7. Perceção de Velocidade e UX Premium: Substituir ecrãs vazios ou indicadores básicos de carregamento por Skeleton Screens enquanto o conteúdo é acedido. Incorporar Optimistic UI nas ações do utilizador (como alterar o estado de um ticket), assumindo o sucesso localmente para oferecer uma resposta imediata na interface, reduzindo a frustração da espera.
 8. Movimento e Continuidade: Aplicar Context Transitions e Drill Transitions suaves ao navegar das listagens gerais de tickets para os detalhes, mantendo as Continuity Transitions entre menus. Isto simplifica a navegação e reforça a criação de um design claro e user-friendly.

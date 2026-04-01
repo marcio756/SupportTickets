@@ -20,6 +20,13 @@ class ProcessIncomingEmailJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
+     * The name of the queue the job should be sent to.
+     *
+     * @var string|null
+     */
+    public $queue = 'emails';
+
+    /**
      * Creates a new job instance.
      *
      * @param int $messageUid

@@ -16,9 +16,7 @@ class EmailController extends Controller
 
     /**
      * Triggers the artisan command to fetch emails from the IMAP server.
-     * Useful for manual "Pull to Refresh" actions in the mobile app.
-     * * Note: In a high-traffic environment, this should ideally dispatch a Job
-     * rather than running synchronously, but for standard support workflows, it is acceptable.
+     * Enqueues the command to background processing to ensure low latency HTTP response.
      *
      * @return JsonResponse
      */
@@ -29,15 +27,15 @@ class EmailController extends Controller
         }
 
         try {
-            // Invokes the same console command that runs in the background scheduler
-            Artisan::call('app:fetch-support-emails');
+            // Dispatches the console command to a background queue instead of running synchronously
+            Artisan::queue('app:fetch-support-emails')->onQueue('emails');
 
             return $this->successResponse(
                 null,
-                'Emails fetched successfully.'
+                'Emails sync triggered successfully. Processing in background.'
             );
         } catch (\Exception $e) {
-            return $this->errorResponse('Failed to fetch emails: ' . $e->getMessage(), 500);
+            return $this->errorResponse('Failed to trigger email sync: ' . $e->getMessage(), 500);
         }
     }
 }
