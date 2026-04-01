@@ -33,18 +33,19 @@ export function useTicketSupport(ticket) {
     let heartbeatInterval = null;
 
     /**
-     * @type {import('vue').ComputedRef<boolean>}
+     * Determines if the customer has exhausted their daily support time limit.
+     * Core fix: External email users (without a registered platform account) bypass this restriction.
+     * * @type {import('vue').ComputedRef<boolean>}
      */
     const isTimeUp = computed(() => {
-        // Core fix: Email users (without account) have no time restriction
         if (!ticket.value.customer) return false;
         return currentRemainingSeconds.value <= 0;
     });
 
     /**
-     * Computes whether the active user has explicit write permission.
-     * It checks if they are the primary assignee OR a registered participant (mentioned).
-     * @type {import('vue').ComputedRef<boolean>}
+     * Computes whether the active user has explicit write permission for the current ticket.
+     * Access is granted exclusively if the user is the primary assignee or explicitly mentioned/invited.
+     * * @type {import('vue').ComputedRef<boolean>}
      */
     const hasWritePermission = computed(() => {
         if (!isSupporter) return false;
@@ -54,19 +55,21 @@ export function useTicketSupport(ticket) {
     });
 
     /**
-     * @type {import('vue').ComputedRef<boolean>}
+     * Controls the visibility of the "Claim Ticket" overlay prompt.
+     * The prompt is hidden for closed/resolved tickets or if the supporter already has access.
+     * * @type {import('vue').ComputedRef<boolean>}
      */
     const showClaimOverlay = computed(() => {
         if (ticket.value.status === 'closed' || ticket.value.status === 'resolved') {
             return false;
         }
-        // If they already have permission (assignee or mentioned), no need to claim
         return isSupporter && !hasWritePermission.value;
     });
 
     /**
-     * Blocks input if status is NOT 'in_progress', time is up, or the user lacks write access.
-     * @type {import('vue').ComputedRef<boolean>}
+     * Blocks message input fields when the ticket state forbids new interactions.
+     * Conditions for locking: Time exhausted, ticket resolved/closed, or lack of write permissions.
+     * * @type {import('vue').ComputedRef<boolean>}
      */
     const isInputDisabled = computed(() => {
         if (isTimeUp.value || ticket.value.status === 'closed' || ticket.value.status === 'resolved') {
@@ -82,7 +85,8 @@ export function useTicketSupport(ticket) {
     });
 
     /**
-     * @type {import('vue').ComputedRef<boolean>}
+     * Validates if the submit action should be disabled based on input availability and payload content.
+     * * @type {import('vue').ComputedRef<boolean>}
      */
     const isSubmitDisabled = computed(() => {
         if (isInputDisabled.value) return true;
@@ -92,18 +96,18 @@ export function useTicketSupport(ticket) {
     });
 
     /**
-     * Determines if the automatic time deduction ping should run.
-     * @type {import('vue').ComputedRef<boolean>}
+     * Determines if the automatic time deduction ping (heartbeat) should be actively running.
+     * It ensures server resources are not wasted pinging closed tickets or inactive sessions.
+     * * @type {import('vue').ComputedRef<boolean>}
      */
     const shouldRunHeartbeat = computed(() => {
         if (!ticket.value.customer) return false;
-        // Allows any participant writing in the chat to deduct time
         return hasWritePermission.value && ticket.value.status === 'in_progress' && !isTimeUp.value;
     });
 
     /**
-     * Scrolls the message container wrapper to the bottom.
-     * @returns {Promise<void>}
+     * Forces the chat window to scroll to the newest message seamlessly.
+     * * @returns {Promise<void>}
      */
     const scrollToBottom = async () => {
         await nextTick();
@@ -113,8 +117,8 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Submits a new reply message.
-     * @returns {void}
+     * Formats and submits a new reply payload to the API, resetting states on success.
+     * * @returns {void}
      */
     const submitReply = () => {
         if (isSubmitDisabled.value) return;
@@ -138,8 +142,8 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Claims the ticket for the authenticated supporter.
-     * @returns {void}
+     * Dispatches an assignment request for the authenticated supporter to claim ownership.
+     * * @returns {void}
      */
     const assignToMe = () => {
         isAssigning.value = true;
@@ -150,8 +154,8 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Updates the ticket status via local API.
-     * @param {string} newStatus The new ticket status.
+     * Dispatches an update request for the ticket status.
+     * * @param {string} newStatus The new ticket status to transition to.
      * @returns {void}
      */
     const updateStatus = (newStatus) => {
@@ -159,8 +163,8 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Executes soft-delete or hard-delete of the ticket.
-     * @returns {void}
+     * Executes the deletion of the active ticket.
+     * * @returns {void}
      */
     const deleteTicket = () => {
         deleteForm.delete(route('tickets.destroy', ticket.value.id), {
@@ -171,8 +175,8 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Starts the heartbeat interval to deduct support time.
-     * @returns {void}
+     * Initializes a recurring interval to deduct time while the user keeps the tab visible.
+     * * @returns {void}
      */
     const startHeartbeat = () => {
         if (heartbeatInterval) return;
@@ -189,8 +193,8 @@ export function useTicketSupport(ticket) {
     };
 
     /**
-     * Stops the actively running heartbeat interval.
-     * @returns {void}
+     * Halts the active background heartbeat process.
+     * * @returns {void}
      */
     const stopHeartbeat = () => {
         if (heartbeatInterval) {
@@ -238,7 +242,7 @@ export function useTicketSupport(ticket) {
         deleteForm,
         confirmingDeletion,
         isTimeUp,
-        hasWritePermission, // Exporting the new unified permission flag
+        hasWritePermission,
         showClaimOverlay,
         isInputDisabled,
         isSubmitDisabled,

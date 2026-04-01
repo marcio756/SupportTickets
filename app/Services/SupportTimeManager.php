@@ -8,7 +8,7 @@ use App\Enums\TicketStatusEnum;
 
 /**
  * Service responsible for managing and calculating customer support time constraints.
- * Architect Note: Optimized for high-concurrency using atomic database operations
+ * * Architect Note: Optimized for high-concurrency using atomic database operations
  * to prevent race conditions and reduce database load during continuous heartbeats.
  */
 class SupportTimeManager
@@ -23,8 +23,8 @@ class SupportTimeManager
      */
     public function deductTime(Ticket $ticket, int $seconds = 5): int
     {
-        // Enforce time deduction constraints to active tickets only
-        // Architect Note: Garantido que comparamos com o valor do Enum (->value)
+        // Architect Note: We explicitly compare against the Enum's value to prevent 
+        // strict type mismatch errors and ensure we only process active workflows.
         if ($ticket->status !== TicketStatusEnum::IN_PROGRESS->value) {
             return $ticket->customer->daily_support_seconds ?? 0;
         }
@@ -35,13 +35,14 @@ class SupportTimeManager
             
             $deduction = min($seconds, $customer->daily_support_seconds);
             
-            // Architect Note: Substituído o $customer->update() por um decrement() atómico.
-            // Num sistema com alta concorrência, fazer "update()" clássico gera "Race Conditions" 
-            // (onde 2 pedidos ao mesmo tempo anulam a contagem um do outro). O decrement() delega 
-            // a matemática diretamente para o motor da base de dados (PostgreSQL/MySQL), sendo ultra rápido.
+            // Architect Note: Replaced the standard $customer->update() with an atomic decrement().
+            // In a highly concurrent system, standard updates create Race Conditions where simultaneous 
+            // requests overwrite each other's counts. decrement() delegates the math directly to the 
+            // database engine (PostgreSQL/MySQL), ensuring ultra-fast and accurate execution.
             $customer->decrement('daily_support_seconds', $deduction);
             
-            // Recarregamos o valor limpo da base de dados para o Web-Socket
+            // Reload the fresh value directly from the database to ensure the WebSocket 
+            // broadcasts the absolute source of truth.
             $newTime = $customer->fresh()->daily_support_seconds;
 
             broadcast(new SupportTimeUpdated($ticket->id, $newTime));
