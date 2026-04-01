@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Auth;
 
 /**
  * Handles the API endpoints for vacation booking and retrieval.
+ * Architect Note: Refactored pagination to simplePaginate to prevent O(N) COUNT(*) 
+ * database bottlenecks when the historical data grows to thousands of records.
  */
 class VacationController extends Controller
 {
@@ -29,7 +31,8 @@ class VacationController extends Controller
 
     /**
      * Get a global list of vacations. Supports filtering for specific date ranges or teams.
-     * * @param Request $request
+     *
+     * @param Request $request
      * @return JsonResponse
      */
     public function index(Request $request): JsonResponse
@@ -46,12 +49,16 @@ class VacationController extends Controller
             $query->whereBetween('start_date', [$request->start_date, $request->end_date]);
         }
 
-        return response()->json(['data' => $query->paginate(20)]);
+        // Optimization: simplePaginate uses just "limit/offset" without running a full table COUNT(*)
+        $vacations = $query->orderByDesc('id')->simplePaginate(20);
+
+        return response()->json(['data' => $vacations]);
     }
 
     /**
      * Exposes structured calendar data for UI rendering.
-     * * @param Request $request
+     *
+     * @param Request $request
      * @return JsonResponse
      */
     public function calendar(Request $request): JsonResponse
@@ -64,7 +71,8 @@ class VacationController extends Controller
 
     /**
      * Store a new vacation request for the authenticated supporter.
-     * * @param Request $request
+     *
+     * @param Request $request
      * @return JsonResponse
      */
     public function store(Request $request): JsonResponse
@@ -88,7 +96,8 @@ class VacationController extends Controller
 
     /**
      * Update the approval status of a vacation.
-     * * @param UpdateVacationStatusRequest $request
+     *
+     * @param UpdateVacationStatusRequest $request
      * @param Vacation $vacation
      * @return JsonResponse
      */
@@ -100,7 +109,8 @@ class VacationController extends Controller
 
     /**
      * Retrieve vacation history and summary for a specific supporter.
-     * * @param User $supporter
+     *
+     * @param User $supporter
      * @return JsonResponse
      */
     public function showBySupporter(User $supporter): JsonResponse
@@ -123,7 +133,8 @@ class VacationController extends Controller
 
     /**
      * Remove or cancel a vacation record.
-     * * @param Vacation $vacation
+     *
+     * @param Vacation $vacation
      * @return JsonResponse
      */
     public function destroy(Vacation $vacation): JsonResponse

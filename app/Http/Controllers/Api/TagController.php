@@ -7,29 +7,31 @@ use App\Models\Tag;
 use App\Traits\ApiResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Handles the CRUD operations for Tags via API.
  * Exclusively restricted to users with admin or supporter privileges.
+ * Architect Note: Wrapped in Redis Tags caching to avoid millions of repetitive DB hits 
+ * when the frontend generates Ticket creation forms.
  */
 class TagController extends Controller
 {
     use ApiResponser;
 
+    private const CACHE_TAG = 'tags_metadata';
+
     /**
      * Helper method to centralize the authorization logic (DRY principle).
      * Checks if the user is a Supporter or an Admin.
-     * * @param Request $request
+     *
+     * @param Request $request
      * @return bool
      */
     private function _canManageTags(Request $request): bool
     {
         $user = $request->user();
-        
-        // Assumindo que a tua model User tem o método isAdmin(). 
-        // Caso não tenha, faz fallback seguro para a verificação direta do atributo 'role'.
         $isAdmin = method_exists($user, 'isAdmin') ? $user->isAdmin() : $user->role === 'admin';
-        
         return $user->isSupporter() || $isAdmin;
     }
 
@@ -46,13 +48,20 @@ class TagController extends Controller
             return $this->errorResponse('Acesso restrito apenas a Admins e Supporters.', 403);
         }
 
-        $query = Tag::query();
+        $search = $request->input('search', '');
+        $page = $request->input('page', 1);
+        $cacheKey = "tags_index_page_{$page}_search_" . md5($search);
 
-        if ($search = $request->input('search')) {
-            $query->where('name', 'like', "%{$search}%");
-        }
+        // Redis cache tagged layer to serve metadata instantly without DB hits
+        $tags = Cache::tags([self::CACHE_TAG])->remember($cacheKey, 86400, function () use ($search) {
+            $query = Tag::query();
 
-        $tags = $query->orderBy('name')->paginate(15);
+            if (!empty($search)) {
+                $query->where('name', 'like', "%{$search}%");
+            }
+
+            return $query->orderBy('name')->simplePaginate(15);
+        });
 
         return $this->successResponse($tags, 'Tags listadas com sucesso.');
     }
@@ -75,6 +84,7 @@ class TagController extends Controller
         ]);
 
         $tag = Tag::create($validated);
+        $this->flushCache();
 
         return $this->successResponse($tag, 'Tag criada com sucesso.', 201);
     }
@@ -98,6 +108,7 @@ class TagController extends Controller
         ]);
 
         $tag->update($validated);
+        $this->flushCache();
 
         return $this->successResponse($tag, 'Tag atualizada com sucesso.');
     }
@@ -116,7 +127,16 @@ class TagController extends Controller
         }
 
         $tag->delete();
+        $this->flushCache();
 
         return $this->successResponse(null, 'Tag eliminada com sucesso.');
+    }
+
+    /**
+     * Clears the tagged cache upon metadata modification.
+     */
+    private function flushCache(): void
+    {
+        Cache::tags([self::CACHE_TAG])->flush();
     }
 }

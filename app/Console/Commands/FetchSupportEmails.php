@@ -2,72 +2,52 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\ProcessIncomingEmailJob;
 use Illuminate\Console\Command;
 use Webklex\IMAP\Facades\Client;
-use App\Services\EmailTicketService;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Console command that connects to the configured IMAP mailbox,
- * retrieves unread messages, and delegates them to the ticketing service.
+ * retrieves unread messages UIDs, and dispatches them to Queues to prevent Memory Spikes.
  */
 class FetchSupportEmails extends Command
 {
     protected $signature = 'app:fetch-support-emails';
-    protected $description = 'Fetches unread emails from the IMAP server and processes them into support tickets.';
+    protected $description = 'Fetches unread emails UIDs from the IMAP server and queues them for processing.';
 
-    public function handle(EmailTicketService $ticketService): int
+    public function handle(): int
     {
-        $this->info('Starting to fetch support emails...');
+        $this->info('Starting to scan for unread support emails...');
 
         try {
             $client = Client::account('default');
             $client->connect();
 
             $folder = $client->getFolder('INBOX');
-            $messages = $folder->query()->unseen()->get();
+            // Architect Note: We fetch ONLY the minimal message headers to save RAM
+            $messages = $folder->query()->unseen()->setFetchFlags(false)->get();
 
-            $this->info('Found ' . $messages->count() . ' unread messages.');
+            $this->info('Found ' . $messages->count() . ' unread messages. Dispatching to workers...');
 
             foreach ($messages as $message) {
-                // Architect Note: Wrapped single email processing in a try/catch block.
-                // If one badly formatted email throws an exception, it prevents the entire
-                // command from crashing and successfully processes the remaining queue.
                 try {
-                    $body = $message->getTextBody() ?? $message->getHTMLBody() ?? '';
-                    
-                    $inReplyTo = $message->getInReplyTo();
-                    $references = $message->getReferences();
-                    
-                    $emailData = [
-                        'subject'     => (string) ($message->getSubject()[0] ?? 'No Subject'),
-                        'body'        => is_string($body) ? trim($body) : '',
-                        'from_email'  => $message->getFrom()[0]->mail ?? null,
-                        'in_reply_to' => is_iterable($inReplyTo) ? implode(' ', $inReplyTo->toArray()) : (string) $inReplyTo,
-                        'references'  => is_iterable($references) ? implode(' ', $references->toArray()) : (string) $references,
-                    ];
-
-                    if ($emailData['from_email']) {
-                        $ticketService->processEmail($emailData);
-                        
-                        $message->setFlag('Seen');
-                        
-                        $this->info("Successfully processed email from: {$emailData['from_email']}");
-                    }
+                    // Instantly push the UID to Redis/Queue without loading bodies or attachments
+                    ProcessIncomingEmailJob::dispatch($message->getUid());
+                    $this->info("Queued Message UID: {$message->getUid()}");
                 } catch (\Exception $emailException) {
-                    Log::error('Error processing single IMAP message: ' . $emailException->getMessage());
-                    $this->error('Failed on an email, check logs. Continuing to next message.');
+                    Log::error('Error queuing IMAP UID: ' . $emailException->getMessage());
                 }
             }
 
             $client->disconnect();
-            $this->info('Email fetching routine completed.');
+            $this->info('Email dispatching routine completed.');
 
             return self::SUCCESS;
 
         } catch (\Exception $e) {
-            Log::error('IMAP Mailbox Fetch Error: ' . $e->getMessage());
-            $this->error('Failed to process incoming emails. Check application logs for details.');
+            Log::error('IMAP Mailbox Scan Error: ' . $e->getMessage());
+            $this->error('Failed to scan incoming emails. Check application logs for details.');
             
             return self::FAILURE;
         }

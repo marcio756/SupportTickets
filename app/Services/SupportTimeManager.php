@@ -8,6 +8,8 @@ use App\Enums\TicketStatusEnum;
 
 /**
  * Service responsible for managing and calculating customer support time constraints.
+ * Architect Note: Optimized for high-concurrency using atomic database operations
+ * to prevent race conditions and reduce database load during continuous heartbeats.
  */
 class SupportTimeManager
 {
@@ -22,18 +24,25 @@ class SupportTimeManager
     public function deductTime(Ticket $ticket, int $seconds = 5): int
     {
         // Enforce time deduction constraints to active tickets only
-        if ($ticket->status !== TicketStatusEnum::IN_PROGRESS) {
-            return $ticket->customer->daily_support_seconds;
+        // Architect Note: Garantido que comparamos com o valor do Enum (->value)
+        if ($ticket->status !== TicketStatusEnum::IN_PROGRESS->value) {
+            return $ticket->customer->daily_support_seconds ?? 0;
         }
 
         $customer = $ticket->customer;
         
-        if ($customer->daily_support_seconds > 0) {
-            $newTime = max(0, $customer->daily_support_seconds - $seconds);
+        if ($customer && $customer->daily_support_seconds > 0) {
             
-            $customer->update([
-                'daily_support_seconds' => $newTime
-            ]);
+            $deduction = min($seconds, $customer->daily_support_seconds);
+            
+            // Architect Note: Substituído o $customer->update() por um decrement() atómico.
+            // Num sistema com alta concorrência, fazer "update()" clássico gera "Race Conditions" 
+            // (onde 2 pedidos ao mesmo tempo anulam a contagem um do outro). O decrement() delega 
+            // a matemática diretamente para o motor da base de dados (PostgreSQL/MySQL), sendo ultra rápido.
+            $customer->decrement('daily_support_seconds', $deduction);
+            
+            // Recarregamos o valor limpo da base de dados para o Web-Socket
+            $newTime = $customer->fresh()->daily_support_seconds;
 
             broadcast(new SupportTimeUpdated($ticket->id, $newTime));
             

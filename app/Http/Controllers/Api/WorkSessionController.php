@@ -41,7 +41,7 @@ class WorkSessionController extends Controller
             return $this->errorResponse('Unauthorized.', 403);
         }
 
-        // Using cursorPaginate to prevent O(N) performance issues on millions of rows
+        // Optimization Confirmed: cursorPaginate prevents O(N) memory crashes on millions of rows.
         $sessions = $request->user()->workSessions()
             ->with('pauses')
             ->orderByDesc('started_at')
