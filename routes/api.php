@@ -4,6 +4,7 @@ use App\Enums\RoleEnum;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DiscoveryController;
 use App\Http\Controllers\Api\EmailController;
 use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\NotificationController;
@@ -17,9 +18,13 @@ use App\Http\Controllers\Api\VacationController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/login', [AuthController::class, 'login'])->name('api.login');
+// Rate limiting rigoroso para evitar brute-force (ex: 5 tentativas por minuto)
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:5,1')
+    ->name('api.login');
 
-Route::middleware('auth:sanctum')->name('api.')->group(function () {
+// Proteção global da API contra abusos (ex: 60 pedidos por minuto por utilizador)
+Route::middleware(['auth:sanctum', 'throttle:api'])->name('api.')->group(function () {
     /**
      * Authentication & Session Management
      */
@@ -55,15 +60,8 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
     /**
      * Discovery Endpoints for UI Selection
      */
-    Route::get('/customers', function () {
-        $customers = User::where('role', RoleEnum::CUSTOMER->value)->select('id', 'name', 'email')->get();
-        return response()->json(['data' => $customers]);
-    })->name('customers.index');
-
-    Route::get('/supporters', function () {
-        $supporters = User::where('role', RoleEnum::SUPPORTER->value)->select('id', 'name', 'email', 'team_id')->with('team')->get();
-        return response()->json(['data' => $supporters]);
-    })->name('supporters.index');
+    Route::get('/customers', [DiscoveryController::class, 'customers'])->name('customers.index');
+    Route::get('/supporters', [DiscoveryController::class, 'supporters'])->name('supporters.index');
 
     /**
      * Work Sessions (Attendance Tracking & Reports)
