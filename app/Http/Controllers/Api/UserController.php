@@ -24,35 +24,48 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        if (!$request->user()->isSupporter() && (!$request->user()->isAdmin())) {
-            return response()->json(['message' => 'Unauthorized access.'], 403);
+        try {
+            if (!$request->user()->isSupporter() && (!$request->user()->isAdmin())) {
+                return response()->json(['message' => 'Unauthorized access.'], 403);
+            }
+
+            // Include soft-deleted users so the frontend can display and restore them
+            $query = User::withTrashed();
+
+            // Aceita 'search' (usado pelo CustomerSelector) ou 'query'
+            $searchTermInput = $request->input('search', $request->input('query'));
+
+            if (!empty($searchTermInput)) {
+                $searchTerm = '%' . $searchTermInput . '%';
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('name', 'like', $searchTerm)
+                      ->orWhere('email', 'like', $searchTerm);
+                });
+            }
+
+            if ($request->filled('role') && $request->input('role') !== 'all') {
+                $query->where('role', $request->input('role'));
+            }
+
+            // Conversão estrita para Inteiro garantida
+            $limit = $request->integer('limit', 20);
+            
+            // Architect Note: Substituído paginate() por simplePaginate()
+            // para suportar milhões de clientes sem executar um SELECT COUNT(*) lento na BD.
+            $users = $query->latest('id')->simplePaginate($limit);
+
+            return response()->json($users);
+
+        } catch (\Throwable $e) {
+            // Architect Note: Intercetamos a falha para enviar detalhes precisos para o frontend
+            // Isto vai revelar de imediato se o problema é uma migração em falta ou um erro de SQL.
+            return response()->json([
+                'message' => 'Internal Server Error',
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
         }
-
-        // Include soft-deleted users so the frontend can display and restore them
-        $query = User::withTrashed();
-
-        // Aceita 'search' (usado pelo CustomerSelector) ou 'query'
-        $searchTermInput = $request->input('search', $request->input('query'));
-
-        if (!empty($searchTermInput)) {
-            $searchTerm = '%' . $searchTermInput . '%';
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('name', 'like', $searchTerm)
-                  ->orWhere('email', 'like', $searchTerm);
-            });
-        }
-
-        if ($request->filled('role') && $request->input('role') !== 'all') {
-            $query->where('role', $request->input('role'));
-        }
-
-        $limit = $request->input('limit', 20);
-        
-        // Architect Note: Substituído paginate() por simplePaginate()
-        // para suportar milhões de clientes sem executar um SELECT COUNT(*) lento na BD.
-        $users = $query->latest('id')->simplePaginate($limit);
-
-        return response()->json($users);
     }
 
     /**

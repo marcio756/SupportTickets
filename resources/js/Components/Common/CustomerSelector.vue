@@ -42,13 +42,13 @@
       <transition name="fade" mode="out-in">
         <div v-if="apiError" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-sm text-red-500 gap-3 text-center">
             <va-icon name="error_outline" size="large" color="danger" />
-            <span class="font-medium">{{ apiError }}</span>
-            <va-button preset="secondary" size="small" color="danger" @click="fetchCustomers(1)">
+            <span class="font-medium whitespace-pre-wrap">{{ apiError }}</span>
+            <va-button preset="secondary" size="small" color="danger" @click="fetchCustomers(false)">
                 Tentar Novamente
             </va-button>
         </div>
 
-        <div v-else-if="isLoading && currentPage === 1 && asyncCustomers.length === 0" class="flex flex-col p-1.5 gap-2">
+        <div v-else-if="isLoading && currentCursor === null && asyncCustomers.length === 0" class="flex flex-col p-1.5 gap-2">
             <div v-for="i in 5" :key="`skeleton-${i}`" class="flex items-center gap-4 p-3 rounded-lg animate-pulse bg-gray-100/50 dark:bg-gray-800/50">
                 <div class="w-5 h-5 bg-gray-300 dark:bg-gray-700 rounded"></div>
                 <div class="flex-grow space-y-2">
@@ -122,10 +122,10 @@ const apiError = ref(null);
 const internalSelection = ref([...props.modelValue]);
 let searchTimeout = null;
 
-// Initial state from props to avoid empty screen
 const asyncCustomers = ref([...props.customers]);
-const currentPage = ref(1);
-const lastPage = ref(1);
+// Architect Note: Substituição do currentPage pelo Cursor Pagination exigido pela API
+const currentCursor = ref(null); 
+const hasMorePages = ref(true);
 
 const isAllSelected = computed({
   get() {
@@ -137,29 +137,31 @@ const isAllSelected = computed({
 });
 
 /**
- * Core fetch function with 20 items per page limit as requested.
- * Contains fail-safes for unauthorized API calls commonly found in SPA setups.
+ * Fetch discovery items optimally through the cursor-paginated endpoint.
  */
-const fetchCustomers = async (page = 1, append = false) => {
-    if (page === 1) isLoading.value = true;
-    else isLoadingMore.value = true;
+const fetchCustomers = async (isLoadMore = false) => {
+    if (!isLoadMore) {
+        isLoading.value = true;
+        currentCursor.value = null; // Reiniciar o estado em novas pesquisas
+    } else {
+        isLoadingMore.value = true;
+    }
     
     apiError.value = null;
 
     try {
-        const response = await axios.get('/api/v1/users', { 
+        // Redirecionamento correto da rota de acordo com o padrão SRP
+        const response = await axios.get('/api/v1/customers', { 
             params: { 
                 search: search.value, 
-                role: 'customer', 
-                limit: 20,
-                page: page
+                cursor: currentCursor.value
             }
         });
         
         const data = response.data;
         const newItems = data.data || [];
         
-        if (append) {
+        if (isLoadMore) {
             const existingIds = new Set(asyncCustomers.value.map(c => c.id));
             const filtered = newItems.filter(item => !existingIds.has(item.id));
             asyncCustomers.value = [...asyncCustomers.value, ...filtered];
@@ -167,13 +169,16 @@ const fetchCustomers = async (page = 1, append = false) => {
             asyncCustomers.value = newItems;
         }
         
-        currentPage.value = data.current_page || 1;
-        lastPage.value = data.last_page || 1;
+        // Atualizar a referência com o cursor fornecido pelo backend
+        currentCursor.value = data.next_cursor || null;
+        hasMorePages.value = data.next_cursor !== null;
         
     } catch (err) {
         console.error('Customer fetch failed:', err);
-        // Architectural UX enhancement: Graceful UI feedback for HTTP errors
-        if (err.response && err.response.status === 401) {
+        
+        if (err.response && err.response.data && err.response.data.message) {
+            apiError.value = `Erro de Servidor:\n${err.response.data.message}`;
+        } else if (err.response && err.response.status === 401) {
             apiError.value = 'Acesso não autorizado (401). Verifica o SANCTUM_STATEFUL_DOMAINS no teu ficheiro .env para permitir pedidos API.';
         } else {
             apiError.value = 'Falha na comunicação com o servidor ao procurar clientes.';
@@ -186,20 +191,21 @@ const fetchCustomers = async (page = 1, append = false) => {
 
 const debouncedSearch = () => {
     clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => fetchCustomers(1, false), 400); 
+    searchTimeout = setTimeout(() => fetchCustomers(false), 400); 
 };
 
 const clearSearch = () => {
     search.value = '';
-    fetchCustomers(1, false);
+    fetchCustomers(false);
 };
 
 const handleScroll = (e) => {
-    if (isLoadingMore.value || currentPage.value >= lastPage.value || apiError.value) return;
+    if (isLoadingMore.value || !hasMorePages.value || apiError.value) return;
     
     const { scrollTop, scrollHeight, clientHeight } = e.target;
+    // Dispara a próxima request 50px antes de chegar ao fim
     if (scrollTop + clientHeight >= scrollHeight - 50) {
-        fetchCustomers(currentPage.value + 1, true);
+        fetchCustomers(true);
     }
 };
 
@@ -232,7 +238,10 @@ watch(() => props.modelValue, (newVal) => {
 }, { deep: true });
 
 onMounted(() => {
-    fetchCustomers(1, false);
+    // Inicia a primeira chamada com a lista vazia se for inicializado via API
+    if (asyncCustomers.value.length === 0) {
+        fetchCustomers(false);
+    }
 });
 
 onUnmounted(() => clearTimeout(searchTimeout));
