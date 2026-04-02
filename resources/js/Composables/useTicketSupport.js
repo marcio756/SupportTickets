@@ -15,7 +15,8 @@ export function useTicketSupport(ticket) {
     const isSupporter = currentUser.role === 'supporter' || currentUser.role === 'admin';
 
     const currentRemainingSeconds = ref(ticket.value.customer ? ticket.value.customer.daily_support_seconds : 0);
-    const localMessages = ref([...ticket.value.messages]);
+    // Correção: Adicionado fallback (|| []) para evitar crash se o backend não enviar a relação messages
+    const localMessages = ref([...(ticket.value.messages || [])]);
     const messagesContainer = ref(null);
     const isAssigning = ref(false);
     const confirmingDeletion = ref(false);
@@ -204,7 +205,8 @@ export function useTicketSupport(ticket) {
     };
 
     watch(() => ticket.value.messages, (newMessages) => {
-        localMessages.value = [...newMessages];
+        // Correção: Adicionado fallback (|| []) no watch também
+        localMessages.value = [...(newMessages || [])];
         scrollToBottom();
     }, { deep: true });
 

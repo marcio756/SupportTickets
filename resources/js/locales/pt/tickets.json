@@ -8,7 +8,9 @@
         "subject_placeholder": "ex: Não consigo ligar à base de dados",
         "detailed_message_label": "Mensagem Detalhada",
         "detailed_message_placeholder": "Explica os passos para reproduzir o problema, códigos de erro, etc.",
-        "submit_button": "Submeter Ticket"
+        "submit_button": "Submeter Ticket",
+        "upload_attachment": "Carregar Anexo",
+        "attachment_limit": "Tamanho máximo: 10MB. Formatos aceites: PDF, Imagens, ZIP."
     },
     "show": {
         "page_title": "Ticket #{id} - {title}",

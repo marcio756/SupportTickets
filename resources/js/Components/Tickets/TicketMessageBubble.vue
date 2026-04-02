@@ -1,5 +1,5 @@
 <template>
-    <div :class="['message-wrapper mb-4 flex items-start gap-3', isMine ? 'flex-row-reverse' : '']">
+    <div :class="['message-wrapper mb-4 flex items-start gap-3 transition-opacity duration-300', isMine ? 'flex-row-reverse' : '', message.is_optimistic ? 'opacity-60' : 'opacity-100']">
         
         <template v-if="message.sender">
             <UserAvatar :user="message.sender" size="48px" />
@@ -23,7 +23,8 @@
                 <span class="font-bold text-sm" :class="isMine ? 'text-blue-100' : 'text-gray-900'">
                     {{ message.sender ? message.sender.name : message.sender_email }}
                 </span>
-                <span class="text-xs ml-4" :class="isMine ? 'text-blue-200' : 'text-gray-400'">
+                <span class="text-xs ml-4 flex items-center gap-1" :class="isMine ? 'text-blue-200' : 'text-gray-400'">
+                    <va-icon v-if="message.is_optimistic" name="schedule" size="12px" />
                     {{ formattedDate }}
                 </span>
             </div>
@@ -46,9 +47,6 @@ import { usePage } from '@inertiajs/vue3';
 import { VaIcon } from 'vuestic-ui';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 
-/**
- * Defines the strict props for the bubble.
- */
 const props = defineProps({
     message: {
         type: Object,
@@ -60,10 +58,13 @@ const page = usePage();
 
 /**
  * Determines if the message was sent by the currently authenticated user
- * to align the bubble to the right side. Safely checks for null user_id.
+ * to align the bubble to the right side.
  */
 const isMine = computed(() => {
-    return props.message.user_id && props.message.user_id === page.props.auth.user.id;
+    // Arquiteto: Garante que valida tanto as mensagens do backend (user_id) 
+    // como o objeto otimista gerado no frontend (sender.id)
+    const senderId = props.message.user_id || (props.message.sender && props.message.sender.id);
+    return senderId && senderId === page.props.auth.user.id;
 });
 
 /**
@@ -78,8 +79,6 @@ const formattedDate = computed(() => {
 
 /**
  * Processes the message text to highlight mentions.
- * Identifies patterns starting with @ followed by alphanumeric characters or complete email formats.
- * Also performs sanitization replacing HTML entities to prevent XSS vulnerabilities.
  */
 const formattedMessageContent = computed(() => {
     if (!props.message.message) return '';
@@ -92,8 +91,12 @@ const formattedMessageContent = computed(() => {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 
-    // Match @Name or @Email formats to recreate the Discord pings aesthetic
-    return escapedMessage.replace(/@([a-zA-Z0-9_À-ÿ.-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9_À-ÿ]+)/g, '<span class="text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-900/30 px-1 py-0.5 rounded cursor-pointer hover:underline">@$1</span>');
+    // Ajusta as cores das menções consoante a cor de fundo da bolha
+    const mentionClass = isMine.value 
+        ? 'text-white font-bold bg-blue-700/50 px-1 py-0.5 rounded cursor-pointer hover:underline'
+        : 'text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-900/30 px-1 py-0.5 rounded cursor-pointer hover:underline';
+
+    return escapedMessage.replace(/@([a-zA-Z0-9_À-ÿ.-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9_À-ÿ]+)/g, `<span class="${mentionClass}">@$1</span>`);
 });
 </script>
 

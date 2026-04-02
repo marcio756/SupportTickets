@@ -21,7 +21,7 @@
         </div>
 
         <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-            <form @submit.prevent="submitReply" class="flex flex-col gap-3">
+            <form @submit.prevent="handleOptimisticSubmit" class="flex flex-col gap-3">
                 <div class="flex gap-3 items-end">
                     <div class="relative flex-1">
                         <div v-if="showMentionMenu" class="absolute bottom-full left-0 mb-2 w-64 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50">
@@ -78,8 +78,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, toRef } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { ref, onMounted, toRef, watch } from 'vue';
+import { useForm, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import TicketMessageBubble from '@/Components/Tickets/TicketMessageBubble.vue';
 import { VaTextarea, VaButton, VaAlert, VaIcon, VaFileUpload, VaProgressCircle } from 'vuestic-ui';
@@ -88,18 +88,17 @@ import { useTicketSupport } from '@/Composables/useTicketSupport';
 const props = defineProps({
     ticket: { type: Object, required: true },
     isTimeUp: Boolean,
-    showClaimOverlay: Boolean,
-    isInputDisabled: Boolean,
-    isSubmitDisabled: Boolean
+    showClaimOverlay: Boolean
 });
 
-// Sync with legacy composable if needed for form submission
+const page = usePage();
 const ticketRef = toRef(props, 'ticket');
-const { replyForm, submitReply } = useTicketSupport(ticketRef);
+
+// Importamos todas as variáveis de controlo do composable
+const { replyForm, submitReply, isInputDisabled, isSubmitDisabled, localMessages } = useTicketSupport(ticketRef);
 
 /**
- * Message Infinite Scroll Logic
- * Replaces the monolithic array load, querying pages asynchronously as the user scrolls up.
+ * Lógica de Paginação Infinita
  */
 const messagesContainer = ref(null);
 const asyncMessages = ref([]);
@@ -111,15 +110,13 @@ const fetchMessages = async (cursor = null) => {
     isLoadingMessages.value = true;
 
     try {
-        const url = route('api.tickets.messages', props.ticket.id);
+        const url = route('v1.tickets.messages', props.ticket.id);
         const response = await axios.get(url, { params: { cursor } });
         
-        // Reverse because APIs usually return latest first, and chat displays oldest at top
         const newMessages = response.data.data.reverse();
         asyncMessages.value = [...newMessages, ...asyncMessages.value];
         nextCursor.value = response.data.next_cursor;
 
-        // Auto-scroll to bottom on initial load
         if (!cursor) {
             setTimeout(() => {
                 if (messagesContainer.value) {
@@ -144,9 +141,113 @@ onMounted(() => {
     fetchMessages();
 });
 
+// --- ARQUITETURA DEFINITIVA PARA MENSAGENS INSTANTÂNEAS ---
+
 /**
- * Lazy Loading Mentions Logic
- * Replaces the O(N) frontend array filter. Uses an API endpoint via debounce proxy.
+ * 1. Optimistic UI: Dá a sensação de velocidade premium. 
+ * Mostra a bolha de mensagem ao utilizador imediatamente (0ms) antes do servidor responder.
+ */
+const handleOptimisticSubmit = () => {
+    if (isSubmitDisabled.value) return;
+
+    const optimisticText = replyForm.message;
+
+    const tempMessage = {
+        id: 'optimistic-' + Date.now(),
+        message: optimisticText,
+        created_at: new Date().toISOString(),
+        is_optimistic: true, // Tag para podermos substituir pela mensagem real depois
+        sender: {
+            id: page.props.auth.user.id,
+            name: page.props.auth.user.name,
+            role: page.props.auth.user.role
+        }
+    };
+
+    // Injeta visualmente e empurra o scroll para baixo
+    asyncMessages.value.push(tempMessage);
+
+    setTimeout(() => {
+        if (messagesContainer.value) {
+            messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+        }
+    }, 50);
+
+    // Dispara a lógica de submit real
+    submitReply();
+};
+
+/**
+ * 2. Hard Verification via API.
+ * Assim que o Inertia diz "Guardei na base de dados com sucesso", nós pedimos os dados finais.
+ * Resolve o problema de demorar ou obrigar a dar F5.
+ */
+const fetchLatestMessages = async () => {
+    try {
+        const url = route('v1.tickets.messages', props.ticket.id);
+        const response = await axios.get(url);
+        const latestMessages = response.data.data.reverse();
+        
+        // Remove as mensagens provisórias (Optimistic UI)
+        asyncMessages.value = asyncMessages.value.filter(m => !m.is_optimistic);
+
+        let hasNew = false;
+        latestMessages.forEach(msg => {
+            if (!asyncMessages.value.find(m => String(m.id) === String(msg.id))) {
+                asyncMessages.value.push(msg);
+                hasNew = true;
+            }
+        });
+
+        if (hasNew) {
+            setTimeout(() => {
+                if (messagesContainer.value) {
+                    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+                }
+            }, 100);
+        }
+    } catch (error) {
+        console.error("Error syncing final messages", error);
+    }
+};
+
+// Escuta a conclusão do pedido do Inertia
+watch(() => replyForm.recentlySuccessful, (isSuccessful) => {
+    if (isSuccessful) {
+        fetchLatestMessages();
+    }
+});
+
+/**
+ * 3. Fallback de Sincronização via WebSockets / Props Inertia.
+ * Ouve o canal em tempo real para o caso de o cliente receber uma mensagem do suporte.
+ */
+watch(localMessages, (incomingMessages) => {
+    if (incomingMessages && incomingMessages.length > 0) {
+        asyncMessages.value = asyncMessages.value.filter(m => !m.is_optimistic);
+    }
+
+    let hasNew = false;
+    (incomingMessages || []).forEach(msg => {
+        if (!asyncMessages.value.find(m => String(m.id) === String(msg.id))) {
+            asyncMessages.value.push(msg);
+            hasNew = true;
+        }
+    });
+
+    if (hasNew) {
+        setTimeout(() => {
+            if (messagesContainer.value) {
+                messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+            }
+        }, 100);
+    }
+}, { deep: true, immediate: true });
+
+// --- FIM DA ARQUITETURA DE MENSAGENS ---
+
+/**
+ * Lógica de Menções (@)
  */
 const mentionableEntities = ref([]);
 const showMentionMenu = ref(false);
@@ -166,14 +267,12 @@ const fetchMentions = async (query) => {
     isLoadingMentions.value = true;
     
     try {
-        // Consults the global async search API
-        const response = await axios.get(route('api.users.search'), { 
+        const response = await axios.get(route('v1.users.search'), { 
             params: { q: query, roles: ['supporter', 'admin'] } 
         });
         
         const users = response.data.data || response.data;
         
-        // Always include the customer entity dynamically if not matched
         if (props.ticket.customer && !users.find(u => String(u.id) === String(props.ticket.customer.id))) {
             users.push({ id: String(props.ticket.customer.id), name: props.ticket.customer.name, role: 'customer' });
         } else if (props.ticket.sender_email) {
@@ -202,7 +301,6 @@ const handleKeyUp = (e) => {
         showMentionMenu.value = true;
         mentionSearch.value = match[1];
         
-        // Debounce to prevent flooding the server
         clearTimeout(mentionTimeout);
         mentionTimeout = setTimeout(() => {
             fetchMentions(mentionSearch.value);

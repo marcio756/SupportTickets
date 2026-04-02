@@ -29,7 +29,6 @@
           :placeholder="$t('filters.all_statuses')"
           clearable
           preset="bordered"
-          virtual-scroller
           class="w-full xl:w-48 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -48,7 +47,6 @@
           :placeholder="$t('filters.all_sources')"
           clearable
           preset="bordered"
-          virtual-scroller
           class="w-full xl:w-48 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -67,7 +65,6 @@
           :placeholder="$t('filters.all_roles')"
           clearable
           preset="bordered"
-          virtual-scroller
           class="w-full xl:w-48 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -82,7 +79,6 @@
           v-model="internalCustomers"
           :options="asyncCustomerOptions"
           :loading="isLoadingCustomers"
-          @search="fetchCustomersOnType"
           searchable
           multiple
           text-by="name"
@@ -92,6 +88,8 @@
           preset="bordered"
           virtual-scroller
           class="w-full xl:w-56 flex-none"
+          @update:search="handleCustomerSearch"
+          @scroll-bottom="loadMoreCustomers"
           @update:modelValue="emitFilters"
         >
             <template #content="{ valueArray }">
@@ -112,7 +110,6 @@
           :placeholder="$t('filters.assignment')"
           clearable
           preset="bordered"
-          virtual-scroller
           class="w-full xl:w-56 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -136,7 +133,6 @@
           clearable
           searchable
           preset="bordered"
-          virtual-scroller
           class="w-full xl:w-64 flex-none"
           @update:modelValue="emitFilters"
         >
@@ -179,14 +175,10 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 
-/**
- * Reusable layout and logic component for resource filtering.
- * Refactored to support Lazy Loading for high volume dropdowns (e.g. Customers).
- */
 const props = defineProps({
   query: { type: String, default: '' },
   hideSearch: { type: Boolean, default: false },
@@ -221,9 +213,13 @@ const internalCustomers = ref(props.customers);
 const internalAssignees = ref(props.assignees);
 const internalTags = ref(props.tags);
 
-// Architectural Note: Manage dynamic state internally to prevent memory bloat
-const asyncCustomerOptions = ref(props.customerOptions);
+// Dynamic State for Customers Infinite Scroll & Search
+const asyncCustomerOptions = ref(props.customerOptions || []);
 const isLoadingCustomers = ref(false);
+const currentCustomerCursor = ref(null);
+const hasMoreCustomers = ref(true);
+const currentCustomerSearch = ref('');
+let searchTimeout = null;
 
 watch(() => props.query, (newVal) => { internalQuery.value = newVal; });
 watch(() => props.status, (newVal) => { internalStatus.value = newVal; });
@@ -264,22 +260,78 @@ const resolveTagName = (val) => {
 };
 
 /**
- * Dynamically queries the API to populate the customers dropdown based on user input.
- * Replaces the need to inject all database users into memory simultaneously.
+ * Lida com o input do utilizador com debounce para evitar spam na API.
  */
-const fetchCustomersOnType = async (query) => {
-    if (!query || query.length < 2) return;
+const handleCustomerSearch = (query = '') => {
+    currentCustomerSearch.value = query;
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        fetchCustomersOnType(query, false);
+    }, 350);
+};
+
+/**
+ * Função desencadeada quando a caixa de utilizadores atinge o limite do scroll.
+ */
+const loadMoreCustomers = () => {
+    if (hasMoreCustomers.value && !isLoadingCustomers.value) {
+        fetchCustomersOnType(currentCustomerSearch.value, true);
+    }
+};
+
+/**
+ * Abstrai a lógica de chamadas assíncronas à API e lida com a paginação de cursores.
+ */
+const fetchCustomersOnType = async (query = '', isLoadMore = false) => {
+    // Para pesquisas iniciais com poucas letras, ignora, exceto se a string for vazia (carregamento inicial)
+    if (!isLoadMore && query.length > 0 && query.length < 2) return;
+
+    if (!isLoadMore) {
+        isLoadingCustomers.value = true;
+        currentCustomerCursor.value = null; // Reset para uma pesquisa inteiramente nova
+    } else {
+        isLoadingCustomers.value = true;
+    }
     
-    isLoadingCustomers.value = true;
     try {
-        const response = await axios.get(route('api.users.index'), { params: { search: query, role: 'customer' } });
-        asyncCustomerOptions.value = response.data.data || response.data;
+        const response = await axios.get('/api/v1/customers', { 
+            params: { 
+                search: query,
+                cursor: currentCustomerCursor.value
+            } 
+        });
+        
+        const data = response.data.data || response.data || [];
+        
+        if (isLoadMore) {
+            // Elimina possíveis duplicados antes de injetar na lista
+            const existingIds = new Set(asyncCustomerOptions.value.map(c => c.id));
+            const filtered = data.filter(item => !existingIds.has(item.id));
+            asyncCustomerOptions.value = [...asyncCustomerOptions.value, ...filtered];
+        } else {
+            asyncCustomerOptions.value = data;
+        }
+
+        // Atualiza a mecânica de cursores recebidos pelo backend
+        currentCustomerCursor.value = response.data.next_cursor || null;
+        hasMoreCustomers.value = response.data.next_cursor !== null;
+
     } catch (error) {
         console.error("Error fetching customers dynamically", error);
     } finally {
         isLoadingCustomers.value = false;
     }
 };
+
+onMounted(() => {
+    if (props.isSupporter && (!asyncCustomerOptions.value || asyncCustomerOptions.value.length === 0)) {
+        fetchCustomersOnType('', false);
+    }
+});
+
+onUnmounted(() => {
+    clearTimeout(searchTimeout);
+});
 
 const clearAllFilters = () => {
     internalQuery.value = '';

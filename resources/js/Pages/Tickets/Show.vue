@@ -92,8 +92,6 @@
                     :ticket="ticket" 
                     :isTimeUp="isTimeUp"
                     :showClaimOverlay="showClaimOverlay"
-                    :isInputDisabled="isInputDisabled"
-                    :isSubmitDisabled="isSubmitDisabled"
                     class="shadow-sm rounded-lg"
                 />
             </div>
@@ -178,7 +176,7 @@ import TicketStatusBadge from '@/Components/Tickets/TicketStatusBadge.vue';
 import SupportTimeDisplay from '@/Components/Tickets/SupportTimeDisplay.vue';
 import TagBadge from '@/Components/Common/TagBadge.vue';
 import TicketChatArea from '@/Pages/Tickets/TicketChatArea.vue';
-import ClaimTicketOverlay from '@/Features/Tickets/ClaimTicketOverlay.vue';
+import ClaimTicketOverlay from '@/Pages/Tickets/ClaimTicketOverlay.vue';
 import { 
     VaButton, VaDropdown, VaDropdownContent, 
     VaList, VaListItem, VaListItemSection, 
@@ -196,7 +194,7 @@ const ticketRef = toRef(props, 'ticket');
 const {
     isSupporter, currentRemainingSeconds,
     isAssigning, deleteForm, confirmingDeletion, isTimeUp,
-    hasWritePermission, showClaimOverlay, isInputDisabled, isSubmitDisabled,
+    hasWritePermission, showClaimOverlay,
     assignToMe, updateStatus, deleteTicket
 } = useTicketSupport(ticketRef);
 

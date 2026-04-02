@@ -84,7 +84,9 @@
         "subject_placeholder": "Brief description of the issue",
         "detailed_message_label": "Detailed Message",
         "detailed_message_placeholder": "Provide as much detail as possible...",
-        "submit_button": "Submit Ticket"
+        "submit_button": "Submit Ticket",
+        "upload_attachment": "Upload Attachment",
+        "attachment_limit": "Max size: 10MB. Accepted formats: PDF, Images, ZIP."
     },
     "create": {
         "page_title": "Create Ticket",

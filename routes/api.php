@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\TicketController;
+// Arquiteto: Adicionado o TicketMessageController em falta
+use App\Http\Controllers\Api\TicketMessageController; 
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkSessionController;
 use App\Http\Controllers\Api\TeamController;
@@ -96,6 +98,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
          * Administrative User Management
          */
         Route::apiResource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::get('/users/search', [UserController::class, 'search'])->name('users.search'); // Para suportar menções (@)
         Route::patch('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
 
         /**
@@ -120,6 +123,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::patch('/tickets/{ticket}/assign', [TicketController::class, 'assign'])->name('tickets.assign');
         Route::patch('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])->name('tickets.updateStatus');
         Route::post('/tickets/{ticket}/messages', [TicketController::class, 'storeMessage'])->name('tickets.messages.store');
+        
+        // Arquiteto: Rota adicionada com a nomenclatura exata que o Vue (Ziggy) procura.
+        // Removi também o prefixo "api." porque o route provider já lhe dá o prefixo name('v1.') e o Laravel o prefixo de ficheiro.
+        Route::get('/tickets/{ticket}/messages', [TicketMessageController::class, 'index'])->name('tickets.messages'); 
+        
         Route::post('/tickets/{ticket}/tick', [TicketController::class, 'tickTime'])->name('tickets.tickTime');
         Route::put('/tickets/{ticket}/tags', [TicketController::class, 'syncTags'])->name('tickets.tags.sync');
     });

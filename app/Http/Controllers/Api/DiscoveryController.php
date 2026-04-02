@@ -15,7 +15,7 @@ use Throwable;
 class DiscoveryController extends Controller
 {
     /**
-     * Retrieves an UNLIMITED list of customers tailored for UI dropdowns or autocompletes.
+     * Retrieves a cursor-paginated list of customers tailored for UI dropdowns or autocompletes.
      *
      * @param Request $request
      * @return JsonResponse
@@ -34,8 +34,11 @@ class DiscoveryController extends Controller
                 });
             }
 
-            // Ação: Removido o limite de cursorPaginate(). Executa diretamente um get() ordenado.
-            $customers = $query->orderBy('name')->get();
+            $limit = $request->integer('limit', 20);
+            
+            // Arquiteto: Reposta a paginação por cursor.
+            // Impede esgotamento de memória e mantém a estrutura JSON compatível com o Vue.
+            $customers = $query->orderBy('name')->orderBy('id')->cursorPaginate($limit);
 
             return response()->json($customers);
 
@@ -49,6 +52,7 @@ class DiscoveryController extends Controller
 
     /**
      * Retrieves an UNLIMITED list of support agents along with their team context.
+     * Note: Supporters are typically a small group, so get() is acceptable here.
      *
      * @return JsonResponse
      */
@@ -59,7 +63,7 @@ class DiscoveryController extends Controller
                 ->select('id', 'name', 'email', 'team_id')
                 ->with('team')
                 ->orderBy('name')
-                ->get(); // Ação: Limite também removido para manter a consistência da API
+                ->get(); 
 
             return response()->json($supporters);
 

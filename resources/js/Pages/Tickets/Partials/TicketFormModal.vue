@@ -1,7 +1,8 @@
 <script setup>
-import { watch, computed } from 'vue';
+import { ref, watch, computed, onUnmounted } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
+import axios from 'axios';
 
 const props = defineProps({
     show: {
@@ -30,30 +31,103 @@ const form = useForm({
     message: '',
     customer_id: '',
     tags: [],
-    attachment: null,
+    attachment: [], // Mantemos a correção do array vazio para o file-upload
 });
+
+// Dynamic State for Customers Infinite Scroll & Search
+const asyncCustomerOptions = ref([]);
+const isLoadingCustomers = ref(false);
+const currentCustomerCursor = ref(null);
+const hasMoreCustomers = ref(true);
+const currentCustomerSearch = ref('');
+let searchTimeout = null;
 
 /**
  * Monitors the modal's visibility state to enforce a clean slate.
  * Resets form data and clears any previous validation errors whenever the modal is opened.
+ * Architect Note: Triggers the initial fetch of customers if the modal is opened.
  */
 watch(() => props.show, (isShowing) => {
     if (isShowing) {
         form.reset();
         form.clearErrors();
+        
+        // Fetch inicial se a lista estiver vazia quando o supporter abre o modal
+        if (isSupporter && asyncCustomerOptions.value.length === 0) {
+            fetchCustomersOnType('', false);
+        }
     }
 });
 
 /**
- * Transforms the raw customers array into the standardized object structure 
- * expected by the Vuestic Select component.
- * @returns {Array<{value: string|number, text: string}>}
+ * Lida com o input do utilizador com debounce para evitar spam na API.
  */
-const customerOptions = computed(() => {
-    return props.customers.map(customer => ({
-        value: customer.id,
-        text: customer.name
-    }));
+const handleCustomerSearch = (query = '') => {
+    currentCustomerSearch.value = query;
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        fetchCustomersOnType(query, false);
+    }, 350);
+};
+
+/**
+ * Função desencadeada quando a caixa de utilizadores atinge o limite do scroll.
+ */
+const loadMoreCustomers = () => {
+    if (hasMoreCustomers.value && !isLoadingCustomers.value) {
+        fetchCustomersOnType(currentCustomerSearch.value, true);
+    }
+};
+
+/**
+ * Abstrai a lógica de chamadas assíncronas à API e lida com a paginação de cursores.
+ */
+const fetchCustomersOnType = async (query = '', isLoadMore = false) => {
+    if (!isLoadMore && query.length > 0 && query.length < 2) return;
+
+    if (!isLoadMore) {
+        isLoadingCustomers.value = true;
+        currentCustomerCursor.value = null; 
+    } else {
+        isLoadingCustomers.value = true;
+    }
+    
+    try {
+        const response = await axios.get('/api/v1/customers', { 
+            params: { 
+                search: query,
+                cursor: currentCustomerCursor.value
+            } 
+        });
+        
+        const data = response.data.data || response.data || [];
+        
+        // Formata os dados para o formato que a dropdown precisa (text / value)
+        const formattedData = data.map(customer => ({
+            value: customer.id,
+            text: customer.name
+        }));
+        
+        if (isLoadMore) {
+            const existingIds = new Set(asyncCustomerOptions.value.map(c => c.value));
+            const filtered = formattedData.filter(item => !existingIds.has(item.value));
+            asyncCustomerOptions.value = [...asyncCustomerOptions.value, ...filtered];
+        } else {
+            asyncCustomerOptions.value = formattedData;
+        }
+
+        currentCustomerCursor.value = response.data.next_cursor || null;
+        hasMoreCustomers.value = response.data.next_cursor !== null;
+
+    } catch (error) {
+        console.error("Error fetching customers dynamically", error);
+    } finally {
+        isLoadingCustomers.value = false;
+    }
+};
+
+onUnmounted(() => {
+    clearTimeout(searchTimeout);
 });
 
 /**
@@ -124,7 +198,8 @@ const closeModal = () => {
             <va-select
                 v-if="isSupporter"
                 v-model="form.customer_id"
-                :options="customerOptions"
+                :options="asyncCustomerOptions"
+                :loading="isLoadingCustomers"
                 :label="$t('tickets.form.select_customer')"
                 :placeholder="$t('tickets.form.search_customer')"
                 searchable
@@ -132,6 +207,8 @@ const closeModal = () => {
                 value-by="value"
                 :error="!!form.errors.customer_id"
                 :error-messages="form.errors.customer_id"
+                @update:search="handleCustomerSearch"
+                @scroll-bottom="loadMoreCustomers"
                 required
             >
                 <template #prependInner>

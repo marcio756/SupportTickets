@@ -6,6 +6,9 @@ use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Observers\TicketObserver;
 use App\Observers\TicketMessageObserver;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -32,6 +35,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        /**
+         * Defines the API rate limiter used in routes/api.php
+         * Limits to 60 requests per minute per user or IP address.
+         */
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
         Ticket::observe(TicketObserver::class);
         TicketMessage::observe(TicketMessageObserver::class);
     }
