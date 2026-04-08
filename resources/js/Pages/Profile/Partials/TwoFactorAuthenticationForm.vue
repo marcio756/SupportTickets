@@ -49,10 +49,10 @@ const disableTwoFactorAuthentication = () => {
     <section>
         <header>
             <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                Autenticação de Dois Fatores (2FA)
+                {{ $t('profile.two_factor.title') }}
             </h2>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Adicione segurança extra à sua conta utilizando a autenticação de dois fatores.
+                {{ $t('profile.two_factor.description') }}
             </p>
         </header>
 
@@ -62,10 +62,10 @@ const disableTwoFactorAuthentication = () => {
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                     </svg>
-                    A Autenticação de Dois Fatores está ativada.
+                    {{ $t('profile.two_factor.enabled') }}
                 </span>
                 <span v-else class="text-gray-600 dark:text-gray-400">
-                    A Autenticação de Dois Fatores não está ativada.
+                    {{ $t('profile.two_factor.disabled') }}
                 </span>
             </h3>
 
@@ -79,13 +79,13 @@ const disableTwoFactorAuthentication = () => {
             >
                 <div v-if="twoFactorEnabled && qrCode" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
                     <p class="text-sm text-gray-600 dark:text-gray-400 max-w-xl">
-                        A autenticação de dois fatores está agora ativada. Leia o código QR abaixo utilizando a aplicação Google Authenticator no seu telemóvel.
+                        {{ $t('profile.two_factor.instructions') }}
                     </p>
 
                     <div class="mt-4 bg-white p-2 inline-block rounded-lg shadow-sm" v-html="qrCode"></div>
 
                     <div class="mt-4 max-w-xl text-sm text-gray-600 dark:text-gray-400">
-                        <p class="font-semibold mb-1">Chave de Configuração Manual:</p>
+                        <p class="font-semibold mb-1">{{ $t('profile.two_factor.manual_key') }}</p>
                         <code class="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded font-mono text-gray-800 dark:text-gray-200">{{ setupKey }}</code>
                     </div>
                 </div>
@@ -100,9 +100,9 @@ const disableTwoFactorAuthentication = () => {
                 >
                     <span v-if="enableForm.processing" class="flex items-center gap-2">
                         <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        A Ativar...
+                        {{ $t('profile.two_factor.enabling') }}
                     </span>
-                    <span v-else>Ativar 2FA</span>
+                    <span v-else>{{ $t('profile.two_factor.enable') }}</span>
                 </PrimaryButton>
 
                 <DangerButton 
@@ -113,9 +113,9 @@ const disableTwoFactorAuthentication = () => {
                 >
                     <span v-if="disableForm.processing" class="flex items-center gap-2">
                         <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        A Desativar...
+                        {{ $t('profile.two_factor.disabling') }}
                     </span>
-                    <span v-else>Desativar 2FA</span>
+                    <span v-else>{{ $t('profile.two_factor.disable') }}</span>
                 </DangerButton>
             </div>
         </div>

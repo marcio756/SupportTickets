@@ -29,5 +29,17 @@
         "verification_sent": "Um novo link de verificação foi enviado para seu endereço de e-mail.",
         "save": "Salvar",
         "saved": "Salvo."
+    },
+    "two_factor": {
+        "title": "Autenticação de Dois Fatores (2FA)",
+        "description": "Adicione segurança extra à sua conta utilizando a autenticação de dois fatores.",
+        "enabled": "A Autenticação de Dois Fatores está ativada.",
+        "disabled": "A Autenticação de Dois Fatores não está ativada.",
+        "instructions": "A autenticação de dois fatores está agora ativada. Leia o código QR abaixo utilizando a aplicação Google Authenticator no seu telemóvel.",
+        "manual_key": "Chave de Configuração Manual:",
+        "enable": "Ativar 2FA",
+        "enabling": "A Ativar...",
+        "disable": "Desativar 2FA",
+        "disabling": "A Desativar..."
     }
 }

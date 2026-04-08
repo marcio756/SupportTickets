@@ -29,5 +29,17 @@
         "verification_sent": "A new verification link has been sent to your email address.",
         "save": "Save",
         "saved": "Saved."
+    },
+    "two_factor": {
+        "title": "Two-Factor Authentication (2FA)",
+        "description": "Add additional security to your account using two-factor authentication.",
+        "enabled": "Two-Factor Authentication is enabled.",
+        "disabled": "Two-Factor Authentication is not enabled.",
+        "instructions": "Two-factor authentication is now enabled. Scan the QR code below using your phone's Google Authenticator application.",
+        "manual_key": "Manual Setup Key:",
+        "enable": "Enable 2FA",
+        "enabling": "Enabling...",
+        "disable": "Disable 2FA",
+        "disabling": "Disabling..."
     }
 }

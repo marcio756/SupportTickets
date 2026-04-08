@@ -39,18 +39,18 @@ onMounted(() => {
 
 <template>
     <GuestLayout>
-        <Head title="Verificação em 2 Passos" />
+        <Head :title="$t('auth.two_factor_challenge.title')" />
 
         <div class="mb-6 text-sm text-gray-600 dark:text-gray-400 text-center">
             <svg class="w-12 h-12 mx-auto mb-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
             </svg>
-            Abra a sua aplicação de Autenticação (ex: Google Authenticator) e insira o código de 6 dígitos para continuar.
+            {{ $t('auth.two_factor_challenge.instruction') }}
         </div>
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="code" value="Código de Autenticação" />
+                <InputLabel for="code" :value="$t('auth.two_factor_challenge.code_label')" />
 
                 <TextInput
                     id="code"
@@ -59,7 +59,7 @@ onMounted(() => {
                     type="text"
                     inputmode="numeric"
                     class="mt-1 block w-full text-center tracking-widest text-xl font-mono"
-                    placeholder="000000"
+                    :placeholder="$t('auth.two_factor_challenge.placeholder')"
                     required
                     autofocus
                     autocomplete="one-time-code"
@@ -76,9 +76,9 @@ onMounted(() => {
                 >
                     <span v-if="form.processing" class="flex items-center gap-2">
                         <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        A verificar...
+                        {{ $t('auth.two_factor_challenge.verifying') }}
                     </span>
-                    <span v-else>Verificar Código</span>
+                    <span v-else>{{ $t('auth.two_factor_challenge.verify_button') }}</span>
                 </PrimaryButton>
             </div>
         </form>
