@@ -16,7 +16,7 @@ class TwoFactorChallengeController extends Controller
      */
     public function create(Request $request)
     {
-        // Se a sessão temporária não existir, expulsa para o login normal
+        // Se a variável que acabámos de forçar a guardar não existir, voltamos ao login normal
         if (!$request->session()->has('login.id')) {
             return redirect()->route('login');
         }
@@ -42,11 +42,11 @@ class TwoFactorChallengeController extends Controller
         $user = User::findOrFail($userId);
         $google2fa = new Google2FA();
 
-        // Verifica o código usando a chave encriptada do utilizador
+        // Verifica o código inserido contra a chave gravada na BD do user
         $valid = $google2fa->verifyKey($user->two_factor_secret, $request->code);
 
         if ($valid) {
-            // Sucesso! Fazer login real e limpar os dados temporários
+            // Sucesso! Fazer login definitivo e limpar o lixo temporário
             Auth::login($user, $request->session()->get('login.remember', false));
             $request->session()->forget(['login.id', 'login.remember']);
             $request->session()->regenerate();
@@ -54,7 +54,7 @@ class TwoFactorChallengeController extends Controller
             return redirect()->intended(route('dashboard'));
         }
 
-        // Falha na validação, regressa com erro
+        // Falha no código (errado ou expirado)
         return back()->withErrors(['code' => 'O código de autenticação fornecido é inválido.']);
     }
 }
