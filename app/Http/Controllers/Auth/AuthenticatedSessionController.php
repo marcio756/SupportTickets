@@ -33,24 +33,15 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
-        $user = Auth::user();
-
-        // Se o utilizador tem 2FA configurado, interceptamos o login
-        if ($user && !empty($user->two_factor_secret)) {
-            // Deslogar imediatamente
-            Auth::guard('web')->logout();
-
-            // Guardar explicitamente o ID do utilizador na sessão temporária
-            $request->session()->put('login.id', $user->id);
-            $request->session()->put('login.remember', $request->boolean('remember'));
-
+        // Se o LoginRequest definiu a variável de sessão 'login.id', significa que o 2FA é necessário
+        if ($request->session()->has('login.id')) {
             // FORÇAR a gravação da sessão agora mesmo para evitar que se perca no redirecionamento
             $request->session()->save();
 
             return redirect()->route('two-factor.challenge');
         }
 
-        // Fluxo normal para quem não tem 2FA
+        // Fluxo normal para quem não tem 2FA e foi autenticado com sucesso
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard'));
