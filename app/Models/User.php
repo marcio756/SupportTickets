@@ -28,6 +28,7 @@ class User extends Authenticatable
         'role',
         'daily_support_seconds',
         'team_id',
+        'two_factor_secret',
     ];
 
     /**
@@ -38,6 +39,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
     ];
 
     /**

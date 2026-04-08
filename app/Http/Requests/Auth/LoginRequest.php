@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -41,7 +43,10 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $user = User::where('email', $this->input('email'))->first();
+
+        // Verificação manual das credenciais para podermos intercetar o 2FA
+        if (! $user || ! Hash::check($this->input('password'), $user->password)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -49,6 +54,19 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Se o utilizador tiver uma chave secreta, guardamos na sessão e não efetuamos o login ainda
+        if ($user->two_factor_secret) {
+            session([
+                'login.id' => $user->id,
+                'login.remember' => $this->boolean('remember'),
+            ]);
+
+            RateLimiter::clear($this->throttleKey());
+            return;
+        }
+
+        // Se não tiver 2FA, faz login normalmente
+        Auth::login($user, $this->boolean('remember'));
         RateLimiter::clear($this->throttleKey());
     }
 

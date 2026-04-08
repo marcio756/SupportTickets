@@ -9,6 +9,8 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
+use App\Http\Controllers\Auth\TwoFactorSettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -33,6 +35,13 @@ Route::middleware('guest')->group(function () {
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->middleware('throttle:3,1')
         ->name('password.store');
+        
+    // --- Novos Endpoints de Desafio 2FA ---
+    Route::get('two-factor-challenge', [TwoFactorChallengeController::class, 'create'])
+        ->name('two-factor.challenge');
+        
+    Route::post('two-factor-challenge', [TwoFactorChallengeController::class, 'store'])
+        ->middleware('throttle:5,1'); // Proteção contra brute force no token
 });
 
 Route::middleware('auth')->group(function () {
@@ -57,4 +66,11 @@ Route::middleware('auth')->group(function () {
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+        
+    // --- Novos Endpoints de Gestão 2FA no Perfil ---
+    Route::post('user/two-factor-authentication', [TwoFactorSettingsController::class, 'enable'])
+        ->name('two-factor.enable');
+        
+    Route::delete('user/two-factor-authentication', [TwoFactorSettingsController::class, 'disable'])
+        ->name('two-factor.disable');
 });

@@ -8,9 +8,10 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
+const page = usePage();
 const passwordInput = ref(null);
 const currentPasswordInput = ref(null);
 
@@ -31,11 +32,11 @@ const updatePassword = () => {
         onError: () => {
             if (form.errors.password) {
                 form.reset('password', 'password_confirmation');
-                passwordInput.value.focus();
+                passwordInput.value?.focus();
             }
             if (form.errors.current_password) {
                 form.reset('current_password');
-                currentPasswordInput.value.focus();
+                currentPasswordInput.value?.focus();
             }
         },
     });
@@ -55,6 +56,8 @@ const updatePassword = () => {
         </header>
 
         <form @submit.prevent="updatePassword" class="mt-6 space-y-6">
+            <input type="email" autocomplete="username" class="hidden" :value="page.props.auth.user.email" />
+
             <div>
                 <InputLabel for="current_password" :value="$t('profile.update_password.current_password')" />
 

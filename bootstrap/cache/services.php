@@ -35,10 +35,11 @@
     31 => 'Carbon\\Laravel\\ServiceProvider',
     32 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
     33 => 'Termwind\\Laravel\\TermwindServiceProvider',
-    34 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
-    35 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
-    36 => 'Webklex\\IMAP\\Providers\\LaravelServiceProvider',
-    37 => 'App\\Providers\\AppServiceProvider',
+    34 => 'PragmaRX\\Google2FALaravel\\ServiceProvider',
+    35 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
+    36 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
+    37 => 'Webklex\\IMAP\\Providers\\LaravelServiceProvider',
+    38 => 'App\\Providers\\AppServiceProvider',
   ),
   'eager' => 
   array (
@@ -59,10 +60,11 @@
     14 => 'Carbon\\Laravel\\ServiceProvider',
     15 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
     16 => 'Termwind\\Laravel\\TermwindServiceProvider',
-    17 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
-    18 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
-    19 => 'Webklex\\IMAP\\Providers\\LaravelServiceProvider',
-    20 => 'App\\Providers\\AppServiceProvider',
+    17 => 'PragmaRX\\Google2FALaravel\\ServiceProvider',
+    18 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
+    19 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
+    20 => 'Webklex\\IMAP\\Providers\\LaravelServiceProvider',
+    21 => 'App\\Providers\\AppServiceProvider',
   ),
   'deferred' => 
   array (

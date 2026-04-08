@@ -34,6 +34,11 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        // Intercetação do Desafio 2FA definido no LoginRequest
+        if ($request->session()->has('login.id')) {
+            return redirect()->route('two-factor.challenge');
+        }
+
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard'));
