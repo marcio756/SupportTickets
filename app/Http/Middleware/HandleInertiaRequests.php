@@ -7,46 +7,40 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    /**
+     * The root template that is loaded on the first page visit.
+     *
+     * @var string
+     */
     protected $rootView = 'app';
 
-    public function version(Request $request): ?string
+    /**
+     * Determine the current asset version.
+     */
+    public function version(Request $request): string|null
     {
         return parent::version($request);
     }
 
+    /**
+     * Define the props that are shared by default.
+     *
+     * @return array<string, mixed>
+     */
     public function share(Request $request): array
     {
-        $activeSessionData = null;
-
-        try {
-            if ($request->user() && $request->user()->isSupporter()) {
-                $session = \App\Models\WorkSession::where('user_id', $request->user()->id)
-                    ->whereIn('status', [\App\Enums\WorkSessionStatusEnum::ACTIVE->value, \App\Enums\WorkSessionStatusEnum::PAUSED->value])
-                    ->first();
-                
-                if ($session) {
-                    // Arquitetura: Passar um array simples impede que o Inertia tente serializar
-                    // Modelos Eloquent completos, cortando a raiz do Memory Leak e do Erro 500.
-                    $activeSessionData = [
-                        'id' => $session->id,
-                        'status' => $session->status instanceof \BackedEnum ? $session->status->value : $session->status,
-                        'total_duration_seconds' => $session->total_duration_seconds,
-                        'started_at' => $session->started_at,
-                    ];
-                }
-            }
-        } catch (\Throwable $e) {
-            // Silencia qualquer falha durante a verificação isolando o logger
-            try { logger()->error('Erro no HandleInertiaRequests: ' . $e->getMessage()); } catch (\Throwable $log) {}
-        }
-
         return [
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
-                'work_session' => $activeSessionData, 
             ],
-            'locale' => app()->getLocale(),
+            'flash' => [
+                'message' => fn () => $request->session()->get('message'),
+                'status' => fn () => $request->session()->get('status'),
+                // Adicionadas as variáveis de Flash Data exclusivas do 2FA
+                'qr_code' => fn () => $request->session()->get('qr_code'),
+                'secret' => fn () => $request->session()->get('secret'),
+            ],
         ];
     }
 }

@@ -34,8 +34,17 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
-        // Intercetação do Desafio 2FA definido no LoginRequest
-        if ($request->session()->has('login.id')) {
+        $user = Auth::user();
+
+        // Se o utilizador tem 2FA configurado, cancelamos o login atual para o obrigar ao desafio
+        if ($user && !empty($user->two_factor_secret)) {
+            Auth::logout();
+
+            $request->session()->put([
+                'login.id' => $user->id,
+                'login.remember' => $request->boolean('remember'),
+            ]);
+
             return redirect()->route('two-factor.challenge');
         }
 

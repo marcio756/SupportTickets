@@ -17,7 +17,7 @@ const user = computed(() => page.props.auth.user);
 // Check if the user already has 2FA enabled based on the user object,
 // or if the backend just flashed the success status.
 const twoFactorEnabled = computed(
-    () => user.value.two_factor_secret !== null || page.props.flash?.status === 'two-factor-authentication-enabled'
+    () => user.value.has_two_factor_enabled || page.props.flash?.status === 'two-factor-authentication-enabled'
 );
 
 const qrCode = computed(() => page.props.flash?.qr_code);

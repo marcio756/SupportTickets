@@ -43,6 +43,15 @@ class User extends Authenticatable
     ];
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = [
+        'has_two_factor_enabled',
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -59,6 +68,14 @@ class User extends Authenticatable
     }
 
     // --- Accessors for API Resources ---
+
+    /**
+     * Determine if the user has Two-Factor Authentication enabled.
+     */
+    public function getHasTwoFactorEnabledAttribute(): bool
+    {
+        return !empty($this->two_factor_secret);
+    }
 
     /**
      * Total chat time limit in seconds (formatted for Resource).
