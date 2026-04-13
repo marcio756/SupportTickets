@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DiscoveryController;
@@ -24,6 +25,16 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])
         ->middleware('throttle:5,1')
         ->name('login');
+
+    /**
+     * Autenticação e Recuperação de Password (Acesso Público)
+     */
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:3,1')
+        ->name('password.email');
+        
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])
+        ->name('password.update');
 
     // Proteção global da API contra abusos (ex: 60 pedidos por minuto por utilizador)
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
@@ -92,7 +103,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('/vacations/calendar', [VacationController::class, 'calendar'])->name('vacations.calendar');
         Route::get('/vacations/supporter/{supporter}', [VacationController::class, 'showBySupporter'])->name('vacations.supporter');
         Route::patch('/vacations/{vacation}/status', [VacationController::class, 'updateStatus'])->name('vacations.updateStatus');
-        Route::apiResource('vacations', VacationController::class)->except(['create', 'show', 'edit', 'update']);
+        Route::apiResource('vacations', VacationController::class)->except(['create', 'show', 'edit']); // update removido do except para permitir edição
 
         /**
          * Administrative User Management
@@ -115,6 +126,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
          * Email Synchronization Service
          */
         Route::post('/emails/fetch', [EmailController::class, 'fetch'])->name('emails.fetch');
+
+        /**
+         * Announcements
+         */
+        Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
 
         /**
          * Core Ticket Operations & State Management

@@ -95,6 +95,37 @@ class VacationController extends Controller
     }
 
     /**
+     * Update an existing pending vacation request for the authenticated supporter.
+     *
+     * @param Request $request
+     * @param Vacation $vacation
+     * @return JsonResponse
+     */
+    public function update(Request $request, Vacation $vacation): JsonResponse
+    {
+        if ($vacation->supporter_id !== Auth::id()) {
+            return response()->json(['message' => 'Não autorizado a editar este pedido.'], 403);
+        }
+
+        if ($vacation->status !== 'pending') {
+            return response()->json(['message' => 'Apenas é possível editar pedidos de férias pendentes.'], 422);
+        }
+
+        $validated = $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $vacation->update([
+            'start_date' => Carbon::parse($validated['start_date']),
+            'end_date' => Carbon::parse($validated['end_date']),
+            'total_days' => Carbon::parse($validated['start_date'])->diffInDays(Carbon::parse($validated['end_date'])) + 1,
+        ]);
+
+        return response()->json(['data' => $vacation]);
+    }
+
+    /**
      * Update the approval status of a vacation.
      *
      * @param UpdateVacationStatusRequest $request
