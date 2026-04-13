@@ -11,7 +11,6 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\TicketController;
-// Arquiteto: Adicionado o TicketMessageController em falta
 use App\Http\Controllers\Api\TicketMessageController; 
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WorkSessionController;
@@ -36,6 +35,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])
         ->name('password.update');
 
+    // Desafio 2FA - Deve ser acessível publicamente via API (com token intermédio gerado no login)
+    Route::post('/two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])
+        ->middleware('throttle:5,1')
+        ->name('two-factor.challenge');
+
     // Proteção global da API contra abusos (ex: 60 pedidos por minuto por utilizador)
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         /**
@@ -50,6 +54,15 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::put('/me', [ProfileController::class, 'update'])->name('me.update');
         Route::put('/me/password', [ProfileController::class, 'updatePassword'])->name('me.password');
         Route::delete('/me', [ProfileController::class, 'destroy'])->name('me.destroy');
+
+        /**
+         * Two-Factor Authentication (2FA) Management via API
+         */
+        Route::post('/user/two-factor-authentication', [ProfileController::class, 'enableTwoFactor'])->name('two-factor.enable');
+        Route::post('/user/confirmed-two-factor-authentication', [ProfileController::class, 'confirmTwoFactor'])->name('two-factor.confirm');
+        Route::delete('/user/two-factor-authentication', [ProfileController::class, 'disableTwoFactor'])->name('two-factor.disable');
+        Route::get('/user/two-factor-recovery-codes', [ProfileController::class, 'getRecoveryCodes'])->name('two-factor.recovery-codes.index');
+        Route::post('/user/two-factor-recovery-codes', [ProfileController::class, 'regenerateRecoveryCodes'])->name('two-factor.recovery-codes.regenerate');
 
         /**
          * Dashboard Statistics
@@ -103,13 +116,13 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('/vacations/calendar', [VacationController::class, 'calendar'])->name('vacations.calendar');
         Route::get('/vacations/supporter/{supporter}', [VacationController::class, 'showBySupporter'])->name('vacations.supporter');
         Route::patch('/vacations/{vacation}/status', [VacationController::class, 'updateStatus'])->name('vacations.updateStatus');
-        Route::apiResource('vacations', VacationController::class)->except(['create', 'show', 'edit']); // update removido do except para permitir edição
+        Route::apiResource('vacations', VacationController::class)->except(['create', 'show', 'edit']);
 
         /**
          * Administrative User Management
          */
         Route::apiResource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
-        Route::get('/users/search', [UserController::class, 'search'])->name('users.search'); // Para suportar menções (@)
+        Route::get('/users/search', [UserController::class, 'search'])->name('users.search');
         Route::patch('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
 
         /**
@@ -139,11 +152,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::patch('/tickets/{ticket}/assign', [TicketController::class, 'assign'])->name('tickets.assign');
         Route::patch('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])->name('tickets.updateStatus');
         Route::post('/tickets/{ticket}/messages', [TicketController::class, 'storeMessage'])->name('tickets.messages.store');
-        
-        // Arquiteto: Rota adicionada com a nomenclatura exata que o Vue (Ziggy) procura.
-        // Removi também o prefixo "api." porque o route provider já lhe dá o prefixo name('v1.') e o Laravel o prefixo de ficheiro.
         Route::get('/tickets/{ticket}/messages', [TicketMessageController::class, 'index'])->name('tickets.messages'); 
-        
         Route::post('/tickets/{ticket}/tick', [TicketController::class, 'tickTime'])->name('tickets.tickTime');
         Route::put('/tickets/{ticket}/tags', [TicketController::class, 'syncTags'])->name('tickets.tags.sync');
     });
