@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use PragmaRX\Google2FA\Google2FA; // Importação obrigatória para o 2FA
 
 /**
  * Handle authentication for mobile/external API clients
@@ -21,7 +22,8 @@ class AuthController extends Controller
     use ApiResponser;
 
     /**
-     * Authenticate user and return an API token
+     * Authenticate user and return an API token.
+     * Intercepts the request if 2FA is enabled.
      *
      * @param Request $request
      * @return JsonResponse
@@ -43,7 +45,16 @@ class AuthController extends Controller
             ]);
         }
 
-        // Generate a new token for the specific device
+        // Interceção 2FA: Se o utilizador tiver a chave secreta gerada, bloqueia o token.
+        if (!empty($user->two_factor_secret)) {
+            return response()->json([
+                'two_factor' => true,
+                'message' => 'Por favor, insira o código da sua aplicação Authenticator.',
+                'email' => $user->email // Devolvemos o email para o Challenge subsequente
+            ]);
+        }
+
+        // Processo normal sem 2FA: Generate a new token for the specific device
         $token = $user->createToken($request->device_name)->plainTextToken;
 
         return $this->successResponse([
@@ -55,6 +66,50 @@ class AuthController extends Controller
                 'role' => $user->role,
             ]
         ], 'Autenticação realizada com sucesso.');
+    }
+
+    /**
+     * Desafio 2FA. Recebe o código OTP e o email, verifica com o PragmaRX e emite o token.
+     * * @param Request $request
+     * @return JsonResponse
+     * @throws ValidationException
+     */
+    public function twoFactorChallenge(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+            'code' => ['required', 'string'],
+            'device_name' => ['required'], // Necessário para criar o token final
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || empty($user->two_factor_secret)) {
+            return $this->errorResponse('Acesso inválido ou 2FA não configurado.', 400);
+        }
+
+        // Validação criptográfica do código
+        $google2fa = new Google2FA();
+        $valid = $google2fa->verifyKey($user->two_factor_secret, $request->code);
+
+        if (!$valid) {
+            throw ValidationException::withMessages([
+                'code' => ['Código de autenticação incorreto ou expirado.'],
+            ]);
+        }
+
+        // Sucesso 2FA - Emitir Token Definitivo
+        $token = $user->createToken($request->device_name)->plainTextToken;
+
+        return $this->successResponse([
+            'token' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ]
+        ], 'Autenticação 2FA bem sucedida.');
     }
 
     /**

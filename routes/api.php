@@ -59,6 +59,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
          * Two-Factor Authentication (2FA) Management via API
          */
         Route::post('/user/two-factor-authentication', [ProfileController::class, 'enableTwoFactor'])->name('two-factor.enable');
+        Route::get('/user/two-factor-qr-code', [ProfileController::class, 'twoFactorQrCode'])->name('two-factor.qr');
+        Route::get('/user/two-factor-secret-key', [ProfileController::class, 'twoFactorSecretKey'])->name('two-factor.secret');
         Route::post('/user/confirmed-two-factor-authentication', [ProfileController::class, 'confirmTwoFactor'])->name('two-factor.confirm');
         Route::delete('/user/two-factor-authentication', [ProfileController::class, 'disableTwoFactor'])->name('two-factor.disable');
         Route::get('/user/two-factor-recovery-codes', [ProfileController::class, 'getRecoveryCodes'])->name('two-factor.recovery-codes.index');

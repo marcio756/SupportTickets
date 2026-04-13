@@ -7,19 +7,15 @@ use App\Models\Tag;
 use App\Traits\ApiResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Handles the CRUD operations for Tags via API.
  * Exclusively restricted to users with admin or supporter privileges.
- * Architect Note: Wrapped in Redis Tags caching to avoid millions of repetitive DB hits 
- * when the frontend generates Ticket creation forms.
+ * Architect Note: Cache tags removed to ensure compatibility with 'database' and 'file' cache drivers.
  */
 class TagController extends Controller
 {
     use ApiResponser;
-
-    private const CACHE_TAG = 'tags_metadata';
 
     /**
      * Helper method to centralize the authorization logic (DRY principle).
@@ -49,19 +45,13 @@ class TagController extends Controller
         }
 
         $search = $request->input('search', '');
-        $page = $request->input('page', 1);
-        $cacheKey = "tags_index_page_{$page}_search_" . md5($search);
+        $query = Tag::query();
 
-        // Redis cache tagged layer to serve metadata instantly without DB hits
-        $tags = Cache::tags([self::CACHE_TAG])->remember($cacheKey, 86400, function () use ($search) {
-            $query = Tag::query();
+        if (!empty($search)) {
+            $query->where('name', 'like', "%{$search}%");
+        }
 
-            if (!empty($search)) {
-                $query->where('name', 'like', "%{$search}%");
-            }
-
-            return $query->orderBy('name')->simplePaginate(15);
-        });
+        $tags = $query->orderBy('name')->simplePaginate(15);
 
         return $this->successResponse($tags, 'Tags listadas com sucesso.');
     }
@@ -84,7 +74,6 @@ class TagController extends Controller
         ]);
 
         $tag = Tag::create($validated);
-        $this->flushCache();
 
         return $this->successResponse($tag, 'Tag criada com sucesso.', 201);
     }
@@ -108,7 +97,6 @@ class TagController extends Controller
         ]);
 
         $tag->update($validated);
-        $this->flushCache();
 
         return $this->successResponse($tag, 'Tag atualizada com sucesso.');
     }
@@ -127,16 +115,7 @@ class TagController extends Controller
         }
 
         $tag->delete();
-        $this->flushCache();
 
         return $this->successResponse(null, 'Tag eliminada com sucesso.');
-    }
-
-    /**
-     * Clears the tagged cache upon metadata modification.
-     */
-    private function flushCache(): void
-    {
-        Cache::tags([self::CACHE_TAG])->flush();
     }
 }

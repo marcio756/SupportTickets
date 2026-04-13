@@ -8,16 +8,13 @@ use App\Models\Team;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Handles Administrative management of Teams.
- * Architect Note: Caching layer introduced to avoid DB overhead on repeated dropdown renders.
+ * Architect Note: Cache logic simplified/removed to support non-Redis environments (like 'database' driver).
  */
 class TeamController extends Controller
 {
-    private const CACHE_TAG = 'teams_metadata';
-
     /**
      * List all teams with their respective supporters.
      *
@@ -25,9 +22,7 @@ class TeamController extends Controller
      */
     public function index(): JsonResponse
     {
-        $teams = Cache::tags([self::CACHE_TAG])->remember('teams_all_supporters', 86400, function () {
-            return Team::with('supporters')->get();
-        });
+        $teams = Team::with('supporters')->get();
 
         return response()->json(['data' => $teams]);
     }
@@ -40,9 +35,7 @@ class TeamController extends Controller
      */
     public function members(Team $team): JsonResponse
     {
-        $members = Cache::tags([self::CACHE_TAG])->remember("team_members_{$team->id}", 86400, function () use ($team) {
-            return $team->supporters;
-        });
+        $members = $team->supporters;
 
         return response()->json(['data' => $members]);
     }
@@ -61,7 +54,6 @@ class TeamController extends Controller
         ]);
 
         $team = Team::create($validated);
-        $this->flushCache();
 
         return response()->json(['data' => $team], 201);
     }
@@ -81,7 +73,6 @@ class TeamController extends Controller
         ]);
 
         $team->update($validated);
-        $this->flushCache();
 
         return response()->json(['data' => $team]);
     }
@@ -95,7 +86,6 @@ class TeamController extends Controller
     public function destroy(Team $team): JsonResponse
     {
         $team->delete();
-        $this->flushCache();
 
         return response()->json(null, 204);
     }
@@ -112,19 +102,9 @@ class TeamController extends Controller
         User::whereIn('id', $request->validated('user_ids'))
             ->update(['team_id' => $team->id]);
 
-        $this->flushCache();
-
         return response()->json([
             'message' => 'Members assigned successfully',
             'data' => $team->load('supporters')
         ]);
-    }
-
-    /**
-     * Clears the tagged cache upon team structural changes.
-     */
-    private function flushCache(): void
-    {
-        Cache::tags([self::CACHE_TAG])->flush();
     }
 }
