@@ -10,8 +10,13 @@ class Announcement extends Model
     use HasFactory;
 
     protected $fillable = [
-        'title',
-        'content',
-        'type',
+        'subject',
+        'message',
+        'target_audience',
+        'recipient_ids',
+    ];
+
+    protected $casts = [
+        'recipient_ids' => 'array',
     ];
 }
