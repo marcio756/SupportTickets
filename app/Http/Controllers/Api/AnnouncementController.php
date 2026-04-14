@@ -6,23 +6,29 @@ use App\Enums\RoleEnum;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendAnnouncementEmailJob;
 use App\Models\User;
+use App\Models\Announcement;
 use App\Traits\ApiResponser;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 /**
- * API Controller for dispatching system announcements.
- * Optimized for bulk email dispatching without exhausting server RAM.
+ * API Controller for dispatching and managing system announcements.
  */
 class AnnouncementController extends Controller
 {
     use ApiResponser;
 
     /**
-     * Validates input and dispatches background jobs to send the announcements via API.
-     *
-     * @param Request $request
-     * @return JsonResponse
+     * Retorna o histórico de anúncios globais ordenado de forma decrescente.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $announcements = Announcement::latest()->paginate(15);
+        return $this->successResponse($announcements);
+    }
+
+    /**
+     * Guarda o anúncio na BD e envia o job de emails em massa.
      */
     public function store(Request $request): JsonResponse
     {
@@ -33,34 +39,32 @@ class AnnouncementController extends Controller
             return $this->errorResponse('Acesso não autorizado a esta funcionalidade.', 403);
         }
 
+        // Validação ajustada para o payload enviado pela App Flutter
         $validated = $request->validate([
-            'subject' => ['required', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:255'],
             'content' => ['required', 'string'],
-            'customer_ids' => ['required', 'array', 'min:1'],
-            'customer_ids.*' => ['exists:users,id'],
+            'type' => ['required', 'string', 'in:info,warning,critical'],
         ]);
 
-        /**
-         * Architect Note: Se o array de customer_ids tiver 50.000 IDs, usar get() 
-         * para carregar todos os modelos User faria o servidor dar "Out of Memory".
-         * Usamos chunk() e selecionamos apenas o email para manter o uso de RAM quase nulo 
-         * enquanto despachamos os Jobs para o Redis/Queue.
-         */
-        User::whereIn('id', $validated['customer_ids'])
+        // 1. Guardar no histórico da base de dados
+        $announcement = Announcement::create($validated);
+
+        // 2. Disparar emails em massa apenas para perfis Customer (Otimizado por chunks)
+        User::where('role', 'customer')
             ->select('id', 'email')
-            ->chunk(500, function ($customers) use ($validated) {
+            ->chunk(500, function ($customers) use ($announcement) {
                 foreach ($customers as $customer) {
                     SendAnnouncementEmailJob::dispatch(
                         $customer->email,
-                        $validated['subject'],
-                        $validated['content']
+                        $announcement->title,
+                        $announcement->content
                     );
                 }
             });
 
         return $this->successResponse(
-            null, 
-            __('announcements.sent_successfully') ?? 'Anúncios colocados na fila de envio com sucesso.'
+            $announcement, 
+            __('announcements.sent_successfully') ?? 'Anúncio publicado e emails na fila de envio.'
         );
     }
 }

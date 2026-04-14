@@ -145,6 +145,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         /**
          * Announcements
          */
+        Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
         Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
 
         /**
