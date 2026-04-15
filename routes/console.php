@@ -21,3 +21,9 @@ Schedule::command('app:reset-customer-chat-time')->dailyAt('00:00');
  * Mailbox Watcher: Retrieves incoming support emails and processes them into tickets.
  */
 Schedule::command('app:fetch-support-emails')->everyMinute();
+
+/**
+ * Ticket Automation: Scans for tickets inactive for 72h and automatically closes them.
+ * Executed hourly to ensure tickets are closed closely to the 72h mark.
+ */
+Schedule::command('app:close-inactive-tickets')->hourly();
