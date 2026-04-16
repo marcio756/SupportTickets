@@ -67,10 +67,11 @@ class TicketController extends Controller
          * Architect Note: Eager loading is maintained to prevent N+1 queries.
          * Only essential relationships for the listing are loaded.
          */
-        $query = Ticket::with(['customer:id,name,email', 'assignee:id,name', 'tags:id,name,color']);
+        $query = Ticket::with(['customer:id,name,email', 'assignee:id,name', 'tags:id,name,color'])
+            ->select('tickets.*');
 
         if (! $user->isStaff()) {
-            $query->where('customer_id', $user->id);
+            $query->where('tickets.customer_id', $user->id);
         }
 
         $this->applyIndexFilters($query, $request, $user);
@@ -78,7 +79,11 @@ class TicketController extends Controller
         $perPage = (int) $request->input('per_page', 10);
         $perPage = $perPage > 100 ? 100 : $perPage; 
 
-        $tickets = $query->latest()->paginate($perPage)->withQueryString();
+        /**
+         * Architect Note: Order by Primary Key (id) desc is vastly faster on millions of rows
+         * than sorting by a timestamp like created_at, preventing expensive filesorts in the DB.
+         */
+        $tickets = $query->orderByDesc('tickets.id')->paginate($perPage)->withQueryString();
 
         /**
          * Architect Note: Fetching millions of users with `get()` causes memory exhaustion.
@@ -105,7 +110,7 @@ class TicketController extends Controller
 
     /**
      * Applies search and dropdown filters to the ticket query.
-     * Prevents full table scans by optimizing LIKE clauses.
+     * Prevents full table scans by optimizing LIKE clauses and avoiding whereHas.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @param Request $request
@@ -115,29 +120,35 @@ class TicketController extends Controller
     private function applyIndexFilters($query, Request $request, User $user): void
     {
         if ($request->filled('search')) {
-            $searchTerm = $request->search;
+            $searchTerm = $request->search . '%'; // Enforce prefix search to allow index usage
             $query->where(function ($q) use ($searchTerm, $user) {
-                $q->where('title', 'like', $searchTerm . '%');
+                $q->where('tickets.title', 'like', $searchTerm);
                 
                 if ($user->isStaff()) {
-                    $q->orWhereHas('customer', function ($customerQuery) use ($searchTerm) {
-                        $customerQuery->where('name', 'like', $searchTerm . '%');
+                    /**
+                     * Architect Note: whereHas executes a full scan on large joins.
+                     * Using a subquery with whereIn is significantly faster for millions of rows.
+                     */
+                    $q->orWhereIn('tickets.customer_id', function ($sub) use ($searchTerm) {
+                        $sub->select('id')
+                            ->from('users')
+                            ->where('name', 'like', $searchTerm);
                     });
                 }
             });
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('tickets.status', $request->status);
         }
 
         if ($request->filled('source')) {
-            $query->where('source', $request->source);
+            $query->where('tickets.source', $request->source);
         }
 
         if ($request->filled('customers') && $user->isStaff()) {
             $customerIds = is_array($request->customers) ? $request->customers : explode(',', $request->customers);
-            $query->whereIn('customer_id', $customerIds);
+            $query->whereIn('tickets.customer_id', $customerIds);
         }
 
         if ($request->filled('assignees') && $user->isStaff()) {
@@ -145,10 +156,10 @@ class TicketController extends Controller
             
             $query->where(function ($q) use ($assignees, $user) {
                 if (in_array('unassigned', $assignees)) {
-                    $q->orWhereNull('assigned_to');
+                    $q->orWhereNull('tickets.assigned_to');
                 }
                 if (in_array('me', $assignees)) {
-                    $q->orWhere('assigned_to', $user->id);
+                    $q->orWhere('tickets.assigned_to', $user->id);
                 }
             });
         }

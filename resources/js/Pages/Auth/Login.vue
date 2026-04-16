@@ -53,11 +53,13 @@ const submit = () => {
                 <TextInput
                     id="email"
                     type="email"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full transition-opacity duration-300"
+                    :class="{ 'opacity-60': form.processing }"
                     v-model="form.email"
                     required
                     autofocus
                     autocomplete="username"
+                    :disabled="form.processing"
                 />
 
                 <InputError class="mt-2" :message="form.errors.email" />
@@ -69,17 +71,19 @@ const submit = () => {
                 <TextInput
                     id="password"
                     type="password"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full transition-opacity duration-300"
+                    :class="{ 'opacity-60': form.processing }"
                     v-model="form.password"
                     required
                     autocomplete="current-password"
+                    :disabled="form.processing"
                 />
 
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
 
             <div class="block mt-4">
-                <label class="flex items-center w-fit cursor-pointer">
+                <label class="flex items-center w-fit cursor-pointer" :class="{ 'opacity-60 pointer-events-none': form.processing }">
                     <Checkbox name="remember" v-model:checked="form.remember" />
                     <span class="ms-3 text-sm text-gray-600 dark:text-gray-400 select-none">{{ $t('auth.login.remember_me') }}</span>
                 </label>
@@ -94,8 +98,14 @@ const submit = () => {
                     {{ $t('auth.login.forgot_password') }}
                 </Link>
 
-                <PrimaryButton class="ms-4 py-2.5 px-6" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    {{ $t('auth.login.submit') }}
+                <PrimaryButton class="ms-4 py-2.5 px-6 relative overflow-hidden transition-all duration-300" :class="{ 'opacity-80 pointer-events-none scale-95': form.processing }" :disabled="form.processing">
+                    <span :class="{ 'opacity-0': form.processing }" class="transition-opacity duration-200">{{ $t('auth.login.submit') }}</span>
+                    <div v-if="form.processing" class="absolute inset-0 flex items-center justify-center">
+                        <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
                 </PrimaryButton>
             </div>
         </form>

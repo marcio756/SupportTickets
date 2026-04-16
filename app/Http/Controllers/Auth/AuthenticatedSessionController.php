@@ -55,7 +55,13 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
 
         if ($user && ($user->isSupporter() || $user->isAdmin())) {
-            $activeShift = WorkSession::where('user_id', $user->id)
+            
+            /**
+             * Architect Note: Optimized exists query by explicitly selecting ID only.
+             * Prevents heavy memory loading if indices aren't perfectly aligned on massive DBs.
+             */
+            $activeShift = WorkSession::select('id')
+                ->where('user_id', $user->id)
                 ->whereIn('status', [
                     WorkSessionStatusEnum::ACTIVE->value, 
                     WorkSessionStatusEnum::PAUSED->value

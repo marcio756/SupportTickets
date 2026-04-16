@@ -62,7 +62,7 @@
         <WorkSessionBlocker :session-status="workSessionStatus" />
       </template>
 
-      <div v-else class="flex flex-col gap-4">
+      <div v-else class="flex flex-col gap-4 relative">
         <ResourceFilter
           v-model:query="query"
           v-model:status="selectedStatus"
@@ -78,8 +78,12 @@
           :is-supporter="isSupporter"
         />
 
+        <div v-if="isLoading && tickets.data.length > 0" class="absolute inset-0 bg-white/40 dark:bg-gray-900/40 z-10 flex items-center justify-center backdrop-blur-[1px] transition-all duration-300 rounded-xl mt-[140px]">
+           <div class="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+        </div>
+
         <Transition name="fade" mode="out-in">
-          <div v-if="isLoading">
+          <div v-if="isLoading && tickets.data.length === 0">
             <SkeletonScreen :lines="5" :with-header="true" :with-avatar="true" />
           </div>
           
@@ -199,7 +203,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -228,6 +232,7 @@ const { t, locale } = useI18n();
 const isSupporter = page.props.auth.user.role !== 'customer';
 const isCreateModalOpen = ref(false);
 const isLoading = ref(false);
+const isBackgroundAction = ref(false);
 
 const viewMode = ref(localStorage.getItem('ticket_view_mode') || 'list');
 const setViewMode = (mode) => {
@@ -238,12 +243,29 @@ const setViewMode = (mode) => {
 // Variável para controlar a Quantidade por Página
 const perPage = ref(props.filters.per_page ? parseInt(props.filters.per_page) : 10);
 
-const startLoading = () => isLoading.value = true;
-const stopLoading = () => isLoading.value = false;
+const startLoading = () => {
+  if (!isBackgroundAction.value) {
+    isLoading.value = true;
+  }
+};
+
+const stopLoading = () => {
+  isLoading.value = false;
+  isBackgroundAction.value = false; // Reset da ação assíncrona após finalizar
+};
+
+// Guarda a referência aos listeners para poder removê-los e evitar leaks caso o componente seja destruído
+let removeStartListener;
+let removeFinishListener;
 
 onMounted(() => {
-  router.on('start', startLoading);
-  router.on('finish', stopLoading);
+  removeStartListener = router.on('start', startLoading);
+  removeFinishListener = router.on('finish', stopLoading);
+});
+
+onUnmounted(() => {
+  if (removeStartListener) removeStartListener();
+  if (removeFinishListener) removeFinishListener();
 });
 
 const { query, selectedStatus, selectedSource, selectedCustomers, selectedAssignees, selectedTags, changePage } = useFilters(
@@ -252,7 +274,7 @@ const { query, selectedStatus, selectedSource, selectedCustomers, selectedAssign
   props.tickets.current_page
 );
 
-// Atualiza e dispara a query com o novo limite por página
+// Atualiza e dispara a query com o novo limite por página sem bloquear a UI drasticamente
 const updatePerPage = () => {
   router.get(route('tickets.index'), {
     ...props.filters,
@@ -311,8 +333,10 @@ const openCreateModal = () => isCreateModalOpen.value = true;
 const navigateToTicketEvent = (event) => router.get(route('tickets.show', event.item.id));
 const navigateToTicketDirect = (ticket) => router.get(route('tickets.show', ticket.id));
 
-// Atualização de estado via Kanban D&D com o verbo PATCH estrito
+// Atualização de estado via Kanban D&D isolada como Ação de Fundo
 const handleBoardStatusUpdate = ({ ticketId, newStatus, revertCallback }) => {
+  isBackgroundAction.value = true; // Impede o ecrã de desvanecer
+  
   router.patch(route('tickets.update-status', ticketId), {
     status: newStatus
   }, {
@@ -321,6 +345,7 @@ const handleBoardStatusUpdate = ({ ticketId, newStatus, revertCallback }) => {
     onError: () => {
       if (revertCallback) revertCallback();
     }
+    // O evento 'finish' do Inertia vai repor o isBackgroundAction = false automaticamente
   });
 };
 
