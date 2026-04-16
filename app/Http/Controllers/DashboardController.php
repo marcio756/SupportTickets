@@ -50,16 +50,16 @@ class DashboardController extends Controller
         return Cache::remember('dashboard_admin_metrics', now()->addMinutes(30), function () {
             
             // Architect Note: Executing simple counts without instantiating models
-            $globalActiveTickets = Ticket::whereNotIn('status', [TicketStatusEnum::CLOSED, TicketStatusEnum::RESOLVED])->count();
-            $globalResolvedTickets = Ticket::where('status', TicketStatusEnum::RESOLVED)->count();
-            $totalSupporters = User::where('role', RoleEnum::SUPPORTER)->count();
+            $globalActiveTickets = Ticket::whereNotIn('status', [TicketStatusEnum::CLOSED->value, TicketStatusEnum::RESOLVED->value])->count();
+            $globalResolvedTickets = Ticket::where('status', TicketStatusEnum::RESOLVED->value)->count();
+            $totalSupporters = User::where('role', RoleEnum::SUPPORTER->value)->count();
 
             // Architect Note: Replaced expensive withCount() on the entire users table 
             // with a direct grouping on the tickets table, joining users only for the top 5 results.
             $topClients = DB::table('tickets')
                 ->select('users.id', 'users.name', 'users.email', DB::raw('COUNT(tickets.id) as tickets_count'))
                 ->join('users', 'tickets.customer_id', '=', 'users.id')
-                ->where('users.role', RoleEnum::CUSTOMER)
+                ->where('users.role', RoleEnum::CUSTOMER->value)
                 ->groupBy('users.id', 'users.name', 'users.email')
                 ->orderByDesc('tickets_count')
                 ->limit(5)
@@ -68,8 +68,8 @@ class DashboardController extends Controller
             $topSupporters = DB::table('tickets')
                 ->select('users.id', 'users.name', 'users.email', DB::raw('COUNT(tickets.id) as resolved_count'))
                 ->join('users', 'tickets.assigned_to', '=', 'users.id')
-                ->where('users.role', RoleEnum::SUPPORTER)
-                ->where('tickets.status', TicketStatusEnum::RESOLVED)
+                ->where('users.role', RoleEnum::SUPPORTER->value)
+                ->where('tickets.status', TicketStatusEnum::RESOLVED->value)
                 ->groupBy('users.id', 'users.name', 'users.email')
                 ->orderByDesc('resolved_count')
                 ->limit(5)
@@ -93,20 +93,26 @@ class DashboardController extends Controller
      */
     private function getSupporterMetrics(User $user): array
     {
-        $today = Carbon::today();
+        $todayStart = Carbon::today()->startOfDay();
+        $todayEnd = Carbon::today()->endOfDay();
         
+        /**
+         * Architect Note: Replaced whereDate() with whereBetween() using explicit boundaries.
+         * whereDate() forces the DB to run a DATE() function on every row (Full Table Scan).
+         * whereBetween() allows the engine to jump directly to the index boundary instantly.
+         */
         $totalWorkedSeconds = WorkSession::where('user_id', $user->id)
-            ->whereDate('started_at', $today)
+            ->whereBetween('started_at', [$todayStart, $todayEnd])
             ->sum('total_worked_seconds');
 
         $sharedMetrics = Cache::remember('dashboard_supporter_shared_metrics', now()->addMinutes(30), function () {
             return [
-                'globalActiveTickets' => Ticket::whereNotIn('status', [TicketStatusEnum::CLOSED, TicketStatusEnum::RESOLVED])->count(),
-                'globalResolvedTickets' => Ticket::where('status', TicketStatusEnum::RESOLVED)->count(),
+                'globalActiveTickets' => Ticket::whereNotIn('status', [TicketStatusEnum::CLOSED->value, TicketStatusEnum::RESOLVED->value])->count(),
+                'globalResolvedTickets' => Ticket::where('status', TicketStatusEnum::RESOLVED->value)->count(),
                 'topClients' => DB::table('tickets')
                     ->select('users.id', 'users.name', 'users.email', DB::raw('COUNT(tickets.id) as tickets_count'))
                     ->join('users', 'tickets.customer_id', '=', 'users.id')
-                    ->where('users.role', RoleEnum::CUSTOMER)
+                    ->where('users.role', RoleEnum::CUSTOMER->value)
                     ->groupBy('users.id', 'users.name', 'users.email')
                     ->orderByDesc('tickets_count')
                     ->limit(5)
@@ -130,9 +136,9 @@ class DashboardController extends Controller
         return Cache::remember("dashboard_customer_metrics_{$user->id}", now()->addMinutes(5), function () use ($user) {
             return [
                 'openTickets' => Ticket::where('customer_id', $user->id)
-                    ->whereNotIn('status', [TicketStatusEnum::CLOSED, TicketStatusEnum::RESOLVED])->count(),
+                    ->whereNotIn('status', [TicketStatusEnum::CLOSED->value, TicketStatusEnum::RESOLVED->value])->count(),
                 'resolvedTickets' => Ticket::where('customer_id', $user->id)
-                    ->whereIn('status', [TicketStatusEnum::CLOSED, TicketStatusEnum::RESOLVED])->count(),
+                    ->whereIn('status', [TicketStatusEnum::CLOSED->value, TicketStatusEnum::RESOLVED->value])->count(),
                 'remainingSeconds' => $user->daily_support_seconds,
             ];
         });

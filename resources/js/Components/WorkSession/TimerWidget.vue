@@ -7,32 +7,76 @@
 import { usePage, router } from '@inertiajs/vue3';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import ActionConfirmModal from '@/Components/Common/ActionConfirmModal.vue';
+import axios from 'axios';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
-const session = computed(() => page.props.auth.work_session);
+
+// Separamos do Inertia e criamos um estado local para controlo imediato (Optimistic UI)
+const localSession = ref(page.props.auth.work_session);
+
+const session = computed(() => localSession.value);
 
 const showEndModal = ref(false);
-
-const startSession = () => router.post(route('work-sessions.start'), {}, { preserveScroll: true });
-const pauseSession = () => router.post(route('work-sessions.pause'), {}, { preserveScroll: true });
-const resumeSession = () => router.post(route('work-sessions.resume'), {}, { preserveScroll: true });
+const isProcessing = ref(false);
 
 /**
- * Triggers the modal UI instead of a native browser confirm.
+ * Optimistic Action Dispatcher
  */
-const confirmEndSession = () => {
-    showEndModal.value = true;
+const performAction = async (endpoint, optimisticStatus) => {
+    if (isProcessing.value) return;
+    
+    // 1. Optimistic UI Update (Instantânea, 0ms de latência visual)
+    const previousState = JSON.parse(JSON.stringify(localSession.value || {}));
+    isProcessing.value = true;
+    
+    if (!localSession.value) {
+        localSession.value = {
+            status: optimisticStatus,
+            started_at_iso: new Date().toISOString(),
+            pauses: []
+        };
+    } else {
+        localSession.value.status = optimisticStatus;
+        if (optimisticStatus === 'paused') {
+            localSession.value.pauses.push({ started_at_iso: new Date().toISOString() });
+        } else if (optimisticStatus === 'active' && previousState.status === 'paused') {
+            const lastPause = localSession.value.pauses[localSession.value.pauses.length - 1];
+            if (lastPause) lastPause.ended_at_iso = new Date().toISOString();
+        }
+    }
+
+    try {
+        // 2. Chamada AJAX silenciada em background
+        const response = await axios.post(route(`work-sessions.${endpoint}`), {}, {
+            headers: { 'Accept': 'application/json' }
+        });
+        
+        // 3. Sincronização final com a verdade da Base de Dados
+        localSession.value = response.data.session;
+        router.reload({ only: ['auth'] }); // Mantém estado Inertia atualizado
+    } catch (error) {
+        // Rollback suave caso haja erro de rede
+        localSession.value = previousState.status ? previousState : null;
+        console.error("Falha ao atualizar sessão de trabalho", error);
+    } finally {
+        isProcessing.value = false;
+        showEndModal.value = false;
+    }
 };
 
-/**
- * Executes the actual end session request after user confirmation.
- */
+const startSession = () => performAction('start', 'active');
+const pauseSession = () => performAction('pause', 'paused');
+const resumeSession = () => performAction('resume', 'active');
 const executeEndSession = () => {
-    router.post(route('work-sessions.end'), {}, { 
-        preserveScroll: true,
-        onSuccess: () => showEndModal.value = false
+    showEndModal.value = false;
+    performAction('end', 'ended').then(() => {
+        localSession.value = null; // Esvazia o estado após fecho no servidor
     });
+};
+
+const confirmEndSession = () => {
+    showEndModal.value = true;
 };
 
 // ==========================================
@@ -42,7 +86,6 @@ const now = ref(new Date());
 let timerInterval = null;
 
 onMounted(() => {
-    // Updates the internal clock every second to maintain reactive time
     timerInterval = setInterval(() => {
         now.value = new Date();
     }, 1000);
@@ -57,9 +100,8 @@ onUnmounted(() => {
  * @returns {string} Formatted duration.
  */
 const workingTimeFormatted = computed(() => {
-    if (!session.value) return '00:00:00';
+    if (!session.value || session.value.status === 'ended') return '00:00:00';
     
-    // Fallback normalization to ensure strict parsing compatibility (Safari/iOS safe)
     const startStr = session.value.started_at_iso || session.value.started_at;
     const validStartStr = startStr ? startStr.replace(' ', 'T') : null; 
     
@@ -73,7 +115,6 @@ const workingTimeFormatted = computed(() => {
     
     let totalWorkedMs = endMs - startMs;
     
-    // Subtract paused durations
     if (session.value.pauses && session.value.pauses.length > 0) {
         session.value.pauses.forEach(pause => {
             const pStart = new Date((pause.started_at_iso || pause.started_at).replace(' ', 'T')).getTime();
@@ -119,7 +160,7 @@ const currentPauseTimeFormatted = computed(() => {
 </script>
 
 <template>
-    <div v-if="user && user.role === 'supporter'" class="flex items-center space-x-2 bg-white dark:bg-gray-900 p-1.5 px-3 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
+    <div v-if="user && user.role === 'supporter'" class="flex items-center space-x-2 bg-white dark:bg-gray-900 p-1.5 px-3 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300" :class="{ 'opacity-80 pointer-events-none': isProcessing }">
         
         <template v-if="!session">
             <div class="flex items-center">

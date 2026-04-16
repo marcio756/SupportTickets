@@ -6,6 +6,7 @@ use App\Services\WorkSessionService;
 use App\Models\WorkSession;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 
 /**
  * Handles HTTP requests for Work Session management.
@@ -21,13 +22,19 @@ class WorkSessionController extends Controller
 
     /**
      * Starts a new shift for the authenticated supporter.
+     * Supports both JSON (for Optimistic UI) and HTML responses.
      *
      * @param Request $request
-     * @return RedirectResponse
+     * @return RedirectResponse|JsonResponse
      */
-    public function start(Request $request): RedirectResponse
+    public function start(Request $request): RedirectResponse|JsonResponse
     {
-        $this->workSessionService->startSession($request->user());
+        $session = $this->workSessionService->startSession($request->user());
+        
+        if ($request->wantsJson()) {
+            return response()->json(['status' => 'success', 'session' => $session]);
+        }
+        
         return redirect()->back()->with('success', __('work_sessions.started_success'));
     }
 
@@ -35,11 +42,16 @@ class WorkSessionController extends Controller
      * Places the current shift on hold.
      *
      * @param Request $request
-     * @return RedirectResponse
+     * @return RedirectResponse|JsonResponse
      */
-    public function pause(Request $request): RedirectResponse
+    public function pause(Request $request): RedirectResponse|JsonResponse
     {
-        $this->workSessionService->pauseSession($request->user());
+        $session = $this->workSessionService->pauseSession($request->user());
+        
+        if ($request->wantsJson()) {
+            return response()->json(['status' => 'success', 'session' => $session]);
+        }
+        
         return redirect()->back()->with('success', __('work_sessions.paused_success'));
     }
 
@@ -47,11 +59,16 @@ class WorkSessionController extends Controller
      * Resumes the previously held shift.
      *
      * @param Request $request
-     * @return RedirectResponse
+     * @return RedirectResponse|JsonResponse
      */
-    public function resume(Request $request): RedirectResponse
+    public function resume(Request $request): RedirectResponse|JsonResponse
     {
-        $this->workSessionService->resumeSession($request->user());
+        $session = $this->workSessionService->resumeSession($request->user());
+        
+        if ($request->wantsJson()) {
+            return response()->json(['status' => 'success', 'session' => $session]);
+        }
+        
         return redirect()->back()->with('success', __('work_sessions.resumed_success'));
     }
 
@@ -59,11 +76,16 @@ class WorkSessionController extends Controller
      * Concludes the shift and finalizes time tracking.
      *
      * @param Request $request
-     * @return RedirectResponse
+     * @return RedirectResponse|JsonResponse
      */
-    public function end(Request $request): RedirectResponse
+    public function end(Request $request): RedirectResponse|JsonResponse
     {
-        $this->workSessionService->endSession($request->user());
+        $session = $this->workSessionService->endSession($request->user());
+        
+        if ($request->wantsJson()) {
+            return response()->json(['status' => 'success', 'session' => $session]);
+        }
+        
         return redirect()->back()->with('success', __('work_sessions.ended_success'));
     }
 
