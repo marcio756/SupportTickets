@@ -18,7 +18,19 @@ class NotificationController extends Controller
      */
     public function index(): JsonResponse
     {
-        return response()->json(Auth::user()->unreadNotifications);
+        /**
+         * Architect Note: Calling `Auth::user()->unreadNotifications` without limits 
+         * silently executes a fully unbounded `->get()`. For a user with 10,000+ unread alerts,
+         * this serializes massive payloads and causes an OutOfMemory PHP Fatal Error.
+         * We strictly cap this to 100 results for the UI, keeping the response under a few KB.
+         */
+        $notifications = Auth::user()
+            ->unreadNotifications()
+            ->latest() // Architect Warning: Ensure an index on (notifiable_id, read_at, created_at) exists.
+            ->limit(100)
+            ->get();
+
+        return response()->json($notifications);
     }
 
     /**

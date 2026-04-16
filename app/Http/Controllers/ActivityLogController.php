@@ -30,7 +30,11 @@ class ActivityLogController extends Controller
             abort(403, 'Unauthorized access to activity logs.');
         }
 
-        $query = Activity::with(['causer'])->latest();
+        /**
+         * Architect Note: latest() orders by created_at. On millions of logs, this forces
+         * an expensive filesort. We enforce orderByDesc('id') to utilize the primary key index.
+         */
+        $query = Activity::with(['causer'])->orderByDesc('id');
 
         if ($request->filled('user')) {
             $users = (array) $request->input('user');

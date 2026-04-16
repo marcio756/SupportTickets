@@ -7,128 +7,134 @@
         <p class="text-sm text-gray-500 mt-1">{{ $t('activity_log.subtitle') }}</p>
     </div>
 
-    <ResourceFilter
-      hide-search
-      :additional-filter-count="customActiveCount"
-      @clear-all="clearCustomFilters"
-    >
-        <template #append>
-            <va-select
-                v-model="customFilters.user"
-                :options="userOptions"
-                value-by="value"
-                :label="$t('activity_log.filters.user')"
-                multiple
-                clearable
-                virtual-scroller
-                class="w-full xl:w-48 flex-none"
-                preset="bordered"
-            >
-                <template #content="{ valueArray }">
-                    <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
-                    <span v-else-if="valueArray.length > 1" class="font-bold text-sm">{{ valueArray.length }} {{ $t('common.selected') }}</span>
-                    <span v-else class="text-gray-400">{{ $t('activity_log.filters.user') }}</span>
-                </template>
-            </va-select>
+    <div class="relative flex flex-col gap-4">
+      <ResourceFilter
+        hide-search
+        :additional-filter-count="customActiveCount"
+        @clear-all="clearCustomFilters"
+      >
+          <template #append>
+              <va-select
+                  v-model="customFilters.user"
+                  :options="userOptions"
+                  value-by="value"
+                  :label="$t('activity_log.filters.user')"
+                  multiple
+                  clearable
+                  virtual-scroller
+                  class="w-full xl:w-48 flex-none"
+                  preset="bordered"
+              >
+                  <template #content="{ valueArray }">
+                      <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
+                      <span v-else-if="valueArray.length > 1" class="font-bold text-sm">{{ valueArray.length }} {{ $t('common.selected') }}</span>
+                      <span v-else class="text-gray-400">{{ $t('activity_log.filters.user') }}</span>
+                  </template>
+              </va-select>
 
-            <va-select
-                v-model="customFilters.event"
-                :options="options.events"
-                :label="$t('activity_log.filters.event')"
-                multiple
-                clearable
-                virtual-scroller
-                class="w-full xl:w-48 flex-none"
-                preset="bordered"
-            >
-                <template #content="{ valueArray }">
-                    <span v-if="valueArray.length === 1">{{ valueArray[0] }}</span>
-                    <span v-else-if="valueArray.length > 1" class="font-bold text-sm">{{ valueArray.length }} {{ $t('common.selected') }}</span>
-                    <span v-else class="text-gray-400">{{ $t('activity_log.filters.event') }}</span>
-                </template>
-            </va-select>
+              <va-select
+                  v-model="customFilters.event"
+                  :options="options.events"
+                  :label="$t('activity_log.filters.event')"
+                  multiple
+                  clearable
+                  virtual-scroller
+                  class="w-full xl:w-48 flex-none"
+                  preset="bordered"
+              >
+                  <template #content="{ valueArray }">
+                      <span v-if="valueArray.length === 1">{{ valueArray[0] }}</span>
+                      <span v-else-if="valueArray.length > 1" class="font-bold text-sm">{{ valueArray.length }} {{ $t('common.selected') }}</span>
+                      <span v-else class="text-gray-400">{{ $t('activity_log.filters.event') }}</span>
+                  </template>
+              </va-select>
 
-            <va-select
-                v-model="customFilters.target"
-                :options="mappedTargets"
-                value-by="value"
-                :label="$t('activity_log.filters.target')"
-                multiple
-                clearable
-                virtual-scroller
-                class="w-full xl:w-56 flex-none"
-                preset="bordered"
-            >
-                <template #content="{ valueArray }">
-                    <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
-                    <span v-else-if="valueArray.length > 1" class="font-bold text-sm">{{ valueArray.length }} {{ $t('common.selected') }}</span>
-                    <span v-else class="text-gray-400">{{ $t('activity_log.filters.target') }}</span>
-                </template>
-            </va-select>
+              <va-select
+                  v-model="customFilters.target"
+                  :options="mappedTargets"
+                  value-by="value"
+                  :label="$t('activity_log.filters.target')"
+                  multiple
+                  clearable
+                  virtual-scroller
+                  class="w-full xl:w-56 flex-none"
+                  preset="bordered"
+              >
+                  <template #content="{ valueArray }">
+                      <span v-if="valueArray.length === 1">{{ valueArray[0].text || valueArray[0] }}</span>
+                      <span v-else-if="valueArray.length > 1" class="font-bold text-sm">{{ valueArray.length }} {{ $t('common.selected') }}</span>
+                      <span v-else class="text-gray-400">{{ $t('activity_log.filters.target') }}</span>
+                  </template>
+              </va-select>
 
-            <va-input
-                v-model="customFilters.date_start"
-                type="date"
-                :label="$t('activity_log.filters.date_from')"
-                :max="customFilters.date_end"
-                clearable
-                class="w-full xl:w-40 flex-none"
-                preset="bordered"
-            />
+              <va-input
+                  v-model="customFilters.date_start"
+                  type="date"
+                  :label="$t('activity_log.filters.date_from')"
+                  :max="customFilters.date_end"
+                  clearable
+                  class="w-full xl:w-40 flex-none"
+                  preset="bordered"
+              />
 
-            <va-input
-                v-model="customFilters.date_end"
-                type="date"
-                :label="$t('activity_log.filters.date_to')"
-                :min="customFilters.date_start"
-                clearable
-                class="w-full xl:w-40 flex-none"
-                preset="bordered"
-            />
+              <va-input
+                  v-model="customFilters.date_end"
+                  type="date"
+                  :label="$t('activity_log.filters.date_to')"
+                  :min="customFilters.date_start"
+                  clearable
+                  class="w-full xl:w-40 flex-none"
+                  preset="bordered"
+              />
+          </template>
+      </ResourceFilter>
+
+      <div v-if="isLoading" class="absolute inset-0 bg-white/40 dark:bg-gray-900/40 z-10 flex items-center justify-center backdrop-blur-[1px] transition-all duration-300 rounded-xl mt-[80px]">
+          <div class="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+      </div>
+
+      <ResourceTable
+          :resource-data="logs"
+          :columns="tableColumns"
+          :empty-message="$t('activity_log.empty_message')"
+          @page-change="changePage"
+      >
+        <template #cell(created_at)="{ rowData }">
+          <span class="text-sm text-gray-600 whitespace-nowrap">
+            {{ formatDateTime(rowData.created_at) }}
+          </span>
         </template>
-    </ResourceFilter>
 
-    <ResourceTable
-        :resource-data="logs"
-        :columns="tableColumns"
-        :empty-message="$t('activity_log.empty_message')"
-        @page-change="changePage"
-    >
-      <template #cell(created_at)="{ rowData }">
-        <span class="text-sm text-gray-600 whitespace-nowrap">
-          {{ formatDateTime(rowData.created_at) }}
-        </span>
-      </template>
+        <template #cell(causer)="{ rowData }">
+          <div v-if="rowData.causer" class="flex items-center gap-2">
+            <UserAvatar :user="rowData.causer" size="24px" />
+            <span class="text-sm font-medium">{{ rowData.causer.name }}</span>
+          </div>
+          <span v-else class="text-sm text-gray-400 italic">{{ $t('activity_log.system_automator') }}</span>
+        </template>
 
-      <template #cell(causer)="{ rowData }">
-        <div v-if="rowData.causer" class="flex items-center gap-2">
-          <UserAvatar :user="rowData.causer" size="24px" />
-          <span class="text-sm font-medium">{{ rowData.causer.name }}</span>
-        </div>
-        <span v-else class="text-sm text-gray-400 italic">{{ $t('activity_log.system_automator') }}</span>
-      </template>
+        <template #cell(event)="{ rowData }">
+          <va-badge 
+            :text="rowData.event" 
+            :color="getEventColor(rowData.event)" 
+            class="uppercase text-[10px]"
+          />
+        </template>
 
-      <template #cell(event)="{ rowData }">
-        <va-badge 
-          :text="rowData.event" 
-          :color="getEventColor(rowData.event)" 
-          class="uppercase text-[10px]"
-        />
-      </template>
+        <template #cell(subject_type)="{ rowData }">
+          <span class="text-sm font-mono text-gray-600">
+            {{ extractModelName(rowData.subject_type) }} #{{ rowData.subject_id }}
+          </span>
+        </template>
 
-      <template #cell(subject_type)="{ rowData }">
-        <span class="text-sm font-mono text-gray-600">
-          {{ extractModelName(rowData.subject_type) }} #{{ rowData.subject_id }}
-        </span>
-      </template>
-
-      <template #cell(details)="{ rowData }">
-        <div v-if="rowData.properties" class="text-xs max-w-xs overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer text-blue-500 hover:text-blue-700 font-medium" @click="viewDetails(rowData)">
-            <va-icon name="visibility" size="small" class="mr-1" /> {{ $t('activity_log.view_changes') }}
-        </div>
-        <span v-else class="text-gray-400 text-xs">{{ $t('common.na') }}</span>
-      </template>
-    </ResourceTable>
+        <template #cell(details)="{ rowData }">
+          <div v-if="rowData.properties" class="text-xs max-w-xs overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer text-blue-500 hover:text-blue-700 font-medium" @click="viewDetails(rowData)">
+              <va-icon name="visibility" size="small" class="mr-1" /> {{ $t('activity_log.view_changes') }}
+          </div>
+          <span v-else class="text-gray-400 text-xs">{{ $t('common.na') }}</span>
+        </template>
+      </ResourceTable>
+    </div>
 
     <va-modal v-model="isModalOpen" :title="$t('activity_log.details_title')" hide-default-actions size="large">
       <div v-if="selectedLog" class="p-2">
@@ -154,8 +160,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { Head } from '@inertiajs/vue3';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { Head, router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
@@ -174,13 +180,21 @@ const props = defineProps({
 const { t } = useI18n();
 const isModalOpen = ref(false);
 const selectedLog = ref(null);
+const isLoading = ref(false);
 
-/**
- * Ensures query parameters meant to be arrays are properly structured.
- * Prevents Vue selection components from throwing type errors.
- * * @param {any} val - The incoming filter value.
- * @returns {Array} A safely typed array.
- */
+let removeStartListener;
+let removeFinishListener;
+
+onMounted(() => {
+  removeStartListener = router.on('start', () => isLoading.value = true);
+  removeFinishListener = router.on('finish', () => isLoading.value = false);
+});
+
+onUnmounted(() => {
+  if (removeStartListener) removeStartListener();
+  if (removeFinishListener) removeFinishListener();
+});
+
 const safeArray = (val) => {
     if (!val) return [];
     return Array.isArray(val) ? val : [val];
@@ -200,10 +214,6 @@ const { customFilters, changePage } = useFilters(
     ['user', 'event', 'target', 'date_start', 'date_end']
 );
 
-/**
- * Computed property for table columns to ensure reactivity with i18n.
- * If language changes dynamically, headers will immediately reflect the new locale.
- */
 const tableColumns = computed(() => [
   { key: 'created_at', label: t('activity_log.columns.date_time') },
   { key: 'causer', label: t('activity_log.columns.user_causer') },
@@ -212,22 +222,12 @@ const tableColumns = computed(() => [
   { key: 'details', label: t('activity_log.columns.details') }
 ]);
 
-/**
- * Builds the user dropdown options, prepending a system/automator entry
- * to allow filtering by automated tasks where 'causer' is null.
- */
 const userOptions = computed(() => {
   const opts = props.options.users.map(u => ({ text: u.name, value: String(u.id) }));
   opts.unshift({ text: t('activity_log.system_automator'), value: 'system' });
   return opts;
 });
 
-/**
- * Extracts the base model name from a fully qualified PHP namespace.
- * Isolates presentation logic from raw backend architecture structures.
- * * @param {string} fullyQualifiedName - The namespace string (e.g., App\Models\User).
- * @returns {string} The base class name.
- */
 const extractModelName = (fullyQualifiedName) => {
   if (!fullyQualifiedName) return t('common.unknown');
   const parts = fullyQualifiedName.split('\\');
@@ -238,10 +238,6 @@ const mappedTargets = computed(() => {
   return props.options.targets.map(t => ({ text: extractModelName(t), value: t }));
 });
 
-/**
- * Calculates the total number of actively applied custom filters.
- * Differentiates between empty strings, nulls, and empty arrays to maintain UI accuracy.
- */
 const customActiveCount = computed(() => {
     return Object.values(customFilters).filter(val => {
         if (Array.isArray(val)) return val.length > 0;
@@ -249,9 +245,6 @@ const customActiveCount = computed(() => {
     }).length;
 });
 
-/**
- * Resets all active custom filters back to their initial unselected state.
- */
 const clearCustomFilters = () => {
     customFilters.user = [];
     customFilters.event = [];
@@ -260,32 +253,17 @@ const clearCustomFilters = () => {
     customFilters.date_end = null;
 };
 
-/**
- * Opens the detailed activity modal with the selected log entry context.
- * * @param {Object} log - The log record selected from the table.
- */
 const viewDetails = (log) => {
   selectedLog.value = log;
   isModalOpen.value = true;
 };
 
-/**
- * Standardizes the display format of log timestamps based on the current locale.
- * * @param {string} dateString - The raw ISO date string from the backend.
- * @returns {string} A human-readable date and time.
- */
 const formatDateTime = (dateString) => {
-  // Assuming a generic locale usage, could be tied to i18n locale state for perfection
   return new Date(dateString).toLocaleString(undefined, {
     month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
 };
 
-/**
- * Maps the backend event type to a semantic UI color theme for badges.
- * * @param {string} event - The type of event (created, updated, deleted).
- * @returns {string} The corresponding Vuestic UI theme color.
- */
 const getEventColor = (event) => {
   switch (event?.toLowerCase()) {
     case 'created': return 'success';

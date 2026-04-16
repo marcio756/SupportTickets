@@ -35,6 +35,11 @@ class UserController extends Controller
 
         // Fetch teams for the creation/edition modal
         $teams = Team::all();
+        
+        /**
+         * Architect Note: Selecting only needed columns is better, but since models are passed
+         * to forms, we keep standard selection. Team relationship is eager loaded.
+         */
         $query = User::query()->with('team');
 
         if ($user->isSupporter()) {
@@ -65,7 +70,13 @@ class UserController extends Controller
         }
 
         if ($request->filled('query')) {
-            $searchTerm = '%' . $request->input('query') . '%';
+            /**
+             * Architect Note: Removed the leading '%' wildcard. 
+             * A leading wildcard ('%term%') completely disables database indexing, 
+             * causing a catastrophic full table scan on millions of users.
+             */
+            $searchTerm = $request->input('query') . '%';
+            
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('name', 'like', $searchTerm)
                   ->orWhere('email', 'like', $searchTerm);
@@ -76,7 +87,11 @@ class UserController extends Controller
             $query->where('role', $request->input('role'));
         }
 
-        $users = $query->paginate(10)->withQueryString();
+        /**
+         * Architect Note: Enforced orderByDesc('id') to optimize pagination offsets 
+         * via the Primary Key, preventing slow memory sorting on large datasets.
+         */
+        $users = $query->orderByDesc('id')->paginate(10)->withQueryString();
 
         return Inertia::render('Users/Index', [
             'users' => $users,

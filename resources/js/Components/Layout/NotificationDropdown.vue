@@ -2,14 +2,21 @@
   <va-dropdown placement="bottom-end" :offset="[10, 10]" :close-on-content-click="false">
     <template #anchor>
       <va-button preset="plain" class="notification-btn">
-        <span class="mr-1" v-if="unreadCount > 0">({{ unreadCount }})</span>
-        <va-badge :text="unreadCount" :visible="unreadCount > 0" color="danger" overlap>
+        <span class="mr-1" v-if="unreadCount > 0">
+          <span v-if="unreadCount === 100">99+</span>
+          <span v-else>({{ unreadCount }})</span>
+        </span>
+        <va-badge :text="unreadCount === 100 ? '99+' : unreadCount" :visible="unreadCount > 0" color="danger" overlap>
           <va-icon name="notifications" color="#ffffff" />
         </va-badge>
       </va-button>
     </template>
 
-    <va-dropdown-content class="notification-dropdown">
+    <va-dropdown-content class="notification-dropdown relative">
+      <div v-if="isLoading" class="absolute inset-0 bg-white/60 dark:bg-gray-900/60 z-20 flex items-center justify-center backdrop-blur-[1px] transition-all duration-300">
+        <va-progress-circle indeterminate size="small" color="primary" />
+      </div>
+
       <div class="dropdown-header">
         <span class="title">{{ $t('notifications.title') }}</span>
         <va-button 
@@ -18,6 +25,7 @@
           size="small" 
           color="danger" 
           @click="clearAll"
+          :disabled="isLoading"
         >
           {{ $t('notifications.clear_all') }}
         </va-button>
@@ -25,7 +33,7 @@
 
       <va-divider class="m-0" />
 
-      <div class="notification-list">
+      <div class="notification-list overflow-y-auto max-h-[400px]">
         <template v-if="groupedNotifications.length > 0">
           <div 
             v-for="item in groupedNotifications" 
@@ -58,7 +66,7 @@
             />
           </div>
         </template>
-        <div v-else class="empty-state">
+        <div v-else-if="!isLoading" class="empty-state">
           {{ $t('notifications.empty') }}
         </div>
       </div>
@@ -72,6 +80,7 @@ import { usePage, router } from '@inertiajs/vue3';
 import axios from 'axios';
 
 const notifications = ref([]);
+const isLoading = ref(true); // Inicialmente a carregar
 
 /**
  * @type {import('vue').ComputedRef<number>}
@@ -116,11 +125,14 @@ const groupedNotifications = computed(() => {
  * @returns {Promise<void>}
  */
 const fetchNotifications = async () => {
+    isLoading.value = true;
     try {
         const response = await axios.get(route('notifications.index'));
         notifications.value = response.data;
     } catch (error) {
         console.error("Failed to load notifications.", error);
+    } finally {
+        isLoading.value = false;
     }
 };
 
@@ -132,11 +144,16 @@ const fetchNotifications = async () => {
  * @returns {Promise<void>}
  */
 const handleNotificationClick = async (item) => {
+    // Optimistic UI: Remover imediatamente da vista para feedback instantâneo
+    const previousNotifications = [...notifications.value];
+    notifications.value = notifications.value.filter(n => !item.ids.includes(n.id));
+    
     try {
         const response = await axios.post(route('notifications.read-bulk'), { ids: item.ids });
-        notifications.value = notifications.value.filter(n => !item.ids.includes(n.id));
         router.get(route('tickets.show', response.data.ticket_id));
     } catch (error) {
+        // Rollback silencioso em caso de erro
+        notifications.value = previousNotifications;
         console.error("Failed to process notification redirect.", error);
     }
 };
@@ -148,10 +165,15 @@ const handleNotificationClick = async (item) => {
  * @returns {Promise<void>}
  */
 const deleteNotification = async (item) => {
+    // Optimistic UI
+    const previousNotifications = [...notifications.value];
+    notifications.value = notifications.value.filter(n => !item.ids.includes(n.id));
+
     try {
         await axios.post(route('notifications.read-bulk'), { ids: item.ids });
-        notifications.value = notifications.value.filter(n => !item.ids.includes(n.id));
     } catch (error) {
+        // Rollback
+        notifications.value = previousNotifications;
         console.error("Failed to delete notification.", error);
     }
 };
@@ -161,10 +183,14 @@ const deleteNotification = async (item) => {
  * @returns {Promise<void>}
  */
 const clearAll = async () => {
+    // Optimistic UI: O painel esvazia instantaneamente
+    const previousNotifications = [...notifications.value];
+    notifications.value = [];
+    
     try {
         await axios.post(route('notifications.clear'));
-        notifications.value = [];
     } catch (error) {
+        notifications.value = previousNotifications;
         console.error("Failed to clear all notifications.", error);
     }
 };

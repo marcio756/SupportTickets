@@ -84,8 +84,12 @@ class VacationController extends Controller
                 $query->where('start_date', '<=', $request->date_to);
             }
 
-            // A BD devolve apenas os 10 registos solicitados e a meta-informação das páginas
-            $vacations = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+            /**
+             * Architect Note: Replaced orderBy('created_at', 'desc') with orderByDesc('id')
+             * to avoid expensive filesorts on potentially millions of historical vacation records.
+             * Primary Key integer descending sorts are highly optimized natively by DB engines.
+             */
+            $vacations = $query->orderByDesc('id')->paginate(10)->withQueryString();
         }
 
         // 4. Extração contida para o Calendário (Restringimos sempre ao Ano para não explodir a memória)

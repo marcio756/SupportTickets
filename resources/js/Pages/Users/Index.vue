@@ -19,71 +19,85 @@
     </template>
 
     <template v-else>
-      <ResourceFilter
-          v-model:query="query"
-          v-model:role="selectedRole"
-          :role-options="roles.length > 1 ? roleOptions : []"
-      />
+      <div class="flex flex-col gap-4 relative">
+        <ResourceFilter
+            v-model:query="query"
+            v-model:role="selectedRole"
+            :role-options="roles.length > 1 ? roleOptions : []"
+        />
 
-      <ResourceTable
-          :resource-data="users"
-          :columns="columns"
-          :empty-message="$t('users.no_users_found')"
-          @page-change="changePage"
-      >
-        <template #cell(name)="{ rowData }">
-          <div class="flex items-center gap-2" :class="{ 'opacity-50': rowData.deleted_at }">
-            <UserAvatar :user="rowData" size="36px" />
-            <div class="flex flex-col">
-              <span class="font-bold" style="color: var(--va-text-primary)">
-                <s v-if="rowData.deleted_at">{{ rowData.name }}</s>
-                <span v-else>{{ rowData.name }}</span>
-              </span>
-              <va-badge v-if="rowData.deleted_at" :text="$t('users.status.deactivated')" color="danger" size="small" class="mt-1 w-max" />
-            </div>
+        <div v-if="isLoading && users.data.length > 0" class="absolute inset-0 bg-white/40 dark:bg-gray-900/40 z-10 flex items-center justify-center backdrop-blur-[1px] transition-all duration-300 rounded-xl mt-[80px]">
+           <div class="h-10 w-10 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+        </div>
+
+        <Transition name="fade" mode="out-in">
+          <div v-if="isLoading && users.data.length === 0">
+            <SkeletonScreen :lines="5" :with-header="true" :with-avatar="true" />
           </div>
-        </template>
 
-        <template #cell(email)="{ rowData }">
-          <span style="color: var(--va-secondary)" :class="{ 'opacity-50': rowData.deleted_at }">
-            {{ rowData.email }}
-          </span>
-        </template>
+          <div v-else>
+            <ResourceTable
+                :resource-data="users"
+                :columns="columns"
+                :empty-message="$t('users.no_users_found')"
+                @page-change="changePage"
+            >
+              <template #cell(name)="{ rowData }">
+                <div class="flex items-center gap-2" :class="{ 'opacity-50': rowData.deleted_at }">
+                  <UserAvatar :user="rowData" size="36px" />
+                  <div class="flex flex-col">
+                    <span class="font-bold" style="color: var(--va-text-primary)">
+                      <s v-if="rowData.deleted_at">{{ rowData.name }}</s>
+                      <span v-else>{{ rowData.name }}</span>
+                    </span>
+                    <va-badge v-if="rowData.deleted_at" :text="$t('users.status.deactivated')" color="danger" size="small" class="mt-1 w-max" />
+                  </div>
+                </div>
+              </template>
 
-        <template #cell(role)="{ rowData }">
-          <div :class="{ 'opacity-50': rowData.deleted_at }">
-            <UserRoleBadge :role="rowData.role" />
+              <template #cell(email)="{ rowData }">
+                <span style="color: var(--va-secondary)" :class="{ 'opacity-50': rowData.deleted_at }">
+                  {{ rowData.email }}
+                </span>
+              </template>
+
+              <template #cell(role)="{ rowData }">
+                <div :class="{ 'opacity-50': rowData.deleted_at }">
+                  <UserRoleBadge :role="rowData.role" />
+                </div>
+              </template>
+
+              <template #cell(team)="{ rowData }">
+                <div v-if="rowData.team" :class="{ 'opacity-50': rowData.deleted_at }">
+                  <va-badge :text="rowData.team.name" color="secondary" />
+                  <div class="text-xs mt-1 text-gray-400 capitalize">{{ rowData.team.shift }}</div>
+                </div>
+                <span v-else class="text-gray-400">-</span>
+              </template>
+
+              <template #cell(actions)="{ rowData }">
+                <div class="flex gap-2 justify-end">
+                  <template v-if="rowData.deleted_at">
+                    <va-button 
+                      v-if="currentUserIsAdmin"
+                      preset="plain" 
+                      icon="restore" 
+                      color="success" 
+                      :title="$t('users.actions.restore_title')"
+                      @click="restoreUser(rowData)" 
+                    />
+                  </template>
+
+                  <template v-else>
+                    <va-button preset="plain" icon="edit" color="info" :title="$t('users.actions.edit_title')" @click="openEditModal(rowData)" />
+                    <va-button preset="plain" icon="block" color="danger" :title="$t('users.actions.deactivate_title')" @click="openDeleteModal(rowData)" />
+                  </template>
+                </div>
+              </template>
+            </ResourceTable>
           </div>
-        </template>
-
-        <template #cell(team)="{ rowData }">
-          <div v-if="rowData.team" :class="{ 'opacity-50': rowData.deleted_at }">
-            <va-badge :text="rowData.team.name" color="secondary" />
-            <div class="text-xs mt-1 text-gray-400 capitalize">{{ rowData.team.shift }}</div>
-          </div>
-          <span v-else class="text-gray-400">-</span>
-        </template>
-
-        <template #cell(actions)="{ rowData }">
-          <div class="flex gap-2 justify-end">
-            <template v-if="rowData.deleted_at">
-              <va-button 
-                v-if="currentUserIsAdmin"
-                preset="plain" 
-                icon="restore" 
-                color="success" 
-                :title="$t('users.actions.restore_title')"
-                @click="restoreUser(rowData)" 
-              />
-            </template>
-
-            <template v-else>
-              <va-button preset="plain" icon="edit" color="info" :title="$t('users.actions.edit_title')" @click="openEditModal(rowData)" />
-              <va-button preset="plain" icon="block" color="danger" :title="$t('users.actions.deactivate_title')" @click="openDeleteModal(rowData)" />
-            </template>
-          </div>
-        </template>
-      </ResourceTable>
+        </Transition>
+      </div>
     </template>
 
     <UserFormModal 
@@ -108,8 +122,8 @@
  * Displays a paginated and filterable list of all registered system users.
  * Supports CRUD operation triggers via embedded contextual actions.
  */
-import { ref, computed } from 'vue';
-import { Head, usePage, useForm } from '@inertiajs/vue3';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { Head, usePage, useForm, router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
@@ -119,6 +133,7 @@ import UserRoleBadge from '@/Components/Common/UserRoleBadge.vue';
 import UserFormModal from './Partials/UserFormModal.vue';
 import UserDeleteModal from './Partials/UserDeleteModal.vue';
 import WorkSessionBlocker from '@/Components/WorkSession/WorkSessionBlocker.vue';
+import SkeletonScreen from '@/Components/Common/SkeletonScreen.vue';
 import { useFilters } from '@/Composables/useFilters';
 
 const props = defineProps({
@@ -142,6 +157,20 @@ const { query, selectedRole, changePage } = useFilters(props.filters, 'users.ind
 const isFormModalOpen = ref(false);
 const isDeleteModalOpen = ref(false);
 const selectedUser = ref(null);
+const isLoading = ref(false);
+
+let removeStartListener;
+let removeFinishListener;
+
+onMounted(() => {
+  removeStartListener = router.on('start', () => isLoading.value = true);
+  removeFinishListener = router.on('finish', () => isLoading.value = false);
+});
+
+onUnmounted(() => {
+  if (removeStartListener) removeStartListener();
+  if (removeFinishListener) removeFinishListener();
+});
 
 const restoreUserForm = useForm({});
 
@@ -206,3 +235,12 @@ const restoreUser = (user) => {
   }
 };
 </script>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+</style>

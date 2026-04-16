@@ -4,7 +4,7 @@
  * Dashboard view integrating the DayPilot Weekly Calendar implementation.
  * Fully internationalized using the vue-i18n instance.
  */
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import WeeklyCalendar from '@/Components/WorkSession/WeeklyCalendar.vue';
@@ -20,6 +20,20 @@ const props = defineProps({
 });
 
 const page = usePage();
+const isLoading = ref(false);
+
+let removeStartListener;
+let removeFinishListener;
+
+onMounted(() => {
+  removeStartListener = router.on('start', () => isLoading.value = true);
+  removeFinishListener = router.on('finish', () => isLoading.value = false);
+});
+
+onUnmounted(() => {
+  if (removeStartListener) removeStartListener();
+  if (removeFinishListener) removeFinishListener();
+});
 
 /**
  * Calculates the start date (Monday) of a given date safely.
@@ -59,10 +73,12 @@ watch([filterWeekStart, filterUser], () => {
                 </h2>
                 
                 <div class="flex items-center gap-4">
-                    <div v-if="users && users.length > 0" class="w-56">
+                    <div v-if="users && users.length > 0" class="w-56 relative">
                         <select 
                             v-model="filterUser" 
-                            class="block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-sm transition-colors duration-200"
+                            :disabled="isLoading"
+                            class="block w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:ring-indigo-500 focus:border-indigo-500 text-sm shadow-sm transition-all duration-200"
+                            :class="{ 'opacity-60 cursor-wait': isLoading }"
                         >
                             <option value="">{{ $t('work_sessions.index.all_supporters') }}</option>
                             <option v-for="user in users" :key="user.id" :value="user.id">
@@ -74,10 +90,15 @@ watch([filterWeekStart, filterUser], () => {
             </div>
         </template>
 
-        <div class="py-8">
+        <div class="py-8 relative">
+            
+            <div v-if="isLoading" class="absolute inset-0 bg-white/40 dark:bg-gray-900/40 z-10 flex items-center justify-center backdrop-blur-[1px] transition-all duration-300 rounded-xl">
+                <div class="h-10 w-10 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></div>
+            </div>
+
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                 
-                <div class="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white mb-6">
+                <div class="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white mb-6 transition-opacity duration-300" :class="{ 'opacity-70': isLoading }">
                     <div class="flex items-center justify-between mb-4">
                         <span class="text-sm font-medium opacity-80 uppercase tracking-wider">{{ $t('work_sessions.index.total_worked_week') }}</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -89,11 +110,13 @@ watch([filterWeekStart, filterUser], () => {
                     </div>
                 </div>
 
-                <WeeklyCalendar 
-                    :week-start-date="filterWeekStart" 
-                    :sessions="sessions" 
-                    @update:weekStartDate="filterWeekStart = $event"
-                />
+                <div :class="{ 'pointer-events-none': isLoading }">
+                    <WeeklyCalendar 
+                        :week-start-date="filterWeekStart" 
+                        :sessions="sessions" 
+                        @update:weekStartDate="filterWeekStart = $event"
+                    />
+                </div>
 
             </div>
         </div>
