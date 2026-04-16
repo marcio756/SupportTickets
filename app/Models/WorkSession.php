@@ -24,6 +24,7 @@ class WorkSession extends Model
     protected function casts(): array
     {
         return [
+            'status' => WorkSessionStatusEnum::class,
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
             'total_worked_seconds' => 'integer',

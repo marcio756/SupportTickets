@@ -19,7 +19,7 @@
                 {{ emptyMessage || $t('common.no_records_found') }}
             </div>
 
-            <div v-if="resourceData.last_page > 1" class="flex justify-center mt-6">
+            <div v-if="!hidePagination && resourceData.last_page > 1" class="flex justify-center mt-6">
                 <va-pagination
                     :model-value="resourceData.current_page"
                     :pages="resourceData.last_page"
@@ -57,6 +57,11 @@ defineProps({
         default: false,
     },
     loading: {
+        type: Boolean,
+        default: false,
+    },
+    // Nova propriedade de controlo de injeção externa
+    hidePagination: {
         type: Boolean,
         default: false,
     }

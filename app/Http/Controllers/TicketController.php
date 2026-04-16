@@ -56,7 +56,7 @@ class TicketController extends Controller
                     'per_page' => 10,
                     'total' => 0,
                 ],
-                'filters' => $request->only(['search', 'status', 'source', 'customers', 'assignees', 'tags']),
+                'filters' => $request->only(['search', 'status', 'source', 'customers', 'assignees', 'tags', 'per_page']),
                 'customersList' => [],
                 'availableTags' => [],
                 'workSessionStatus' => $workSessionStatus,
@@ -75,7 +75,10 @@ class TicketController extends Controller
 
         $this->applyIndexFilters($query, $request, $user);
 
-        $tickets = $query->latest()->paginate(10)->withQueryString();
+        $perPage = (int) $request->input('per_page', 10);
+        $perPage = $perPage > 100 ? 100 : $perPage; 
+
+        $tickets = $query->latest()->paginate($perPage)->withQueryString();
 
         /**
          * Architect Note: Fetching millions of users with `get()` causes memory exhaustion.
@@ -93,7 +96,7 @@ class TicketController extends Controller
 
         return Inertia::render('Tickets/Index', [
             'tickets' => $tickets,
-            'filters' => $request->only(['search', 'status', 'source', 'customers', 'assignees', 'tags']),
+            'filters' => $request->only(['search', 'status', 'source', 'customers', 'assignees', 'tags', 'per_page']),
             'customersList' => $customersList,
             'availableTags' => $availableTags,
             'workSessionStatus' => $workSessionStatus,

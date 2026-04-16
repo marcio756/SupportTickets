@@ -6,14 +6,54 @@
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1 class="text-2xl font-bold" style="color: var(--va-text-primary)">{{ $t('tickets.title') }}</h1>
         
-        <va-button 
-          v-if="!isSupporter || workSessionStatus === 'active'" 
-          color="primary" 
-          icon="add" 
-          @click="openCreateModal"
-        >
-          {{ $t('tickets.create_new') }}
-        </va-button>
+        <div class="flex items-center gap-3 flex-wrap">
+          
+          <div class="flex items-center gap-2 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm text-sm">
+            <span class="text-gray-500 font-medium">Mostrar:</span>
+            <select 
+              v-model="perPage" 
+              @change="updatePerPage"
+              class="border-none bg-transparent text-gray-700 dark:text-gray-200 font-bold focus:ring-0 cursor-pointer p-0 pr-4 outline-none"
+            >
+              <option :value="10" class="text-gray-900 bg-white dark:text-gray-200 dark:bg-gray-800">10</option>
+              <option :value="25" class="text-gray-900 bg-white dark:text-gray-200 dark:bg-gray-800">25</option>
+              <option :value="50" class="text-gray-900 bg-white dark:text-gray-200 dark:bg-gray-800">50</option>
+              <option :value="100" class="text-gray-900 bg-white dark:text-gray-200 dark:bg-gray-800">100</option>
+            </select>
+          </div>
+
+          <div v-if="isSupporter" class="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg flex shadow-inner">
+            <button 
+              @click="setViewMode('list')"
+              class="p-1.5 rounded-md transition-all flex items-center justify-center"
+              :class="viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              title="Lista"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </button>
+            <button 
+              @click="setViewMode('board')"
+              class="p-1.5 rounded-md transition-all flex items-center justify-center"
+              :class="viewMode === 'board' ? 'bg-white dark:bg-gray-700 shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+              title="Quadro (Kanban)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+            </button>
+          </div>
+
+          <va-button 
+            v-if="!isSupporter || workSessionStatus === 'active'" 
+            color="primary" 
+            icon="add" 
+            @click="openCreateModal"
+          >
+            {{ $t('tickets.create_new') }}
+          </va-button>
+        </div>
       </div>
     </Transition>
 
@@ -43,14 +83,16 @@
             <SkeletonScreen :lines="5" :with-header="true" :with-avatar="true" />
           </div>
           
-          <div v-else>
+          <div v-else class="flex flex-col gap-4">
+            
             <ResourceTable
+              v-if="viewMode === 'list' || !isSupporter"
               :resource-data="tickets"
               :columns="columns"
               :empty-message="$t('tickets.no_tickets_found')"
               :clickable="true"
-              @row:click="navigateToTicket"
-              @page-change="changePage"
+              :hide-pagination="true"
+              @row:click="navigateToTicketEvent"
             >
               <template #cell(id)="{ rowData }">
                 <span class="font-bold transition-colors hover:text-primary" style="color: var(--va-primary)">#{{ rowData.id }}</span>
@@ -110,6 +152,39 @@
                 <span v-else class="text-sm font-bold text-red-500">{{ $t('tickets.unassigned') }}</span>
               </template>
             </ResourceTable>
+
+            <TicketBoard 
+              v-else
+              :tickets="tickets.data"
+              @update-status="handleBoardStatusUpdate"
+              @ticket-click="navigateToTicketDirect"
+            />
+
+            <div v-if="tickets.links && tickets.links.length > 3" class="flex flex-col sm:flex-row justify-between items-center bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm mt-2">
+              <span class="text-sm text-gray-500 mb-4 sm:mb-0">
+                A mostrar <span class="font-bold text-gray-700 dark:text-gray-200">{{ tickets.from }}</span> a 
+                <span class="font-bold text-gray-700 dark:text-gray-200">{{ tickets.to }}</span> de 
+                <span class="font-bold text-gray-700 dark:text-gray-200">{{ tickets.total }}</span> resultados
+              </span>
+              
+              <div class="flex flex-wrap gap-1 justify-center">
+                <template v-for="(link, index) in tickets.links" :key="index">
+                  <div
+                    v-if="link.url === null"
+                    class="px-3 py-1.5 text-sm rounded-md border border-gray-200 dark:border-gray-700 text-gray-400 bg-gray-50 dark:bg-gray-800 cursor-not-allowed"
+                    v-html="link.label"
+                  />
+                  <button
+                    v-else
+                    @click="changePageGlobal(link.url)"
+                    class="px-3 py-1.5 text-sm rounded-md border transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+                    :class="link.active ? 'bg-primary text-white border-primary shadow-sm hover:bg-primary' : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'"
+                    v-html="link.label"
+                  />
+                </template>
+              </div>
+            </div>
+
           </div>
         </Transition>
       </div>
@@ -124,12 +199,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ResourceFilter from '@/Components/Filters/ResourceFilter.vue';
 import ResourceTable from '@/Components/Common/ResourceTable.vue';
+import TicketBoard from '@/Components/Tickets/TicketBoard.vue';
 import TicketStatusBadge from '@/Components/Tickets/TicketStatusBadge.vue';
 import UserAvatar from '@/Components/Common/UserAvatar.vue';
 import TagBadge from '@/Components/Common/TagBadge.vue';
@@ -151,10 +227,17 @@ const { t, locale } = useI18n();
 
 const isSupporter = page.props.auth.user.role !== 'customer';
 const isCreateModalOpen = ref(false);
-
 const isLoading = ref(false);
 
-// Controlar loading states para requests via Inertia
+const viewMode = ref(localStorage.getItem('ticket_view_mode') || 'list');
+const setViewMode = (mode) => {
+  viewMode.value = mode;
+  localStorage.setItem('ticket_view_mode', mode);
+};
+
+// Variável para controlar a Quantidade por Página
+const perPage = ref(props.filters.per_page ? parseInt(props.filters.per_page) : 10);
+
 const startLoading = () => isLoading.value = true;
 const stopLoading = () => isLoading.value = false;
 
@@ -163,17 +246,32 @@ onMounted(() => {
   router.on('finish', stopLoading);
 });
 
-onUnmounted(() => {
-  // Limpar os listeners ao desmontar o componente
-  // O Inertia devolve uma função para remover ao adicionar, mas podemos contornar garantindo a gestão global noutro local.
-  // Aqui usamos uma abordagem segura.
-});
-
 const { query, selectedStatus, selectedSource, selectedCustomers, selectedAssignees, selectedTags, changePage } = useFilters(
   props.filters, 
   'tickets.index', 
   props.tickets.current_page
 );
+
+// Atualiza e dispara a query com o novo limite por página
+const updatePerPage = () => {
+  router.get(route('tickets.index'), {
+    ...props.filters,
+    per_page: perPage.value,
+    page: 1 
+  }, {
+    preserveState: true,
+    preserveScroll: true
+  });
+};
+
+// Navegação de paginação global
+const changePageGlobal = (url) => {
+  if (!url) return;
+  router.get(url, { per_page: perPage.value }, {
+    preserveState: true,
+    preserveScroll: true
+  });
+};
 
 const statusOptions = computed(() => [
   { text: t('tickets.status.open'), value: 'open' },
@@ -210,7 +308,21 @@ const columns = computed(() => {
 });
 
 const openCreateModal = () => isCreateModalOpen.value = true;
-const navigateToTicket = (event) => router.get(route('tickets.show', event.item.id));
+const navigateToTicketEvent = (event) => router.get(route('tickets.show', event.item.id));
+const navigateToTicketDirect = (ticket) => router.get(route('tickets.show', ticket.id));
+
+// Atualização de estado via Kanban D&D com o verbo PATCH estrito
+const handleBoardStatusUpdate = ({ ticketId, newStatus, revertCallback }) => {
+  router.patch(route('tickets.update-status', ticketId), {
+    status: newStatus
+  }, {
+    preserveState: true,
+    preserveScroll: true,
+    onError: () => {
+      if (revertCallback) revertCallback();
+    }
+  });
+};
 
 const formatDate = (dateString) => {
   if (!dateString) return '';
@@ -221,7 +333,7 @@ const formatDate = (dateString) => {
 </script>
 
 <style scoped>
-/* Animações de Contexto e Continuidade */
+/* Transições UI Fluídas */
 .fade-slide-enter-active, .fade-slide-leave-active {
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
@@ -251,5 +363,12 @@ const formatDate = (dateString) => {
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
+}
+
+/* Esconder aparência padrão do browser para um visual mais limpo */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 </style>
