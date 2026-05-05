@@ -1,12 +1,5 @@
 <?php
 
-/**
- * Third Party Services Configuration
- *
- * This file is used to configure third-party services and their credentials.
- * We store the Discord Webhook URLs here to maintain a centralized configuration
- * structure, preventing hardcoded values across the application.
- */
 return [
 
     'mailgun' => [
@@ -27,8 +20,9 @@ return [
     ],
 
     'discord' => [
-        'tickets_webhook_url' => env('DISCORD_TICKETS_WEBHOOK_URL'),
-        'errors_webhook_url' => env('DISCORD_ERRORS_WEBHOOK_URL'),
+        'bot_token' => env('DISCORD_BOT_TOKEN'),
+        'public_key' => env('DISCORD_PUBLIC_KEY'),
+        'client_id' => env('DISCORD_CLIENT_ID'),
     ],
 
 ];

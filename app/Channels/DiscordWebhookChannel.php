@@ -4,38 +4,41 @@ namespace App\Channels;
 
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Http;
+use App\Models\DiscordSetting;
 
 /**
- * Discord Webhook Notification Channel
- *
- * Handles the transmission of notifications to Discord via Webhooks.
- * This isolates the HTTP protocol logic from the notification payload classes,
- * adhering strictly to the Single Responsibility Principle (SRP).
+ * Custom notification channel responsible for dispatching payloads to a Discord Channel via Bot API.
  */
 class DiscordWebhookChannel
 {
     /**
-     * Send the given notification via HTTP POST to Discord.
+     * Transmits the given notification payload to the external Discord service.
      *
-     * @param  mixed  $notifiable
-     * @param  \Illuminate\Notifications\Notification  $notification
+     * @param object $notifiable The entity receiving the notification.
+     * @param Notification $notification The notification instance containing the payload formatting.
      * @return void
      */
-    public function send(mixed $notifiable, Notification $notification): void
+    public function send(object $notifiable, Notification $notification): void
     {
         if (! method_exists($notification, 'toDiscord')) {
             return;
         }
 
-        $message = $notification->toDiscord($notifiable);
-        $url = config('services.discord.tickets_webhook_url');
+        $botToken = config('services.discord.bot_token');
+        
+        // Fetch dynamically from database
+        $setting = DiscordSetting::where('key', 'ticket_channel_id')->first();
+        $channelId = $setting ? $setting->value : null;
 
-        if (! $url) {
+        if (empty($botToken) || empty($channelId)) {
             return;
         }
 
-        // We use Optimistic UI/Fire-and-forget principles here. 
-        // A timeout is set to ensure the app doesn't hang if Discord API is slow.
-        Http::timeout(3)->post($url, $message);
+        $data = $notification->toDiscord($notifiable);
+        $url = "https://discord.com/api/v10/channels/{$channelId}/messages";
+
+        Http::timeout(3)->withHeaders([
+            'Authorization' => "Bot {$botToken}"
+        ])->post($url, $data);
     }
 }

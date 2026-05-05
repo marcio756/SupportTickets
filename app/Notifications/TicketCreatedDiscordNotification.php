@@ -2,78 +2,76 @@
 
 namespace App\Notifications;
 
-use App\Models\Ticket;
-use App\Channels\DiscordWebhookChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use App\Channels\DiscordWebhookChannel;
+use App\Models\Ticket;
 
 /**
- * Notification mapped to dispatch newly created tickets to Discord.
- *
- * Implements ShouldQueue to guarantee the HTTP request runs asynchronously,
- * ensuring the end-user interface remains fast and fluid (Perceived Performance).
+ * Represents a system notification triggered upon the creation of a new Support Ticket.
+ * Implements ShouldQueue to guarantee that third-party network delays do not impact user perception of speed.
  */
 class TicketCreatedDiscordNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    protected Ticket $ticket;
+
     /**
-     * Create a new notification instance.
+     * Initializes the notification state with the relevant ticket context.
      *
      * @param Ticket $ticket The newly created ticket instance.
      */
-    public function __construct(
-        public Ticket $ticket
-    ) {}
+    public function __construct(Ticket $ticket)
+    {
+        $this->ticket = $ticket;
+    }
 
     /**
-     * Get the notification's delivery channels.
+     * Designates the delivery channels for this specific notification.
      *
-     * @param  mixed  $notifiable
+     * @param object $notifiable The target entity.
      * @return array<int, string>
      */
-    public function via(mixed $notifiable): array
+    public function via(object $notifiable): array
     {
         return [DiscordWebhookChannel::class];
     }
 
     /**
-     * Format the rich embed payload for the Discord webhook.
+     * Assembles the notification data into a standard Discord Webhook payload structure (Rich Embed).
      *
-     * @param  mixed  $notifiable
+     * @param object $notifiable The target entity.
      * @return array<string, mixed>
      */
-    public function toDiscord(mixed $notifiable): array
+    public function toDiscord(object $notifiable): array
     {
-        // Extração das propriedades para variáveis com Null Coalescing e Nullsafe Operators
-        // Isto resolve o Syntax Error de interpolação e protege contra relações não carregadas
-        $title = $this->ticket->title ?? 'Sem Título';
-        $status = $this->ticket->status?->value ?? 'Pendente';
-        $userName = $this->ticket->user?->name ?? 'Desconhecido';
-
         return [
-            'content' => "🚨 **Novo Ticket de Suporte Submetido!**",
+            'content' => null,
             'embeds' => [
                 [
-                    'title' => "Ticket #{$this->ticket->id}: {$title}",
-                    'description' => "Um novo ticket foi criado no sistema e aguarda atribuição.",
-                    'color' => 3447003, // Premium Blue Hex equivalent
+                    'title' => "🎫 Novo Ticket Registado: #{$this->ticket->id}",
+                    'description' => $this->ticket->subject,
+                    'color' => 5814783, // Blue-ish premium accent
                     'fields' => [
                         [
-                            'name' => 'Estado',
-                            'value' => $status,
-                            'inline' => true
+                            'name' => 'Cliente',
+                            'value' => $this->ticket->user->name ?? 'Desconhecido',
+                            'inline' => true,
                         ],
                         [
-                            'name' => 'Cliente / Autor',
-                            'value' => $userName,
-                            'inline' => true
+                            'name' => 'Prioridade',
+                            'value' => $this->ticket->priority ?? 'Normal',
+                            'inline' => true,
                         ]
+                    ],
+                    'footer' => [
+                        'text' => 'Sistema Automático de Suporte'
                     ],
                     'timestamp' => now()->toIso8601String(),
                 ]
-            ]
+            ],
         ];
     }
 }

@@ -5,12 +5,6 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
 
-/**
- * Application Logging Configuration
- *
- * Configures the logging channels. We've added a custom discord channel
- * mapped to the Slack driver to capture critical errors autonomously.
- */
 return [
 
     'default' => env('LOG_CHANNEL', 'stack'),
@@ -23,9 +17,14 @@ return [
     'channels' => [
         'stack' => [
             'driver' => 'stack',
-            // Added discord_errors to the stack so it fires automatically on errors
-            'channels' => ['single', 'discord_errors'],
+            'channels' => ['single', 'discord'],
             'ignore_exceptions' => false,
+        ],
+
+        'discord' => [
+            'driver' => 'monolog',
+            'handler' => App\Logging\DiscordHandler::class,
+            'level' => env('LOG_LEVEL', 'error'),
         ],
 
         'single' => [
@@ -43,13 +42,32 @@ return [
             'replace_placeholders' => true,
         ],
 
-        'discord_errors' => [
+        'slack' => [
             'driver' => 'slack',
-            'url' => env('DISCORD_ERRORS_WEBHOOK_URL'),
-            'username' => 'Laravel Critical Errors',
+            'url' => env('LOG_SLACK_WEBHOOK_URL'),
+            'username' => 'Laravel Log',
             'emoji' => ':boom:',
-            'level' => 'critical',
+            'level' => env('LOG_LEVEL', 'critical'),
             'replace_placeholders' => true,
+        ],
+
+        'papertrail' => [
+            'driver' => 'papertrail',
+            'level' => env('LOG_LEVEL', 'debug'),
+            'host' => env('PAPERTRAIL_URL'),
+            'port' => env('PAPERTRAIL_PORT'),
+            'processors' => [PsrLogMessageProcessor::class],
+        ],
+
+        'stderr' => [
+            'driver' => 'monolog',
+            'level' => env('LOG_LEVEL', 'debug'),
+            'handler' => StreamHandler::class,
+            'formatter' => env('LOG_STDERR_FORMATTER'),
+            'with' => [
+                'stream' => 'php://stderr',
+            ],
+            'processors' => [PsrLogMessageProcessor::class],
         ],
 
         'syslog' => [
