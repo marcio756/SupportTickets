@@ -41,6 +41,11 @@ class RegisterDiscordCommands extends Command
 
         $commands = [
             [
+                'name' => 'help',
+                'description' => 'Mostra todos os comandos disponíveis do bot',
+                'options' => []
+            ],
+            [
                 'name' => 'setchannel',
                 'description' => 'Configura o canal onde os alertas do Laravel serão enviados.',
                 'options' => [
@@ -57,6 +62,18 @@ class RegisterDiscordCommands extends Command
                     [
                         'name' => 'canal',
                         'description' => 'O canal para onde enviar as mensagens',
+                        'type' => 7, // Channel
+                        'required' => true,
+                    ]
+                ]
+            ],
+            [
+                'name' => 'seterrors',
+                'description' => 'Configura o canal específico para erros do Laravel.',
+                'options' => [
+                    [
+                        'name' => 'canal',
+                        'description' => 'O canal para onde enviar os erros',
                         'type' => 7, // Channel
                         'required' => true,
                     ]

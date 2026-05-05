@@ -28,6 +28,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::post('/discord/interactions', [DiscordInteractionController::class, 'handle'])
         ->name('discord.interactions');
 
+    Route::post('/discord/set-channel', [DiscordInteractionController::class, 'setChannel'])
+        ->name('discord.set-channel');
+
     // Rate limiting rigoroso para evitar brute-force (ex: 5 tentativas por minuto)
     Route::post('/login', [AuthController::class, 'login'])
         ->middleware('throttle:5,1')

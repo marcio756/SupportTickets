@@ -93,6 +93,37 @@ class DiscordInteractionController extends Controller
     }
 
     /**
+     * Handles requests from the Discord bot (Node.js) to set channel configuration.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function setChannel(Request $request): JsonResponse
+    {
+        $modulo = $request->input('modulo');
+        $channelId = $request->input('channel_id');
+
+        if (! $modulo || ! $channelId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parâmetros faltando'
+            ], 400);
+        }
+
+        $settingKey = $modulo === 'tickets' ? 'ticket_channel_id' : 'error_channel_id';
+
+        DiscordSetting::updateOrCreate(
+            ['key' => $settingKey],
+            ['value' => $channelId]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Canal configurado com sucesso'
+        ]);
+    }
+
+    /**
      * Verifies the ED25519 signature from Discord.
      *
      * @param Request $request
