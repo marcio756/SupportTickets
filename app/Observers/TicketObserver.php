@@ -6,6 +6,7 @@ use App\Enums\TicketStatusEnum;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Notifications\TicketNotification;
+use App\Notifications\TicketCreatedDiscordNotification;
 use App\Services\FirebaseService;
 use Illuminate\Support\Facades\Notification;
 
@@ -26,6 +27,10 @@ class TicketObserver
         if ($ticket->assigned_to && $this->isActiveStatus($ticket->status->value)) {
             User::where('id', $ticket->assigned_to)->increment('active_tickets_count');
         }
+
+        // Route the notification anonymously to the custom Discord channel.
+        Notification::route('discord', null)
+            ->notify(new TicketCreatedDiscordNotification($ticket));
     }
 
     /**
