@@ -34,6 +34,7 @@ class EmailTicketService
 
         $rawBody = $message->getTextBody() ?? $message->getHTMLBody() ?? '';
         $cleanBody = $this->stripEmailHistory(is_string($rawBody) ? trim($rawBody) : '');
+
         $subject = (string) ($message->getSubject()[0] ?? 'No Subject');
 
         $inReplyTo = $message->getInReplyTo();
@@ -43,7 +44,7 @@ class EmailTicketService
         $referencesStr = is_iterable($references) ? implode(' ', $references->toArray()) : (string) $references;
 
         $ticketId = $this->extractTicketIdFromHeaders($inReplyToStr, $referencesStr) 
-                    ?? $this->extractTicketIdFromSubject($subject);
+                     ?? $this->extractTicketIdFromSubject($subject);
 
         $ticket = null;
         $ticketMessage = null;
@@ -92,6 +93,7 @@ class EmailTicketService
                 break;
             }
         }
+
         return trim($body);
     }
 
@@ -125,7 +127,7 @@ class EmailTicketService
     private function appendMessageToTicket(int $ticketId, ?int $userId, string $body, string $senderEmail): array
     {
         $ticket = Ticket::find($ticketId);
-
+        
         if (!$ticket) {
             Log::warning("Email reply failed: Ticket #{$ticketId} not found.");
             return [];
@@ -139,6 +141,7 @@ class EmailTicketService
         ]);
 
         $ticket->touch();
+
         return ['ticket' => $ticket, 'message' => $message];
     }
 
@@ -158,16 +161,15 @@ class EmailTicketService
                 // Uses streams to write directly without loading massive payloads entirely in RAM
                 Storage::disk($disk)->put($path, $attachment->content);
 
-                $ticketMessage->attachments()->create([
-                    'file_path' => $path,
-                    'file_name' => $attachment->name,
-                    'mime_type' => $attachment->mime ?? 'application/octet-stream',
-                    'size' => $attachment->size ?? 0,
+                $ticketMessage->update([
+                    'attachment_path' => $path
                 ]);
 
                 // Clear memory pointer immediately
                 unset($attachment);
-
+                
+                // A Base de Dados atual suporta 1 anexo por mensagem. Evitamos a quebra bloqueando após o 1º ficheiro.
+                break;
             } catch (\Exception $e) {
                 Log::error("Failed to stream attachment for message {$ticketMessage->id}: " . $e->getMessage());
             }

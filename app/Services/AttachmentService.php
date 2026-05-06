@@ -39,28 +39,26 @@ class AttachmentService
     /**
      * Process multiple attachments associated with a specific model.
      * Architect Note: Adicionado para garantir compatibilidade estrutural com o TicketService.
-     * * @param array|UploadedFile[] $attachments
+     *
+     * @param array|UploadedFile[]|UploadedFile $attachments
      * @param mixed $model
      * @return void
      */
     public function processAttachments($attachments, $model): void
     {
         if (!is_iterable($attachments)) {
-            return;
+            $attachments = [$attachments];
         }
 
         foreach ($attachments as $attachment) {
             if ($attachment instanceof UploadedFile) {
                 $path = $this->store($attachment);
                 
-                // Assumindo uma relação polimórfica padrão ou armazenamento na BD
-                if ($path && method_exists($model, 'attachments')) {
-                    $model->attachments()->create([
-                        'file_path' => $path,
-                        'file_name' => $attachment->getClientOriginalName(),
-                        'mime_type' => $attachment->getClientMimeType(),
-                        'size' => $attachment->getSize(),
-                    ]);
+                if ($path) {
+                    $model->update(['attachment_path' => $path]);
+                    
+                    // A BD atual apenas suporta 1 anexo por mensagem (coluna attachment_path)
+                    break;
                 }
             }
         }
