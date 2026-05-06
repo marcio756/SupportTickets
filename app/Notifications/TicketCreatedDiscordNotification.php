@@ -47,17 +47,27 @@ class TicketCreatedDiscordNotification extends Notification implements ShouldQue
      */
     public function toDiscord(object $notifiable): array
     {
+        // Vai buscar a primeira mensagem do ticket que gravámos no Passo 1
+        $firstMessage = $this->ticket->messages()->oldest()->first();
+        $description = $firstMessage ? $firstMessage->message : 'Sem descrição detalhada.';
+        
+        // Proteção contra quebra da API do Discord (limite do embed)
+        if (mb_strlen($description) > 1000) {
+            $description = mb_substr($description, 0, 1000) . '...';
+        }
+
         return [
             'content' => null,
             'embeds' => [
                 [
-                    'title' => "🎫 Novo Ticket Registado: #{$this->ticket->id}",
-                    'description' => $this->ticket->subject,
+                    'title' => "📣 Novo Ticket Registado: #{$this->ticket->id} - {$this->ticket->title}",
+                    'description' => $description,
                     'color' => 5814783, // Blue-ish premium accent
                     'fields' => [
                         [
                             'name' => 'Cliente',
-                            'value' => $this->ticket->user->name ?? 'Desconhecido',
+                            // O ORM utiliza ->customer (BelongsTo User) em vez de ->user
+                            'value' => $this->ticket->customer->name ?? $this->ticket->sender_email ?? 'Desconhecido',
                             'inline' => true,
                         ],
                         [

@@ -20,20 +20,16 @@ class ProcessIncomingEmailJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * The name of the queue the job should be sent to.
-     *
-     * @var string|null
-     */
-    public $queue = 'emails';
-
-    /**
      * Creates a new job instance.
      *
      * @param int $messageUid
      */
     public function __construct(
         public int $messageUid
-    ) {}
+    ) {
+        // Atribuição dinâmica da fila no construtor evita a colisão com o trait Queueable
+        $this->onQueue('emails');
+    }
 
     /**
      * Execute the job to fetch the specific message and stream attachments.

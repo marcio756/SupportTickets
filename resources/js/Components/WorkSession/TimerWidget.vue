@@ -14,7 +14,6 @@ const user = computed(() => page.props.auth.user);
 
 // Separamos do Inertia e criamos um estado local para controlo imediato (Optimistic UI)
 const localSession = ref(page.props.auth.work_session);
-
 const session = computed(() => localSession.value);
 
 const showEndModal = ref(false);
@@ -23,13 +22,12 @@ const isProcessing = ref(false);
 /**
  * Optimistic Action Dispatcher
  */
-const performAction = async (endpoint, optimisticStatus) => {
+const performAction = (endpoint, optimisticStatus) => {
     if (isProcessing.value) return;
     
-    // 1. Optimistic UI Update (Instantânea, 0ms de latência visual)
     const previousState = JSON.parse(JSON.stringify(localSession.value || {}));
-    isProcessing.value = true;
     
+    // Aplicar estado Otimista Instantaneamente para percepção de velocidade (0ms de latência)
     if (!localSession.value) {
         localSession.value = {
             status: optimisticStatus,
@@ -45,34 +43,33 @@ const performAction = async (endpoint, optimisticStatus) => {
             if (lastPause) lastPause.ended_at_iso = new Date().toISOString();
         }
     }
+    
+    showEndModal.value = false;
+    isProcessing.value = true;
 
-    try {
-        // 2. Chamada AJAX silenciada em background
-        const response = await axios.post(route(`work-sessions.${endpoint}`), {}, {
-            headers: { 'Accept': 'application/json' }
-        });
-        
-        // 3. Sincronização final com a verdade da Base de Dados
+    // Chamada AJAX silenciada em background sem bloquear a UI
+    axios.post(route(`work-sessions.${endpoint}`), {}, {
+        headers: { 'Accept': 'application/json' }
+    }).then(response => {
+        // Sincronização final com a verdade da Base de Dados
         localSession.value = response.data.session;
-        router.reload({ only: ['auth'] }); // Mantém estado Inertia atualizado
-    } catch (error) {
+        router.reload({ only: ['auth'], preserveScroll: true }); 
+    }).catch(error => {
         // Rollback suave caso haja erro de rede
         localSession.value = previousState.status ? previousState : null;
         console.error("Falha ao atualizar sessão de trabalho", error);
-    } finally {
+    }).finally(() => {
         isProcessing.value = false;
-        showEndModal.value = false;
-    }
+    });
 };
 
 const startSession = () => performAction('start', 'active');
 const pauseSession = () => performAction('pause', 'paused');
 const resumeSession = () => performAction('resume', 'active');
+
 const executeEndSession = () => {
     showEndModal.value = false;
-    performAction('end', 'ended').then(() => {
-        localSession.value = null; // Esvazia o estado após fecho no servidor
-    });
+    performAction('end', 'ended');
 };
 
 const confirmEndSession = () => {
@@ -103,15 +100,14 @@ const workingTimeFormatted = computed(() => {
     if (!session.value || session.value.status === 'ended') return '00:00:00';
     
     const startStr = session.value.started_at_iso || session.value.started_at;
-    const validStartStr = startStr ? startStr.replace(' ', 'T') : null; 
-    
+    const validStartStr = startStr ? startStr.replace(' ', 'T') : null;      
     const startObj = new Date(validStartStr);
     if (isNaN(startObj.getTime())) return '00:00:00';
 
     const startMs = startObj.getTime();
     const endMs = session.value.ended_at_iso || session.value.ended_at 
-                    ? new Date((session.value.ended_at_iso || session.value.ended_at).replace(' ', 'T')).getTime() 
-                    : now.value.getTime();
+                     ? new Date((session.value.ended_at_iso || session.value.ended_at).replace(' ', 'T')).getTime() 
+                     : now.value.getTime();
     
     let totalWorkedMs = endMs - startMs;
     
@@ -119,15 +115,15 @@ const workingTimeFormatted = computed(() => {
         session.value.pauses.forEach(pause => {
             const pStart = new Date((pause.started_at_iso || pause.started_at).replace(' ', 'T')).getTime();
             const pEnd = pause.ended_at_iso || pause.ended_at 
-                            ? new Date((pause.ended_at_iso || pause.ended_at).replace(' ', 'T')).getTime() 
-                            : endMs; 
-            
+                             ? new Date((pause.ended_at_iso || pause.ended_at).replace(' ', 'T')).getTime() 
+                             : endMs;
+                          
             totalWorkedMs -= (pEnd - pStart);
         });
     }
 
     if (totalWorkedMs < 0) totalWorkedMs = 0;
-
+    
     const hours = Math.floor(totalWorkedMs / 3600000);
     const minutes = Math.floor((totalWorkedMs % 3600000) / 60000);
     const seconds = Math.floor((totalWorkedMs % 60000) / 1000);
@@ -147,7 +143,7 @@ const currentPauseTimeFormatted = computed(() => {
 
     const pStart = new Date((currentPause.started_at_iso || currentPause.started_at).replace(' ', 'T')).getTime();
     const pauseElapsedMs = now.value.getTime() - pStart;
-
+    
     const minutes = Math.floor(pauseElapsedMs / 60000);
     const seconds = Math.floor((pauseElapsedMs % 60000) / 1000);
     const hours = Math.floor(pauseElapsedMs / 3600000);
@@ -155,44 +151,46 @@ const currentPauseTimeFormatted = computed(() => {
     if (hours > 0) {
         return `${hours}h ${String(minutes).padStart(2, '0')}m`;
     }
+
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 });
 </script>
 
 <template>
-    <div v-if="user && user.role === 'supporter'" class="flex items-center space-x-2 bg-white dark:bg-gray-900 p-1.5 px-3 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300" :class="{ 'opacity-80 pointer-events-none': isProcessing }">
+    <div v-if="user && user.role === 'supporter'" class="flex items-center space-x-2 bg-white dark:bg-gray-900 p-1.5 px-3 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-300">
         
-        <template v-if="!session">
+        <template v-if="!session || session.status === 'ended'">
             <div class="flex items-center">
                 <div class="h-2 w-2 rounded-full bg-gray-400 mr-2"></div>
                 <span class="text-xs font-medium text-gray-500 dark:text-gray-400 mr-3 hidden md:inline">{{ $t('work_sessions.widget.offline') }}</span>
             </div>
-            <button @click="startSession" class="px-4 py-1.5 bg-indigo-600 text-white rounded-full text-xs font-bold hover:bg-indigo-500 transition-all active:scale-95 shadow-sm">
-                {{ $t('work_sessions.widget.clock_in') }}
+            <button @click="startSession" :disabled="isProcessing" class="px-4 py-1.5 bg-indigo-600 text-white rounded-full text-xs font-bold hover:bg-indigo-500 transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                <span class="flex items-center gap-2">
+                    <span v-if="isProcessing" class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    {{ $t('work_sessions.widget.clock_in') }}
+                </span>
             </button>
         </template>
         
         <template v-else-if="session.status === 'active'">
             <div class="flex items-center">
-                
                 <span class="font-mono tabular-nums text-xs font-semibold text-gray-700 dark:text-gray-200 mr-3 border-r border-gray-300 dark:border-gray-600 pr-3">
                     {{ workingTimeFormatted }}
                 </span>
-
                 <span class="flex h-2 w-2 relative mr-2">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                     <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
                 <span class="text-xs font-bold text-green-600 dark:text-green-400 hidden lg:inline mr-3">{{ $t('work_sessions.widget.active') }}</span>
             </div>
-
             <div class="flex items-center gap-1">
-                <button @click="pauseSession" class="p-1.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full hover:bg-yellow-200 transition" :title="$t('work_sessions.widget.pause_shift')">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button @click="pauseSession" :disabled="isProcessing" class="p-1.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full hover:bg-yellow-200 transition disabled:opacity-50 disabled:cursor-not-allowed" :title="$t('work_sessions.widget.pause_shift')">
+                    <svg v-if="!isProcessing" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
+                    <div v-else class="h-4 w-4 border-2 border-yellow-700 dark:border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
                 </button>
-                <button @click="confirmEndSession" class="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-bold hover:bg-red-500 transition-all active:scale-95 shadow-sm" :title="$t('work_sessions.widget.end_shift')">
+                <button @click="confirmEndSession" :disabled="isProcessing" class="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-bold hover:bg-red-500 transition-all active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" :title="$t('work_sessions.widget.end_shift')">
                     {{ $t('work_sessions.widget.end_shift') }}
                 </button>
             </div>
@@ -200,30 +198,27 @@ const currentPauseTimeFormatted = computed(() => {
         
         <template v-else-if="session.status === 'paused'">
             <div class="flex items-center">
-                
                 <span class="font-mono tabular-nums text-xs font-semibold text-gray-400 dark:text-gray-500 mr-2" :title="$t('work_sessions.widget.total_worked_time')">
                     {{ workingTimeFormatted }}
                 </span>
-
                 <span class="text-[10px] font-mono tabular-nums bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 px-1.5 py-0.5 rounded shadow-inner flex items-center gap-1 mr-3 border-r border-gray-300 dark:border-gray-600 pr-3" :title="$t('work_sessions.widget.break_duration')">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     {{ currentPauseTimeFormatted }}
                 </span>
-
                 <span class="h-2 w-2 rounded-full bg-yellow-500 mr-2"></span>
                 <span class="text-xs font-bold text-yellow-600 dark:text-yellow-400 hidden lg:inline mr-3">{{ $t('work_sessions.widget.paused') }}</span>
             </div>
-
             <div class="flex items-center gap-1">
-                <button @click="resumeSession" class="p-1.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full hover:bg-green-200 transition" :title="$t('work_sessions.widget.resume_shift')">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button @click="resumeSession" :disabled="isProcessing" class="p-1.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full hover:bg-green-200 transition disabled:opacity-50 disabled:cursor-not-allowed" :title="$t('work_sessions.widget.resume_shift')">
+                    <svg v-if="!isProcessing" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
+                    <div v-else class="h-4 w-4 border-2 border-green-700 dark:border-green-400 border-t-transparent rounded-full animate-spin"></div>
                 </button>
-                <button @click="confirmEndSession" class="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-bold hover:bg-red-500 transition" :title="$t('work_sessions.widget.end_shift')">
+                <button @click="confirmEndSession" :disabled="isProcessing" class="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-bold hover:bg-red-500 transition disabled:opacity-50 disabled:cursor-not-allowed" :title="$t('work_sessions.widget.end_shift')">
                     {{ $t('work_sessions.widget.end_shift') }}
                 </button>
             </div>

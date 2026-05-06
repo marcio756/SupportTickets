@@ -59,10 +59,24 @@ class TicketService
                 $ticket->tags()->sync($data['tags']);
             }
 
+            // CORREÇÃO: Gravar a mensagem inicial submetida no formulário
+            $message = new TicketMessage();
+            $message->ticket_id = $ticket->id;
+            $message->message = $data['message'] ?? 'Sem descrição detalhada.';
+            
+            if ($creator) {
+                $message->user_id = $creator->id;
+            } elseif (isset($data['sender_email'])) {
+                $message->sender_email = $data['sender_email'];
+            }
+            
+            $message->save();
+
+            // CORREÇÃO: Os anexos iniciais devem ficar agregados à mensagem e não ao ticket fantasma
             if ($attachments) {
-                $this->attachmentService->processAttachments($attachments, clone $ticket);
+                $this->attachmentService->processAttachments($attachments, clone $message);
             } elseif (isset($data['attachments']) && is_array($data['attachments'])) {
-                $this->attachmentService->processAttachments($data['attachments'], clone $ticket);
+                $this->attachmentService->processAttachments($data['attachments'], clone $message);
             }
 
             if ($availableSupporter) {
@@ -118,6 +132,7 @@ class TicketService
                     $mentionedUsers = User::whereIn('id', $userIds)->select('id', 'name')->get();
                     
                     $senderName = $user ? $user->name : ($data['sender_email'] ?? 'System');
+
                     $notification = new TicketNotification(
                         $ticket, 
                         "You were mentioned in Ticket #{$ticket->id} by {$senderName}.",
@@ -143,6 +158,7 @@ class TicketService
     {
         $ticket->status = $status;
         $ticket->save();
+
         return $ticket;
     }
 
@@ -158,8 +174,10 @@ class TicketService
     public function assignTicket(User $user, Ticket $ticket, ?User $supporter = null): Ticket
     {
         $targetUser = $supporter ?? $user;
+
         $ticket->assigned_to = $targetUser->id;
         $ticket->save();
+
         return $ticket;
     }
 
@@ -171,10 +189,9 @@ class TicketService
     private function findAvailableSupporter(): ?User
     {
         /**
-         * Architect Note: Eliminated the heavy double-subquery (whereHas + withCount).
-         * We now use withCount combined with a having clause to resolve both the filtering 
-         * and the sorting in a single database pass, drastically reducing query time.
-         * Substituted whereHas with whereExists raw logic to prevent Laravel's ORM overhead on large datasets.
+         * Architect Note: Refactored to support strict SQL modes and SQLite (used in testing/local).
+         * The `having` clause without a `groupBy` throws an error in SQLite.
+         * We use `whereHas` for counting constraints and `withCount` for sorting.
          */
         return User::where('role', RoleEnum::SUPPORTER->value)
             ->whereExists(function ($query) {
@@ -183,13 +200,18 @@ class TicketService
                       ->whereColumn('work_sessions.user_id', 'users.id')
                       ->where('work_sessions.status', WorkSessionStatusEnum::ACTIVE->value);
             })
+            ->whereHas('assignedTickets', function ($query) {
+                $query->whereIn('status', [
+                    TicketStatusEnum::OPEN->value, 
+                    TicketStatusEnum::IN_PROGRESS->value
+                ]);
+            }, '<', 5)
             ->withCount(['assignedTickets as active_tickets_count' => function ($query) {
                 $query->whereIn('status', [
                     TicketStatusEnum::OPEN->value, 
                     TicketStatusEnum::IN_PROGRESS->value
                 ]);
             }])
-            ->having('active_tickets_count', '<', 5)
             ->orderBy('active_tickets_count', 'asc')
             ->first();
     }
