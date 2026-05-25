@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Vacation;
 use App\Models\WorkSession;
 use Carbon\Carbon;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Collection;
@@ -23,6 +24,8 @@ use Illuminate\Support\Collection;
  */
 class DatabaseSeeder extends Seeder
 {
+    use WithoutModelEvents;
+
     private Collection $createdTags;
     private Collection $teams;
     private User $testAdmin;
@@ -36,12 +39,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->command->info('A iniciar seeding massivo. Desativando eventos (Observers/Emails/Discord)...');
         $this->seedTags();
         $this->seedTeams();
         $this->seedCoreDemoUsers();
+        
+        $this->command->info('A gerar 2000 utilizadores (pode demorar alguns segundos devido ao Hash de passwords)...');
         $this->seedMassiveUsersAndVacations();
+        
         $this->seedWorkSessions();
+        
+        $this->command->info('A gerar 1000 tickets e histórico de mensagens...');
         $this->seedMassiveTickets();
+        
+        $this->command->info('Base de dados preenchida com sucesso!');
     }
 
     /**
