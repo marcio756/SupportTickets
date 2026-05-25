@@ -4,10 +4,12 @@ namespace App\Providers;
 
 use App\Models\Ticket;
 use App\Models\TicketMessage;
+use App\Models\User;
 use App\Observers\TicketObserver;
 use App\Observers\TicketMessageObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -45,5 +47,14 @@ class AppServiceProvider extends ServiceProvider
 
         Ticket::observe(TicketObserver::class);
         TicketMessage::observe(TicketMessageObserver::class);
+
+        /**
+         * Restricts access to the Laravel Pulse dashboard.
+         * Ensures only verified developers can view the performance metrics,
+         * keeping business administrators out of infrastructure tools.
+         */
+        Gate::define('viewPulse', function (User $user) {
+            return $user->isDeveloper();
+        });
     }
 }

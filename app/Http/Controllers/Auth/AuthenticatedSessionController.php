@@ -44,6 +44,12 @@ class AuthenticatedSessionController extends Controller
         // Fluxo normal para quem não tem 2FA e foi autenticado com sucesso
         $request->session()->regenerate();
 
+        // Architect Note: Intercept the intended routing explicitly for system developers.
+        // This ensures they bypass the operational dashboard and land directly on performance metrics.
+        if ($request->user()->isDeveloper()) {
+            return redirect()->to('/pulse');
+        }
+
         return redirect()->intended(route('dashboard'));
     }
 

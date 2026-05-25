@@ -15,17 +15,40 @@ use App\Models\WorkSession;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Collection;
 
+/**
+ * Class DatabaseSeeder
+ * Seeds the application's database with comprehensive test data and load testing volumes.
+ */
 class DatabaseSeeder extends Seeder
 {
+    private Collection $createdTags;
+    private Collection $teams;
+    private User $testAdmin;
+    private User $testSupporter;
+    private User $testCustomer;
+    private Collection $allSupporters;
+    private Collection $allCustomers;
+
     /**
-     * Seed the application's database with comprehensive test data.
+     * Executes the core database seeding lifecycle.
      */
     public function run(): void
     {
-        /**
-         * 1. Create system default tags
-         */
+        $this->seedTags();
+        $this->seedTeams();
+        $this->seedCoreDemoUsers();
+        $this->seedMassiveUsersAndVacations();
+        $this->seedWorkSessions();
+        $this->seedMassiveTickets();
+    }
+
+    /**
+     * 1. Create system default tags
+     */
+    private function seedTags(): void
+    {
         $tagsData = [
             ['name' => 'Bug', 'color' => '#ef4444'],
             ['name' => 'Feature', 'color' => '#3b82f6'],
@@ -39,67 +62,82 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Documentation', 'color' => '#64748b'],
         ];
 
-        $createdTags = collect();
+        $this->createdTags = collect();
         foreach ($tagsData as $tag) {
-            $createdTags->push(Tag::firstOrCreate(
+            $this->createdTags->push(Tag::firstOrCreate(
                 ['name' => $tag['name']],
                 ['color' => $tag['color']]
             ));
         }
+    }
 
-        /**
-         * 2. Create Teams
-         */
-        $teams = collect([
+    /**
+     * 2. Create Teams
+     */
+    private function seedTeams(): void
+    {
+        $this->teams = collect([
             Team::firstOrCreate(['name' => 'Alpha Support'], ['shift' => 'morning']),
             Team::firstOrCreate(['name' => 'Beta Tech'], ['shift' => 'afternoon']),
             Team::firstOrCreate(['name' => 'Gamma Ops'], ['shift' => 'night']),
         ]);
+    }
 
-        /**
-         * 3. Create Core Demo Users
-         */
-        $testAdmin = User::factory()->create([
+    /**
+     * 3. Create Core Demo Users & Developer Account
+     */
+    private function seedCoreDemoUsers(): void
+    {
+        $this->testAdmin = User::factory()->create([
             'name' => 'Admin Demo',
             'email' => 'admin@example.com',
             'password' => Hash::make('123'),
             'role' => RoleEnum::ADMIN,
         ]);
 
-        $testSupporter = User::factory()->create([
+        $this->testSupporter = User::factory()->create([
             'name' => 'Support Demo',
             'email' => 'support@example.com',
             'password' => Hash::make('123'),
             'role' => RoleEnum::SUPPORTER,
-            'team_id' => $teams->first()->id,
+            'team_id' => $this->teams->first()->id,
         ]);
 
-        $testCustomer = User::factory()->create([
+        $this->testCustomer = User::factory()->create([
             'name' => 'Customer Demo',
             'email' => 'customer@example.com',
             'password' => Hash::make('123'),
             'role' => RoleEnum::CUSTOMER,
         ]);
 
-        /**
-         * 4. Create more Random Supporters and Assign to Teams
-         */
-        $randomSupporters = User::factory(12)->create([
+        // Dedicated engineering account for Pulse metrics
+        User::factory()->create([
+            'name' => 'Core Developer',
+            'email' => 'developer@supporttickets.com',
+            'password' => Hash::make('123'),
+            'role' => 'developer',
+        ]);
+    }
+
+    /**
+     * 4 & 5 & 6. Create 1000 Supporters, 1000 Customers and generate Vacations
+     */
+    private function seedMassiveUsersAndVacations(): void
+    {
+        $randomSupporters = User::factory(1000)->create([
             'role' => RoleEnum::SUPPORTER,
-            'team_id' => fn() => $teams->random()->id,
+            'team_id' => fn() => $this->teams->random()->id,
         ]);
         
-        $allSupporters = collect([$testSupporter])->concat($randomSupporters);
+        $this->allSupporters = collect([$this->testSupporter])->concat($randomSupporters);
 
-        /**
-         * 5. Create Random Customers
-         */
-        $randomCustomers = User::factory(20)->create(['role' => RoleEnum::CUSTOMER]);
+        $randomCustomers = User::factory(1000)->create([
+            'role' => RoleEnum::CUSTOMER
+        ]);
+        
+        $this->allCustomers = collect([$this->testCustomer])->concat($randomCustomers);
 
-        /**
-         * 6. Generate Vacation Data for all Supporters
-         */
-        foreach ($allSupporters as $supporter) {
+        foreach ($this->allSupporters as $supporter) {
             // Approved vacation in current month
             $start = Carbon::now()->startOfMonth()->addDays(rand(5, 15));
             while ($start->isWeekend()) { $start->addDay(); }
@@ -126,16 +164,19 @@ class DatabaseSeeder extends Seeder
                 'status' => rand(0, 1) ? 'pending' : 'rejected',
             ]);
         }
+    }
 
-        /**
-         * 7. Generate Work Sessions for Support Demo (to test Time Tracking)
-         */
+    /**
+     * 7. Generate Work Sessions for Support Demo
+     */
+    private function seedWorkSessions(): void
+    {
         // Past completed sessions
         for ($i = 1; $i <= 7; $i++) {
             $day = Carbon::now()->subDays($i);
             if (!$day->isWeekend()) {
                 WorkSession::create([
-                    'user_id' => $testSupporter->id,
+                    'user_id' => $this->testSupporter->id,
                     'started_at' => $day->copy()->setTime(9, 0, 0),
                     'ended_at' => $day->copy()->setTime(18, 0, 0),
                     'status' => WorkSessionStatusEnum::COMPLETED->value,
@@ -146,17 +187,19 @@ class DatabaseSeeder extends Seeder
         
         // Active session for today so the developer can test chat immediately
         WorkSession::create([
-            'user_id' => $testSupporter->id,
+            'user_id' => $this->testSupporter->id,
             'started_at' => Carbon::now()->setTime(9, 0, 0),
             'ended_at' => null,
             'status' => WorkSessionStatusEnum::ACTIVE->value,
             'total_worked_seconds' => null,
         ]);
+    }
 
-        /**
-         * 8. Generate Tickets and Messages
-         */
-        $allCustomers = collect([$testCustomer])->concat($randomCustomers);
+    /**
+     * 8. Generate 1000 Tickets and their respective Messages
+     */
+    private function seedMassiveTickets(): void
+    {
         $statuses = [
             TicketStatusEnum::OPEN->value, 
             TicketStatusEnum::IN_PROGRESS->value, 
@@ -172,12 +215,12 @@ class DatabaseSeeder extends Seeder
             "I would like to request a new feature: dark mode for the mobile app."
         ];
         
-        // Loop to create around 60 tickets distributed in time
-        for ($t = 0; $t < 60; $t++) {
+        // Loop execution scaled to 1000 tickets
+        for ($t = 0; $t < 1000; $t++) {
             $isEmailTicket = rand(1, 10) > 8; // 20% chance of being an email guest ticket
-            $customer = $isEmailTicket ? null : $allCustomers->random();
+            $customer = $isEmailTicket ? null : $this->allCustomers->random();
             $status = $statuses[array_rand($statuses)];
-            $assigned = ($status === TicketStatusEnum::OPEN->value && rand(0, 1)) ? null : $allSupporters->random()->id;
+            $assigned = ($status === TicketStatusEnum::OPEN->value && rand(0, 1)) ? null : $this->allSupporters->random()->id;
             $createdAt = Carbon::now()->subDays(rand(0, 30))->subHours(rand(1, 23));
             
             // Build Ticket Attributes
@@ -191,7 +234,7 @@ class DatabaseSeeder extends Seeder
 
             if ($isEmailTicket) {
                 $ticketAttrs['customer_id'] = null;
-                $ticketAttrs['sender_email'] = 'guest_' . rand(100, 999) . '@external.com';
+                $ticketAttrs['sender_email'] = 'guest_' . rand(10000, 99999) . '@external.com';
             } else {
                 $ticketAttrs['customer_id'] = $customer->id;
                 $ticketAttrs['sender_email'] = null;
@@ -201,7 +244,7 @@ class DatabaseSeeder extends Seeder
 
             // Add Random Tags
             if (rand(0, 10) > 2) {
-                $ticket->tags()->attach($createdTags->random(rand(1, 3))->pluck('id'));
+                $ticket->tags()->attach($this->createdTags->random(rand(1, 3))->pluck('id'));
             }
 
             // Initial Inquiry
@@ -236,7 +279,6 @@ class DatabaseSeeder extends Seeder
                 if (rand(1, 10) > 7) {
                     $mentionTime = $replyTime->copy()->addMinutes(rand(5, 30));
                     
-                    // Mentioning the Admin Demo
                     TicketMessage::create([
                         'ticket_id' => $ticket->id,
                         'user_id' => $assigned,
@@ -245,8 +287,7 @@ class DatabaseSeeder extends Seeder
                         'updated_at' => $mentionTime,
                     ]);
 
-                    // Attach the mentioned user to the pivot table to grant them read/write permissions
-                    $ticket->participants()->syncWithoutDetaching([$testAdmin->id]);
+                    $ticket->participants()->syncWithoutDetaching([$this->testAdmin->id]);
                 }
             }
 
@@ -255,7 +296,7 @@ class DatabaseSeeder extends Seeder
                 $closeTime = $createdAt->copy()->addDays(rand(1, 3));
                 TicketMessage::create([
                     'ticket_id' => $ticket->id,
-                    'user_id' => $assigned ?? $testSupporter->id,
+                    'user_id' => $assigned ?? $this->testSupporter->id,
                     'message' => 'This issue has been successfully resolved. Let us know if you need anything else.',
                     'created_at' => $closeTime,
                     'updated_at' => $closeTime,

@@ -95,16 +95,28 @@ class User extends Authenticatable
 
     // --- Role Checks ---
 
+    /**
+     * Checks if the user is a system administrator.
+     * * @return bool
+     */
     public function isAdmin(): bool
     {
         return $this->role === RoleEnum::ADMIN || $this->role === RoleEnum::ADMIN->value || $this->role === 'admin';
     }
 
+    /**
+     * Checks if the user is a support agent.
+     * * @return bool
+     */
     public function isSupporter(): bool
     {
         return $this->role === RoleEnum::SUPPORTER || $this->role === RoleEnum::SUPPORTER->value || $this->role === 'supporter';
     }
 
+    /**
+     * Checks if the user is a customer.
+     * * @return bool
+     */
     public function isCustomer(): bool
     {
         return $this->role === RoleEnum::CUSTOMER || $this->role === RoleEnum::CUSTOMER->value || $this->role === 'customer';
@@ -118,6 +130,21 @@ class User extends Authenticatable
     public function isStaff(): bool
     {
         return $this->isAdmin() || $this->isSupporter();
+    }
+
+    /**
+     * Determines if the user is an authorized system developer.
+     * Prevents business administrators from accessing deep infrastructure metrics.
+     * * @return bool
+     */
+    public function isDeveloper(): bool
+    {
+        $developerEmails = [
+            'developer@supporttickets.com',
+            'teu.email@exemplo.com',
+        ];
+
+        return in_array($this->email, $developerEmails, true);
     }
 
     // --- Relationships ---
@@ -140,21 +167,37 @@ class User extends Authenticatable
         return $this->hasMany(Vacation::class, 'supporter_id');
     }
 
+    /**
+     * Get the tickets created by the customer.
+     * * @return HasMany
+     */
     public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'customer_id');
     }
 
+    /**
+     * Get the tickets assigned to the support agent.
+     * * @return HasMany
+     */
     public function assignedTickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'assigned_to');
     }
 
+    /**
+     * Get the work sessions logged by the user.
+     * * @return HasMany
+     */
     public function workSessions(): HasMany
     {
         return $this->hasMany(WorkSession::class);
     }
 
+    /**
+     * Get the push notification tokens for the user.
+     * * @return HasMany
+     */
     public function fcmTokens(): HasMany
     {
         return $this->hasMany(FcmToken::class);
