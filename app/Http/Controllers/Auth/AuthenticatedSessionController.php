@@ -29,25 +29,20 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): \Symfony\Component\HttpFoundation\Response
     {
         $request->authenticate();
 
-        // Se o LoginRequest definiu a variável de sessão 'login.id', significa que o 2FA é necessário
         if ($request->session()->has('login.id')) {
-            // FORÇAR a gravação da sessão agora mesmo para evitar que se perca no redirecionamento
             $request->session()->save();
 
             return redirect()->route('two-factor.challenge');
         }
 
-        // Fluxo normal para quem não tem 2FA e foi autenticado com sucesso
         $request->session()->regenerate();
 
-        // Architect Note: Intercept the intended routing explicitly for system developers.
-        // This ensures they bypass the operational dashboard and land directly on performance metrics.
         if ($request->user()->isDeveloper()) {
-            return redirect()->to('/pulse');
+            return Inertia::location('/pulse');
         }
 
         return redirect()->intended(route('dashboard'));

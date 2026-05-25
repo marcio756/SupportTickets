@@ -1,19 +1,25 @@
-<x-pulse>
-    <livewire:pulse.servers cols="full" />
+@extends('app')
 
-    <livewire:pulse.usage cols="4" rows="2" />
+@section('content')
+<div id="developer-app" class="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div id="developer-navbar" data-user="{{ json_encode(auth()->user()) }}"></div>
+    
+    <main class="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Infrastructure Performance</h1>
+            
+            <iframe src="/pulse/view" class="w-full min-h-[80vh] border-0 rounded-lg" id="pulse-frame"></iframe>
+        </div>
+    </main>
+</div>
 
-    <livewire:pulse.queues cols="4" />
-
-    <livewire:pulse.cache cols="4" />
-
-    <livewire:pulse.slow-queries cols="8" />
-
-    <livewire:pulse.exceptions cols="6" />
-
-    <livewire:pulse.slow-requests cols="6" />
-
-    <livewire:pulse.slow-jobs cols="6" />
-
-    <livewire:pulse.slow-outgoing-requests cols="6" />
-</x-pulse>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const navbarTarget = document.getElementById('developer-navbar');
+        if (navbarTarget && window.renderDeveloperNavbar) {
+            const userData = JSON.parse(navbarTarget.getAttribute('data-user'));
+            window.renderDeveloperNavbar(navbarTarget, userData);
+        }
+    });
+</script>
+@endsection

@@ -12,10 +12,19 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         @routes
-        @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
-        @inertiaHead
+        
+        @isset($page)
+            @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
+            @inertiaHead
+        @else
+            @vite(['resources/js/app.js'])
+        @endisset
     </head>
     <body class="font-sans antialiased">
-        @inertia
+        @isset($page)
+            @inertia
+        @else
+            @yield('content')
+        @endisset
     </body>
 </html>

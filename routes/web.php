@@ -14,6 +14,7 @@ use App\Http\Controllers\WorkSessionController;
 use App\Http\Controllers\WorkSessionReportController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Middleware\EnsureActiveWorkSession;
+use App\Http\Middleware\PreventDeveloperAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -39,10 +40,10 @@ Route::post('/language', function (Request $request) {
 })->name('language.switch');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', PreventDeveloperAccess::class])
     ->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', PreventDeveloperAccess::class])->group(function () {
     /**
      * User profile management.
      */
