@@ -24,7 +24,6 @@ const unlinkProvider = (provider) => {
     form.delete(route('profile.social.destroy', provider), {
         preserveScroll: true,
         onSuccess: () => {
-            // Success handled by page props update implicitly via Inertia
         },
     });
 };
