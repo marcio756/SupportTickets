@@ -83,4 +83,17 @@ Route::middleware('auth')->group(function () {
         
     Route::delete('user/two-factor-authentication', [TwoFactorSettingsController::class, 'disable'])
         ->name('two-factor.disable');
-});
+
+    // --- Novos Endpoints de Gestão de Vínculos Sociais no Perfil ---
+    Route::get('profile/auth/{provider}/redirect', [\App\Http\Controllers\Profile\SocialAccountController::class, 'redirect'])
+        ->where('provider', 'google|facebook')
+        ->name('profile.social.redirect');
+
+    Route::get('profile/auth/{provider}/callback', [\App\Http\Controllers\Profile\SocialAccountController::class, 'callback'])
+        ->where('provider', 'google|facebook')
+        ->name('profile.social.callback');
+
+    Route::delete('profile/auth/{provider}', [\App\Http\Controllers\Profile\SocialAccountController::class, 'destroy'])
+        ->where('provider', 'google|facebook')
+        ->name('profile.social.destroy');
+}); 

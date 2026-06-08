@@ -11,7 +11,7 @@ use Laravel\Socialite\Facades\Socialite;
 class SocialAuthController extends Controller
 {
     /**
-     * Redirects the user to the specified OAuth provider.
+     * Redirects the guest user to the specified OAuth provider for login.
      *
      * @param string $provider
      * @return \Illuminate\Http\RedirectResponse|\Symfony\Component\HttpFoundation\RedirectResponse
@@ -22,8 +22,8 @@ class SocialAuthController extends Controller
     }
 
     /**
-     * Handles the callback from the OAuth provider.
-     * Prevents account creation; only allows linking and login for existing emails.
+     * Handles the callback from the OAuth provider for authentication.
+     * Strictly enforces that the social ID must ALREADY be linked to an account.
      *
      * @param string $provider
      * @return RedirectResponse
@@ -38,20 +38,15 @@ class SocialAuthController extends Controller
             ]);
         }
 
-        // Enforce the rule: Account must already exist to proceed.
-        $user = User::where('email', $socialUser->getEmail())->first();
+        $providerField = $provider . '_id';
+
+        // Enforce the rule: Account must already be explicitly linked via the Profile.
+        // We match by the unique provider ID, not just the email, for strict security.
+        $user = User::where($providerField, $socialUser->getId())->first();
 
         if (!$user) {
             return redirect()->route('login')->withErrors([
-                'email' => 'Não existe nenhuma conta associada a este email. Por favor, utiliza as tuas credenciais de acesso ou pede a criação da tua conta.',
-            ]);
-        }
-
-        // Automatically link the provider ID if it hasn't been linked yet
-        $providerField = $provider . '_id';
-        if (!$user->{$providerField}) {
-            $user->update([
-                $providerField => $socialUser->getId(),
+                'email' => 'Conta inexistente ou não associada. Por favor, faz login com as tuas credenciais e associa o ' . ucfirst($provider) . ' no teu Perfil.',
             ]);
         }
 
@@ -60,4 +55,4 @@ class SocialAuthController extends Controller
 
         return redirect()->intended(route('dashboard', absolute: false));
     }
-}   
+}
