@@ -33,6 +33,8 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
+            // Partilha a variável de idioma com o Inertia/Vue globalmente
+            'locale' => app()->getLocale(),
             'auth' => [
                 'user' => $request->user(),
                 // Partilha globalmente o estado do turno para que o Frontend (Vue) saiba a realidade da Base de Dados
