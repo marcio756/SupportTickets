@@ -29,6 +29,8 @@ class User extends Authenticatable
         'daily_support_seconds',
         'team_id',
         'two_factor_secret',
+        'google_id',
+        'facebook_id',
     ];
 
     /**

@@ -10,6 +10,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import SocialLoginButton from '@/Components/Auth/SocialLoginButton.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 defineProps({
@@ -109,5 +110,23 @@ const submit = () => {
                 </PrimaryButton>
             </div>
         </form>
+
+        <div class="mt-8">
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-300 dark:border-gray-700"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 select-none">
+                        Ou continua com
+                    </span>
+                </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-2 gap-3">
+                <SocialLoginButton provider="google" :href="route('social.redirect', 'google')" />
+                <SocialLoginButton provider="facebook" :href="route('social.redirect', 'facebook')" />
+            </div>
+        </div>
     </GuestLayout>
 </template>

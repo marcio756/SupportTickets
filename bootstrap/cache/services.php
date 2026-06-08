@@ -33,16 +33,17 @@
     29 => 'Laravel\\Sail\\SailServiceProvider',
     30 => 'Laravel\\Sanctum\\SanctumServiceProvider',
     31 => 'Laravel\\Sentinel\\SentinelServiceProvider',
-    32 => 'Laravel\\Tinker\\TinkerServiceProvider',
-    33 => 'Livewire\\LivewireServiceProvider',
-    34 => 'Carbon\\Laravel\\ServiceProvider',
-    35 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
-    36 => 'Termwind\\Laravel\\TermwindServiceProvider',
-    37 => 'PragmaRX\\Google2FALaravel\\ServiceProvider',
-    38 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
-    39 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
-    40 => 'Webklex\\IMAP\\Providers\\LaravelServiceProvider',
-    41 => 'App\\Providers\\AppServiceProvider',
+    32 => 'Laravel\\Socialite\\SocialiteServiceProvider',
+    33 => 'Laravel\\Tinker\\TinkerServiceProvider',
+    34 => 'Livewire\\LivewireServiceProvider',
+    35 => 'Carbon\\Laravel\\ServiceProvider',
+    36 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
+    37 => 'Termwind\\Laravel\\TermwindServiceProvider',
+    38 => 'PragmaRX\\Google2FALaravel\\ServiceProvider',
+    39 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
+    40 => 'Tighten\\Ziggy\\ZiggyServiceProvider',
+    41 => 'Webklex\\IMAP\\Providers\\LaravelServiceProvider',
+    42 => 'App\\Providers\\AppServiceProvider',
   ),
   'eager' => 
   array (
@@ -233,6 +234,7 @@
     'Laravel\\Reverb\\Contracts\\ApplicationProvider' => 'Laravel\\Reverb\\ApplicationManagerServiceProvider',
     'Laravel\\Sail\\Console\\InstallCommand' => 'Laravel\\Sail\\SailServiceProvider',
     'Laravel\\Sail\\Console\\PublishCommand' => 'Laravel\\Sail\\SailServiceProvider',
+    'Laravel\\Socialite\\Contracts\\Factory' => 'Laravel\\Socialite\\SocialiteServiceProvider',
     'command.tinker' => 'Laravel\\Tinker\\TinkerServiceProvider',
   ),
   'when' => 
@@ -283,6 +285,9 @@
     array (
     ),
     'Laravel\\Sail\\SailServiceProvider' => 
+    array (
+    ),
+    'Laravel\\Socialite\\SocialiteServiceProvider' => 
     array (
     ),
     'Laravel\\Tinker\\TinkerServiceProvider' => 

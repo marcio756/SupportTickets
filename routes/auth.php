@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
@@ -42,6 +43,15 @@ Route::middleware('guest')->group(function () {
         
     Route::post('two-factor-challenge', [TwoFactorChallengeController::class, 'store'])
         ->middleware('throttle:5,1'); // Proteção contra brute force no token
+
+    // --- Endpoints de Autenticação Social ---
+    Route::get('auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])
+        ->where('provider', 'google|facebook')
+        ->name('social.redirect');
+
+    Route::get('auth/{provider}/callback', [SocialAuthController::class, 'callback'])
+        ->where('provider', 'google|facebook')
+        ->name('social.callback');
 });
 
 Route::middleware('auth')->group(function () {
