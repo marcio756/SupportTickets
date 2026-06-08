@@ -1,5 +1,5 @@
 composer install
-npm install
+npm install --legacy-peer-deps
 
 npm run dev - frontend 
 php artisan serve - backend 
