@@ -51,7 +51,9 @@ const displayRole = computed(() => {
     const user = page.props.auth?.user;
     if (!user) return t('sidebar.roles.guest');
     
-    const roleValue = typeof user.role === 'object' ? user.role.value : user.role;
+    const rawRole = user.role ?? 'customer';
+    const roleValue = typeof rawRole === 'object' ? rawRole.value : String(rawRole);
+    
     return t(`sidebar.roles.${roleValue.toLowerCase()}`) || roleValue;
 });
 
@@ -65,7 +67,8 @@ const navigationItems = computed(() => {
   const user = page.props.auth?.user;
   if (!user) return [];
   
-  const role = (typeof user.role === 'object' ? user.role.value : user.role).toLowerCase();
+  const rawRole = user.role ?? 'customer';
+  const role = (typeof rawRole === 'object' ? rawRole.value : String(rawRole)).toLowerCase();
 
   const items = [
     { title: t('sidebar.dashboard'), icon: 'dashboard', route: 'dashboard' },

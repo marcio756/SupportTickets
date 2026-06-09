@@ -18,7 +18,11 @@ class SocialAccountController extends Controller
      */
     public function redirect(string $provider)
     {
-        return Socialite::driver($provider)->redirect();
+        // Substitui a URI padrão do .env para garantir que a Google/Facebook
+        // redireciona de volta para a zona autenticada do Perfil.
+        return Socialite::driver($provider)
+            ->redirectUrl(route('profile.social.callback', ['provider' => $provider]))
+            ->redirect();
     }
 
     /**
@@ -31,7 +35,11 @@ class SocialAccountController extends Controller
     public function callback(Request $request, string $provider): RedirectResponse
     {
         try {
-            $socialUser = Socialite::driver($provider)->user();
+            // É obrigatório manter o mesmo redirectUrl usado no pedido original
+            // caso contrário o provider (ex: Google) rejeitará a validação por segurança.
+            $socialUser = Socialite::driver($provider)
+                ->redirectUrl(route('profile.social.callback', ['provider' => $provider]))
+                ->user();
         } catch (\Exception $e) {
             return redirect()->route('profile.edit')->with('status', 'erro-associacao-social');
         }
