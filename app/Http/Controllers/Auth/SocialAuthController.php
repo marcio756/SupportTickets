@@ -34,7 +34,8 @@ class SocialAuthController extends Controller
             $socialUser = Socialite::driver($provider)->user();
         } catch (\Exception $e) {
             return redirect()->route('login')->withErrors([
-                'email' => 'Ocorreu um erro ao comunicar com o fornecedor de autenticação.',
+                // Alterado de 'email' para 'socialAuth' para separar dos erros de validação do form.
+                'socialAuth' => 'Ocorreu um erro ao comunicar com o fornecedor de autenticação.',
             ]);
         }
 
@@ -46,7 +47,9 @@ class SocialAuthController extends Controller
 
         if (!$user) {
             return redirect()->route('login')->withErrors([
-                'email' => 'Conta inexistente ou não associada. Por favor, faz login com as tuas credenciais e associa o ' . ucfirst($provider) . ' no teu Perfil.',
+                // Usar uma chave customizada (socialAuth) permite mostrar um alerta global dedicado
+                // e evita injetar o erro debaixo da caixa de input de 'email'.
+                'socialAuth' => 'Conta inexistente ou não associada. Por favor, faz login com as tuas credenciais e associa o ' . ucfirst($provider) . ' no teu Perfil.',
             ]);
         }
 

@@ -7,25 +7,42 @@ import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
-const user = usePage().props.auth.user;
-
-const hasGoogleLinked = computed(() => !!user.google_id);
-const hasFacebookLinked = computed(() => !!user.facebook_id);
-
+const page = usePage();
 const form = useForm({});
+
+// Estado local para Optimistic UI e Progress Illusions
+const optimisticUnlinked = ref({ google: false, facebook: false });
+const isConnecting = ref({ google: false, facebook: false });
+
+// Propriedades computadas reativas em relação ao objeto page.props (corrige o problema do F5)
+// e integradas com o estado Optimistic UI para uma resposta visual instantânea.
+const hasGoogleLinked = computed(() => !!page.props.auth.user.google_id && !optimisticUnlinked.value.google);
+const hasFacebookLinked = computed(() => !!page.props.auth.user.facebook_id && !optimisticUnlinked.value.facebook);
 
 /**
  * Sends a DELETE request to unlink the specified provider.
  * Uses Optimistic UI principles for perceived performance.
  */
 const unlinkProvider = (provider) => {
+    // Optimistic UI: assumimos sucesso imediato para não fazer o utilizador esperar
+    optimisticUnlinked.value[provider] = true; 
+    
     form.delete(route('profile.social.destroy', provider), {
         preserveScroll: true,
-        onSuccess: () => {
+        onError: () => {
+            // Em caso de falha silenciosa, revertemos o estado visual
+            optimisticUnlinked.value[provider] = false;
         },
     });
+};
+
+/**
+ * Progress Illusion para a ação de conectar.
+ */
+const connectProvider = (provider) => {
+    isConnecting.value[provider] = true;
 };
 </script>
 
@@ -62,8 +79,12 @@ const unlinkProvider = (provider) => {
                 <DangerButton v-if="hasGoogleLinked" @click="unlinkProvider('google')" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                     Desconectar
                 </DangerButton>
-                <a v-else :href="route('profile.social.redirect', 'google')" class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-25 transition ease-in-out duration-150">
-                    Conectar
+                <a v-else :href="route('profile.social.redirect', 'google')" @click="connectProvider('google')" :class="{ 'opacity-50 pointer-events-none': isConnecting.google }" class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                    <svg v-if="isConnecting.google" class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{{ isConnecting.google ? 'A conectar...' : 'Conectar' }}</span>
                 </a>
             </div>
 
@@ -82,8 +103,12 @@ const unlinkProvider = (provider) => {
                 <DangerButton v-if="hasFacebookLinked" @click="unlinkProvider('facebook')" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                     Desconectar
                 </DangerButton>
-                <a v-else :href="route('profile.social.redirect', 'facebook')" class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-25 transition ease-in-out duration-150">
-                    Conectar
+                <a v-else :href="route('profile.social.redirect', 'facebook')" @click="connectProvider('facebook')" :class="{ 'opacity-50 pointer-events-none': isConnecting.facebook }" class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                    <svg v-if="isConnecting.facebook" class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{{ isConnecting.facebook ? 'A conectar...' : 'Conectar' }}</span>
                 </a>
             </div>
         </div>
